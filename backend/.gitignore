@@ -1,0 +1,7 @@
+node_modules
+dist
+.env
+.DS_Store
+
+# Firebase Admin SDK service account keys (secrets — never commit)
+*firebase-adminsdk*.json

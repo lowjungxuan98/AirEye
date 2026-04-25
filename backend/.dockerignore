@@ -1,0 +1,9 @@
+.DS_Store
+.env
+.env.*
+.vercel
+dist
+node_modules
+npm-debug.log*
+*firebase-adminsdk*.json
+coverage

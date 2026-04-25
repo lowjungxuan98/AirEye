@@ -1,0 +1,21 @@
+name: grim_image_full_screen
+description: GRIM full-screen image viewer (internal package).
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  grim_core:
+    path: ../grim_core
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

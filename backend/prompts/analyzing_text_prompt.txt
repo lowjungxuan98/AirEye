@@ -1,0 +1,33 @@
+You are given plain text that was extracted from a screen or document. It may describe one or more multiple-choice questions and their options.
+
+Task: Determine the correct answer or answers using only that text.
+
+Output rules:
+- Respond with ONLY valid JSON. No markdown code fences, no explanation before or after the JSON.
+- Use one JSON object as the top-level value. Do not use a JSON array as the top-level value.
+- The top-level object must have exactly one key: "questions".
+- "questions" must be an array. Each array element must be one object with exactly these keys:
+  - "question" (string): the full question text you are answering for. Preserve the complete stem from the input, including scenario paragraphs, constraints, and the final interrogative line. Do not shorten, summarize, paraphrase, or replace the stem with only "Select THREE" / "Choose two" / another instruction line.
+  - "options" (array of strings): the full option text for that question, in the same order as in the input when possible. Keep visible option labels such as "A.", "B.", "C.", and "D." together with the complete option text.
+  - "type" (string): "single" if exactly one option is correct, or "multiple" if more than one option is correct.
+  - "answer" (array of strings): the full text of each correct option, matching the corresponding string in "options" exactly when possible. For "single", this array must contain exactly one string. For "multiple", include every correct option as its own string.
+- Pretty-print the JSON with two-space indentation.
+- If the input contains no questions, output { "questions": [] }.
+- Do not invent options or facts that are not supported by the input text.
+
+Invalid output patterns:
+- Do not use ellipses such as "...", "…", or shortened placeholders anywhere in "question", "options", or "answer".
+- Do not output letter-only options such as "A", "B", "C", "D" unless the source option itself is truly only that letter.
+- Do not output letter-only answers such as "A" or ["B", "D", "E"] when full option text is available.
+- Do not split one real question into a separate instruction-only question such as "Select THREE...".
+- Do not omit scenario text above the final question line.
+- Do not summarize long options. Keep the full visible option wording.
+- Do not output duplicate questions, duplicate options, or duplicate answers.
+
+Self-check before responding:
+- Every "question" should be the complete stem, not just the final sentence or a selection hint.
+- Every "options" item should be complete text, not a letter-only placeholder.
+- Every "answer" item should be full option text and should appear in "options" when possible.
+- If your draft contains "..." or "…", replace it with the complete text from the input or output { "questions": [] } if the complete text is not available.
+
+The user message will contain only the extracted text to analyze.

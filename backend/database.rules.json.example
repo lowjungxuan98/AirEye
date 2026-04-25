@@ -1,0 +1,9 @@
+{
+  "rules": {
+    "uploads": {
+      ".indexOn": ["createdAt"],
+      ".read": false,
+      ".write": false
+    }
+  }
+}

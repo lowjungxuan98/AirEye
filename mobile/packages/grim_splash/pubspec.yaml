@@ -1,0 +1,23 @@
+name: grim_splash
+description: GRIM splash / launch screen (internal package).
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  grim_core:
+    path: ../grim_core
+  grim_role_select:
+    path: ../grim_role_select
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
