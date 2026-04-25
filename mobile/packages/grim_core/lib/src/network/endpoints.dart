@@ -12,10 +12,6 @@ abstract final class GrimEndpoints {
     'GRIM_RELEASE_API_PREFIX',
     defaultValue: 'https://lowjungxuan.dpdns.org/backend/api',
   );
-  static const String _releaseHealthUrl = String.fromEnvironment(
-    'GRIM_RELEASE_HEALTH_URL',
-    defaultValue: 'https://lowjungxuan.dpdns.org/backend/api/v1/health',
-  );
 
   static const String _androidEmulatorOrigin = 'http://10.0.2.2:3001';
   static const String _iosSimulatorOrigin = 'http://localhost:3001';
@@ -56,12 +52,7 @@ abstract final class GrimEndpoints {
 
   static String get import => '$apiPrefix/v1/import';
   static String get capture => '$apiPrefix/v1/capture';
-  static String get health {
-    if (kReleaseMode) {
-      return _trimTrailingSlash(_releaseHealthUrl);
-    }
-    return '$baseUrl/health';
-  }
+  static String get health => '$apiPrefix/v1/health';
 
   static String export({int page = 1, int limit = 20}) {
     return '$apiPrefix/v1/export?page=$page&limit=$limit';

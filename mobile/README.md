@@ -46,7 +46,7 @@ Release builds use:
 - health: `https://lowjungxuan.dpdns.org/backend/api/v1/health`
 - API v1: `https://lowjungxuan.dpdns.org/backend/api/v1/*`
 
-These can be overridden in CI or locally with `GRIM_RELEASE_HEALTH_URL` and `GRIM_RELEASE_API_PREFIX`.
+The health URL is derived in source from `GRIM_RELEASE_API_PREFIX` plus `/v1/health`.
 
 ## Firebase API keys
 

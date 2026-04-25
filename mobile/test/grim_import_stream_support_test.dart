@@ -135,5 +135,9 @@ void main() {
         'http://192.168.68.57:3001',
       );
     });
+
+    test('derives debug health from the API prefix', () {
+      expect(GrimEndpoints.health, 'http://192.168.68.57:3001/api/v1/health');
+    });
   });
 }

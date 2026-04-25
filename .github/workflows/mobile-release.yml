@@ -127,8 +127,7 @@ jobs:
           set -euo pipefail
           flutter build apk --release \
             --dart-define=FIREBASE_ANDROID_API_KEY="$FIREBASE_ANDROID_API_KEY" \
-            --dart-define=GRIM_RELEASE_API_PREFIX=https://lowjungxuan.dpdns.org/backend/api \
-            --dart-define=GRIM_RELEASE_HEALTH_URL=https://lowjungxuan.dpdns.org/backend/api/v1/health
+            --dart-define=GRIM_RELEASE_API_PREFIX=https://lowjungxuan.dpdns.org/backend/api
 
       - name: Publish GitHub Release
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'

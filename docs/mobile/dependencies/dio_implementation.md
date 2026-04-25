@@ -163,7 +163,7 @@ This is especially useful for:
 
 - Keep the base URL configurable per environment instead of hardcoding localhost values into feature widgets.
 - `GrimEndpoints.initialize()` runs during app startup to detect simulator/emulator vs physical device for debug URLs.
-- Release builds use `GRIM_RELEASE_API_PREFIX` for `/api/v1/*` routes and `GRIM_RELEASE_HEALTH_URL` for `/api/v1/health`. Production uses the public prefix `https://lowjungxuan.dpdns.org/backend/api`.
+- Release builds use `GRIM_RELEASE_API_PREFIX` for `/api/v1/*` routes. The health URL is derived in source as `{apiPrefix}/v1/health`. Production uses the public prefix `https://lowjungxuan.dpdns.org/backend/api`.
 - If the sender camera flow uploads captured images, pass file paths from the camera package into Dio; do not hold large binary payloads in Riverpod state unless necessary.
 - The `POST /api/v1/import` route is documented as server-sent events on success in `docs/specification.md`; if the mobile app consumes that streaming response, validate whether plain Dio is enough for the final UX or whether that route should gain a mobile-friendly polling or non-SSE alternative.
 
