@@ -7,9 +7,38 @@ import 'theme/grim_app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await GrimFcmManager().initialize();
+  await GrimEndpoints.initialize();
+  debugPrint('GRIM API prefix: ${GrimEndpoints.apiPrefix}');
+  debugPrint('GRIM health URL: ${GrimEndpoints.health}');
+  await _initializeFirebase();
   runApp(const ProviderScope(child: MainApp()));
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _initializeFcm();
+  });
+}
+
+Future<void> _initializeFirebase() async {
+  if (Firebase.apps.isNotEmpty) {
+    return;
+  }
+
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  } on FirebaseException catch (error) {
+    if (error.code == 'duplicate-app') {
+      return;
+    }
+    rethrow;
+  }
+}
+
+Future<void> _initializeFcm() async {
+  try {
+    await GrimFcmManager().initialize();
+  } catch (error, stackTrace) {
+    debugPrint('FCM initialization skipped: $error');
+    debugPrintStack(stackTrace: stackTrace);
+  }
 }
 
 class MainApp extends StatelessWidget {

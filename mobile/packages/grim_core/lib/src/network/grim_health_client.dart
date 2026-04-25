@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import 'dio_client.dart';
+import 'endpoints.dart';
 
 class GrimHealthClient {
   GrimHealthClient({GrimDioClient? apiClient}) : _apiClient = apiClient ?? GrimDioClient();
@@ -8,10 +10,14 @@ class GrimHealthClient {
   final GrimDioClient _apiClient;
 
   Future<GrimHealthReport> check() async {
-    final response = await _apiClient.dio.get<Map<String, dynamic>>(
-      '/health',
-      options: Options(validateStatus: (status) => status != null && status < 600),
-    );
+    debugPrint('GRIM health check: ${GrimEndpoints.health}');
+    final response = await _apiClient.dio
+        .get<Map<String, dynamic>>(
+          GrimEndpoints.health,
+          options: Options(validateStatus: (status) => status != null && status < 600),
+        )
+        .timeout(const Duration(seconds: 15));
+    debugPrint('GRIM health status: ${response.statusCode}');
     final root = response.data;
     if (root == null) {
       throw StateError('health: empty response body');
@@ -22,32 +28,31 @@ class GrimHealthClient {
 
 class GrimHealthReport {
   const GrimHealthReport({
+    required this.version,
     required this.ok,
     required this.firebase,
-    required this.openRouter,
-    required this.cloudinary,
+    required this.llm,
+    required this.s3,
   });
 
   factory GrimHealthReport.fromJson(Map<String, dynamic> json) {
     return GrimHealthReport(
+      version: _asString(json['version'], 'version'),
       ok: _asBool(json['ok'], 'ok'),
       firebase: GrimDependencyHealth.fromJson(_asMap(json['firebase'], 'firebase'), 'firebase'),
-      openRouter: GrimDependencyHealth.fromJson(_asMap(json['openRouter'], 'openRouter'), 'openRouter'),
-      cloudinary: GrimDependencyHealth.fromJson(_asMap(json['cloudinary'], 'cloudinary'), 'cloudinary'),
+      llm: GrimDependencyHealth.fromJson(_asMap(json['llm'], 'llm'), 'llm'),
+      s3: GrimDependencyHealth.fromJson(_asMap(json['s3'], 's3'), 's3'),
     );
   }
 
+  final String version;
   final bool ok;
   final GrimDependencyHealth firebase;
-  final GrimDependencyHealth openRouter;
-  final GrimDependencyHealth cloudinary;
+  final GrimDependencyHealth llm;
+  final GrimDependencyHealth s3;
 
   String get failureSummary {
-    final failures = <String>[
-      if (!firebase.ok) firebase.label,
-      if (!openRouter.ok) openRouter.label,
-      if (!cloudinary.ok) cloudinary.label,
-    ];
+    final failures = <String>[if (!firebase.ok) firebase.label, if (!llm.ok) llm.label, if (!s3.ok) s3.label];
     if (failures.isEmpty) {
       return 'Health check failed';
     }
@@ -88,6 +93,13 @@ int _asInt(Object? value, String field) {
     return value.toInt();
   }
   throw FormatException('health: expected int at $field, got $value');
+}
+
+String _asString(Object? value, String field) {
+  if (value is String) {
+    return value;
+  }
+  throw FormatException('health: expected string at $field, got $value');
 }
 
 Map<String, dynamic> _asMap(Object? value, String field) {

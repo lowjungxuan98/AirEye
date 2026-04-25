@@ -1,6 +1,7 @@
 enum GrimImportStatus {
   extractingText('extracting_text'),
-  analyzingText('analyzing_text');
+  analyzingText('analyzing_text'),
+  formatGuard('format_guard');
 
   const GrimImportStatus(this.wireValue);
 
@@ -31,14 +32,20 @@ sealed class GrimImportStreamEvent {
       );
     }
 
+    final data = json['data'];
+    if (data is Map<String, dynamic>) {
+      return GrimImportDataEvent(Map<String, dynamic>.unmodifiable(data));
+    }
+
     return GrimImportSuccessEvent(
       id: _readRequiredString(json, 'id'),
       createdAt: _readRequiredInt(json, 'createdAt'),
       updatedAt: _readRequiredInt(json, 'updatedAt'),
-      extractedText: _readRequiredString(json, 'extractedText'),
-      finalText: _readRequiredString(json, 'finalText'),
-      imageUrl: _readRequiredString(json, 'imageUrl'),
-      cloudinaryPublicId: _readRequiredString(json, 'cloudinaryPublicId'),
+      extractedText: _readOptionalString(json, 'extractedText'),
+      finalText: _readOptionalString(json, 'finalText'),
+      imageUrl: _readOptionalString(json, 'imageUrl'),
+      bucket: _readOptionalString(json, 'bucket'),
+      objectKey: _readOptionalString(json, 'objectKey'),
     );
   }
 }
@@ -54,19 +61,27 @@ class GrimImportSuccessEvent extends GrimImportStreamEvent {
     required this.id,
     required this.createdAt,
     required this.updatedAt,
-    required this.extractedText,
-    required this.finalText,
-    required this.imageUrl,
-    required this.cloudinaryPublicId,
+    this.extractedText,
+    this.finalText,
+    this.imageUrl,
+    this.bucket,
+    this.objectKey,
   });
 
   final String id;
   final int createdAt;
   final int updatedAt;
-  final String extractedText;
-  final String finalText;
-  final String imageUrl;
-  final String cloudinaryPublicId;
+  final String? extractedText;
+  final String? finalText;
+  final String? imageUrl;
+  final String? bucket;
+  final String? objectKey;
+}
+
+class GrimImportDataEvent extends GrimImportStreamEvent {
+  const GrimImportDataEvent(this.data);
+
+  final Map<String, dynamic> data;
 }
 
 class GrimImportErrorEvent extends GrimImportStreamEvent {
@@ -83,6 +98,18 @@ String _readRequiredString(Map<String, dynamic> json, String key) {
   }
 
   throw FormatException('Missing or invalid "$key" in import stream payload.');
+}
+
+String? _readOptionalString(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value == null) {
+    return null;
+  }
+  if (value is String) {
+    return value;
+  }
+
+  throw FormatException('Invalid "$key" in import stream payload.');
 }
 
 int _readRequiredInt(Map<String, dynamic> json, String key) {

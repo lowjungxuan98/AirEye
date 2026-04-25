@@ -17,6 +17,8 @@ class GrimSenderImportRepositoryImpl implements GrimSenderImportRepository {
           return;
         case GrimImportStatusEvent():
           break;
+        case GrimImportDataEvent():
+          break;
       }
     }
 

@@ -12,9 +12,9 @@ Vendor docs reviewed: 2026-04-19.
 
 ## Current repo status
 
-- `mobile/pubspec.yaml` does not yet include `firebase_core` or any other Firebase Flutter plugin.
-- `mobile/lib/main.dart` currently does not call `WidgetsFlutterBinding.ensureInitialized()` or `Firebase.initializeApp(...)`.
-- `mobile/lib/firebase_options.dart` does not exist yet.
+- Firebase Flutter plugins are owned by `mobile/packages/grim_core`.
+- `mobile/lib/main.dart` initializes Firebase once before `runApp(...)`.
+- `mobile/lib/firebase_options.dart` exists and reads client API keys from Dart defines.
 - The repo currently has Android and iOS targets; there is no `mobile/web/` target to configure yet.
 
 ## What FlutterFire setup should own
@@ -96,9 +96,24 @@ Do not call `Firebase.initializeApp(...)` again from feature packages unless you
 
 ## Repo-specific notes
 
+### Client API keys
+
+`mobile/lib/firebase_options.dart` uses:
+
+- `FIREBASE_ANDROID_API_KEY`
+- `FIREBASE_IOS_API_KEY`
+
+Local developers should create `mobile/.env.local` through `scripts/mobile_setup.sh` and run Flutter with:
+
+```bash
+flutter run --dart-define-from-file=.env.local
+```
+
+Firebase client API keys are not Firebase Admin credentials. Keep Admin service account JSON, private keys, and FCM server keys out of the mobile app and in backend/server-side configuration only.
+
 ### Android debug suffix
 
-`mobile/android/app/build.gradle.kts` currently adds `applicationIdSuffix = ".dev"` for debug builds.
+`mobile/android/app/build.gradle.kts` uses the same application ID for debug and release builds today.
 
 That matters because Firebase registration is tied to the actual Android application ID. If Grim wants separate Firebase apps or projects for debug and release, register the matching IDs and re-run `flutterfire configure` after settling the variant strategy.
 

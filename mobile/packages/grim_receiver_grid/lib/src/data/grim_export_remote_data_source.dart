@@ -8,13 +8,8 @@ class GrimExportRemoteDataSource {
 
   final GrimDioClient _apiClient;
 
-  static const String _path = '/api/v1/export';
-
   Future<GrimExportPageResult> fetchPage({required int page, required int limit}) async {
-    final response = await _apiClient.dio.get<Map<String, dynamic>>(
-      _path,
-      queryParameters: <String, dynamic>{'page': page, 'limit': limit},
-    );
+    final response = await _apiClient.dio.get<Map<String, dynamic>>(GrimEndpoints.export(page: page, limit: limit));
     final root = response.data;
     if (root == null) {
       throw StateError('export: empty response body');

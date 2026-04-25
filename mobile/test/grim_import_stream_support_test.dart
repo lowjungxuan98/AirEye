@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grim_core/grim_core.dart';
 
@@ -36,6 +36,22 @@ void main() {
       expect((event as GrimImportStatusEvent).status, GrimImportStatus.extractingText);
     });
 
+    test('parses format guard status event payload', () {
+      final event = GrimImportStreamEvent.fromJson(<String, dynamic>{'status': 'format_guard'});
+
+      expect(event, isA<GrimImportStatusEvent>());
+      expect((event as GrimImportStatusEvent).status, GrimImportStatus.formatGuard);
+    });
+
+    test('parses intermediate data payload', () {
+      final event = GrimImportStreamEvent.fromJson(<String, dynamic>{
+        'data': <String, dynamic>{'guardedFinalText': 'guarded'},
+      });
+
+      expect(event, isA<GrimImportDataEvent>());
+      expect((event as GrimImportDataEvent).data, <String, dynamic>{'guardedFinalText': 'guarded'});
+    });
+
     test('parses terminal success payload', () {
       final event = GrimImportStreamEvent.fromJson(<String, dynamic>{
         'id': 'upl_123',
@@ -44,11 +60,15 @@ void main() {
         'extractedText': 'extract',
         'finalText': 'final',
         'imageUrl': 'https://example.com/image.png',
-        'cloudinaryPublicId': 'grim/upl_123',
+        'bucket': 'grim-development',
+        'objectKey': 'uploads/upl_123.png',
       });
 
       expect(event, isA<GrimImportSuccessEvent>());
-      expect((event as GrimImportSuccessEvent).id, 'upl_123');
+      final success = event as GrimImportSuccessEvent;
+      expect(success.id, 'upl_123');
+      expect(success.bucket, 'grim-development');
+      expect(success.objectKey, 'uploads/upl_123.png');
     });
 
     test('parses terminal error payload', () {
@@ -58,6 +78,62 @@ void main() {
 
       expect(event, isA<GrimImportErrorEvent>());
       expect((event as GrimImportErrorEvent).code, 'INTERNAL_ERROR');
+    });
+  });
+
+  group('GrimHealthReport', () {
+    test('parses backend health payload', () {
+      final report = GrimHealthReport.fromJson(<String, dynamic>{
+        'version': '0.1.7',
+        'ok': true,
+        'firebase': <String, dynamic>{'ok': true, 'latencyMs': 1},
+        'llm': <String, dynamic>{'ok': true, 'latencyMs': 2},
+        's3': <String, dynamic>{'ok': true, 'latencyMs': 3},
+      });
+
+      expect(report.version, '0.1.7');
+      expect(report.ok, isTrue);
+      expect(report.llm.ok, isTrue);
+      expect(report.s3.latencyMs, 3);
+    });
+
+    test('summarizes unhealthy dependencies', () {
+      final report = GrimHealthReport.fromJson(<String, dynamic>{
+        'version': '0.1.7',
+        'ok': false,
+        'firebase': <String, dynamic>{'ok': true, 'latencyMs': 1},
+        'llm': <String, dynamic>{'ok': false, 'latencyMs': 2, 'error': 'HTTP 401'},
+        's3': <String, dynamic>{'ok': false, 'latencyMs': 3, 'error': 'bucket unavailable'},
+      });
+
+      expect(report.failureSummary, 'Unavailable: llm, s3');
+    });
+  });
+
+  group('GrimEndpoints', () {
+    test('resolves Android emulator debug origin', () {
+      expect(
+        GrimEndpoints.debugOriginFor(platform: TargetPlatform.android, isPhysicalDevice: false),
+        'http://10.0.2.2:3001',
+      );
+    });
+
+    test('resolves iOS simulator debug origin', () {
+      expect(
+        GrimEndpoints.debugOriginFor(platform: TargetPlatform.iOS, isPhysicalDevice: false),
+        'http://localhost:3001',
+      );
+    });
+
+    test('resolves physical-device debug origin to the Mac LAN address', () {
+      expect(
+        GrimEndpoints.debugOriginFor(platform: TargetPlatform.android, isPhysicalDevice: true),
+        'http://192.168.68.57:3001',
+      );
+      expect(
+        GrimEndpoints.debugOriginFor(platform: TargetPlatform.iOS, isPhysicalDevice: true),
+        'http://192.168.68.57:3001',
+      );
     });
   });
 }

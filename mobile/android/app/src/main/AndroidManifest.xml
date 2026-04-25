@@ -3,6 +3,13 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" tools:replace="android:maxSdkVersion"/>
     <application android:label="GRIM" android:name="${applicationName}" android:icon="@mipmap/ic_launcher" android:requestLegacyExternalStorage="true">
+        <!-- Flutter initializes Firebase from Dart options and dart-define values.
+             Disable the Android SDK auto-init provider so placeholder google-services
+             values cannot create the default app before Flutter starts. -->
+        <provider
+            android:name="com.google.firebase.provider.FirebaseInitProvider"
+            android:authorities="${applicationId}.firebaseinitprovider"
+            tools:node="remove"/>
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="grim_results"/>

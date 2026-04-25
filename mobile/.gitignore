@@ -44,3 +44,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local mobile configuration. Use scripts/mobile_setup.sh to create these.
+.env.local
+.env.*.local

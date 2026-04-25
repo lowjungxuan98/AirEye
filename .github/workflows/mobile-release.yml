@@ -1,0 +1,150 @@
+name: Mobile Release
+
+on:
+  pull_request:
+    paths:
+      - "mobile/**"
+      - "docs/mobile/**"
+      - ".github/workflows/mobile-release.yml"
+  push:
+    branches:
+      - main
+    tags:
+      - "mobile-v*"
+    paths:
+      - "mobile/**"
+      - "docs/mobile/**"
+      - ".github/workflows/mobile-release.yml"
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect mobile changes for tag release
+        id: mobile_changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          previous_tag="$(git tag --list 'mobile-v*' --sort=-v:refname | grep -v "^${GITHUB_REF_NAME}$" | head -n 1 || true)"
+          if [[ -z "$previous_tag" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git diff --quiet "$previous_tag" HEAD -- mobile docs/mobile .github/workflows/mobile-release.yml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: mobile
+        run: flutter analyze
+
+      - name: Test
+        working-directory: mobile
+        run: flutter test
+
+      - name: Validate release secrets
+        if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
+        env:
+          MOBILE_ANDROID_KEYSTORE_BASE64: ${{ secrets.MOBILE_ANDROID_KEYSTORE_BASE64 }}
+          MOBILE_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MOBILE_ANDROID_KEYSTORE_PASSWORD }}
+          MOBILE_ANDROID_KEY_ALIAS: ${{ secrets.MOBILE_ANDROID_KEY_ALIAS }}
+          MOBILE_ANDROID_KEY_PASSWORD: ${{ secrets.MOBILE_ANDROID_KEY_PASSWORD }}
+          FIREBASE_ANDROID_API_KEY: ${{ secrets.FIREBASE_ANDROID_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in MOBILE_ANDROID_KEYSTORE_BASE64 MOBILE_ANDROID_KEYSTORE_PASSWORD MOBILE_ANDROID_KEY_ALIAS MOBILE_ANDROID_KEY_PASSWORD FIREBASE_ANDROID_API_KEY; do
+            if [[ -z "${!name}" ]]; then
+              missing+=("$name")
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing required GitHub Actions secrets:\n'
+            printf ' - %s\n' "${missing[@]}"
+            exit 1
+          fi
+
+      - name: Restore Android keystore
+        if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
+        working-directory: mobile
+        env:
+          MOBILE_ANDROID_KEYSTORE_BASE64: ${{ secrets.MOBILE_ANDROID_KEYSTORE_BASE64 }}
+          MOBILE_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MOBILE_ANDROID_KEYSTORE_PASSWORD }}
+          MOBILE_ANDROID_KEY_ALIAS: ${{ secrets.MOBILE_ANDROID_KEY_ALIAS }}
+          MOBILE_ANDROID_KEY_PASSWORD: ${{ secrets.MOBILE_ANDROID_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$MOBILE_ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          {
+            echo "storePassword=$MOBILE_ANDROID_KEYSTORE_PASSWORD"
+            echo "keyPassword=$MOBILE_ANDROID_KEY_PASSWORD"
+            echo "keyAlias=$MOBILE_ANDROID_KEY_ALIAS"
+            echo "storeFile=app/upload-keystore.jks"
+          } > android/key.properties
+
+      - name: Build release APK
+        if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
+        working-directory: mobile
+        env:
+          FIREBASE_ANDROID_API_KEY: ${{ secrets.FIREBASE_ANDROID_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter build apk --release \
+            --dart-define=FIREBASE_ANDROID_API_KEY="$FIREBASE_ANDROID_API_KEY" \
+            --dart-define=GRIM_RELEASE_API_PREFIX=https://lowjungxuan.dpdns.org/api \
+            --dart-define=GRIM_RELEASE_HEALTH_URL=https://lowjungxuan.dpdns.org/health
+
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
+        working-directory: mobile
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="build/app/outputs/flutter-apk/app-release.apk"
+          tag="${GITHUB_REF_NAME}"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --title "$tag" --notes "GRIM mobile release $tag"
+          fi
+          gh release upload "$tag" "$apk#grim-${tag}-android-release.apk" --clobber
+
+      - name: Skip release
+        if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'false'
+        run: echo "No mobile changes detected since the previous mobile-v* tag; release artifact skipped."

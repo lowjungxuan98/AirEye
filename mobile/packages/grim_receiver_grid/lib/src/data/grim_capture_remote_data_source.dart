@@ -5,10 +5,8 @@ class GrimCaptureRemoteDataSource {
 
   final GrimDioClient _apiClient;
 
-  static const String _path = '/api/v1/capture';
-
   Future<void> requestCapture() async {
-    final response = await _apiClient.dio.post<Map<String, dynamic>>(_path);
+    final response = await _apiClient.dio.post<Map<String, dynamic>>(GrimEndpoints.capture);
     final root = response.data;
     if (root == null) {
       throw StateError('capture: empty response body');

@@ -12,9 +12,9 @@ Vendor docs reviewed: 2026-04-19.
 
 ## Current repo status
 
-- `mobile/pubspec.yaml` does not currently include `dio`.
-- The mobile app does not yet have a shared API client or request layer.
-- Grim's backend API contract already exists in `backend/openapi.yaml` and `docs/specification.md`.
+- `mobile/packages/grim_core` owns the shared Dio client and endpoint helpers.
+- Feature packages consume `GrimDioClient` / `GrimEndpoints` from `grim_core`; they should not create a second HTTP stack.
+- Grim's backend API contract exists in `backend/openapi.yaml` and `docs/specification.md`.
 
 ## Why use Dio here
 
@@ -43,12 +43,12 @@ flutter pub add dio
 
 ## Recommended structure for Grim
 
-Keep a single shared Dio instance in the app layer under `mobile/lib/`, not inside each UI package.
+Keep shared HTTP concerns in `mobile/packages/grim_core`.
 
 Reason:
 
-- base URL, timeouts, headers, auth, and logging are app concerns
-- internal packages such as `grim_sender_camera` should remain UI-first and depend on repositories or services, not construct their own HTTP clients
+- base URL, timeouts, headers, auth, and logging are cross-cutting client concerns
+- internal packages such as `grim_sender_camera` should depend on repositories or core services, not construct their own HTTP stack
 
 ## Baseline client setup
 
@@ -162,6 +162,8 @@ This is especially useful for:
 ## Grim-specific notes
 
 - Keep the base URL configurable per environment instead of hardcoding localhost values into feature widgets.
+- `GrimEndpoints.initialize()` runs during app startup to detect simulator/emulator vs physical device for debug URLs.
+- Release builds use `GRIM_RELEASE_API_PREFIX` for `/api/v1/*` routes and `GRIM_RELEASE_HEALTH_URL` for `/health`.
 - If the sender camera flow uploads captured images, pass file paths from the camera package into Dio; do not hold large binary payloads in Riverpod state unless necessary.
 - The `POST /api/v1/import` route is documented as server-sent events on success in `docs/specification.md`; if the mobile app consumes that streaming response, validate whether plain Dio is enough for the final UX or whether that route should gain a mobile-friendly polling or non-SSE alternative.
 
