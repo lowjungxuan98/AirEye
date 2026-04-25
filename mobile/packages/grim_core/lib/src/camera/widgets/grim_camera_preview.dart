@@ -104,7 +104,8 @@ class _GrimCameraPreviewState extends State<GrimCameraPreview> with WidgetsBindi
         throw CameraException('NoCameraAvailable', 'No cameras were found on this device.');
       }
 
-      final nextController = await GrimCameraManager.createController(cameras.first);
+      final bestBackCamera = GrimCameraManager.pickBestBackCamera(cameras);
+      final nextController = await GrimCameraManager.createController(bestBackCamera);
       final previousController = _controller;
 
       if (!mounted) {
