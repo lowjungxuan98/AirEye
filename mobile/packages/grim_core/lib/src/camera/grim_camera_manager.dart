@@ -53,7 +53,7 @@ class GrimCameraManager {
       }
     }
 
-    await apply(() => controller.setFlashMode(FlashMode.auto));
+    await apply(() => controller.setFlashMode(FlashMode.off));
     await apply(() => controller.setFocusMode(FocusMode.auto));
     await apply(() => controller.setExposureMode(ExposureMode.auto));
   }

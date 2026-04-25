@@ -18,6 +18,14 @@ class GrimCameraPreviewController {
       throw StateError('Camera is already taking a picture.');
     }
 
+    if (controller.value.flashMode != FlashMode.off) {
+      try {
+        await controller.setFlashMode(FlashMode.off);
+      } on CameraException {
+        // If flash isn't supported, proceed without failing capture.
+      }
+    }
+
     final file = await controller.takePicture();
     return file.path;
   }

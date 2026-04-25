@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:grim_core/grim_core.dart';
 import 'package:grim_splash/grim_splash.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'firebase_options.dart';
 import 'theme/grim_app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await WakelockPlus.enable();
   await GrimEndpoints.initialize();
   debugPrint('GRIM API prefix: ${GrimEndpoints.apiPrefix}');
   debugPrint('GRIM health URL: ${GrimEndpoints.health}');
