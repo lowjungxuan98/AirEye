@@ -2,7 +2,7 @@
 
 Endpoints to test:
 
-- `GET /health`
+- `GET /api/v1/health`
 - `POST /api/v1/capture`
 - `POST /api/v1/import`
 - `GET /api/v1/export`
@@ -32,7 +32,7 @@ The handler must wait for **S3/MinIO**, configured extract-stage LLM image text 
 
 ## Integration tests
 
-- `GET /health` returns **200** with the integration report body
+- `GET /api/v1/health` returns **200** with the integration report body
 - `POST /api/v1/capture` returns **200** `{ "ok": true }` when the notifier accepts the request
 - `POST /api/v1/import` returns **200** `text/event-stream` with the expected SSE `data:` sequence when the pipeline is stubbed
 - `GET /api/v1/export` returns `data` ordered newest-first with pagination metadata
@@ -53,5 +53,5 @@ The backend uses Vitest and Supertest (`backend/package.json`).
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend tests (`backend/test/`, `backend/package.json` -> version `0.1.7`)
-**Doc version:** 4
+**Applies to:** grim backend tests (`backend/test/`, `backend/package.json` -> version `0.1.8`)
+**Doc version:** 5

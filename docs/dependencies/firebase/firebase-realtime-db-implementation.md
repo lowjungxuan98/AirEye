@@ -164,7 +164,7 @@ After the deployed rules include this index, republish once; the warning should 
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend Realtime Database (`backend/src/libs/firebase/realtime.ts`, `backend/package.json` -> version `0.1.7`)
+**Applies to:** grim backend Realtime Database (`backend/src/libs/firebase/realtime.ts`, `backend/package.json` -> version `0.1.8`)
 **Doc version:** 4
 **Upstream refs:**
 - https://firebase.google.com/docs/database/admin/start#node.js_1

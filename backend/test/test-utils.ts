@@ -2,7 +2,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createApp } from "../src/app";
-import { loadServerEnv, resolveS3Bucket } from "../src/libs/configs/env.config";
 import type {
   CaptureService,
   ImportServiceDependencies,
@@ -13,7 +12,6 @@ import type { HealthReport } from "../src/api/v1/model/health.model";
 import type { ImportService } from "../src/api/v1/model/services.model";
 import { ExportService } from "../src/api/v1/services/export.service";
 import { ImportService as ImportServiceImpl } from "../src/api/v1/services/import.service";
-import { S3ImageStore } from "../src/libs/s3/s3.util";
 import { GrimPromptSettings } from "../src/libs/utils/prompt.util";
 import { InMemoryUploadRepository } from "./in-memory-upload-repository";
 import type { LlmProvider } from "../src/libs/configs/env.config";
@@ -125,17 +123,15 @@ export function buildTestApp(input: BuildTestAppInput = {}) {
 /** Real {@link ImportServiceImpl} with stubbed pipeline deps and no vendor I/O. */
 export function createImportServiceWithStubbedPipeline(deps?: Partial<ImportServiceDependencies>) {
   const uploadRepository = deps?.uploadRepository ?? new InMemoryUploadRepository();
-  const env = loadServerEnv();
   const imageStorage =
     deps?.imageStorage ??
-    new S3ImageStore({
-      endpoint: env.S3_ENDPOINT,
-      accessKeyId: env.S3_ACCESS_KEY_ID,
-      secretAccessKey: env.S3_SECRET_ACCESS_KEY,
-      region: env.S3_REGION,
-      bucket: resolveS3Bucket(env),
-      presignTtlSeconds: env.S3_PRESIGN_TTL_SECONDS
-    });
+    {
+      uploadImage: async (_imageBuffer: Buffer, publicId: string, imageMimeType: string) => ({
+        imageUrl: `https://storage.example.test/${publicId}`,
+        bucket: "testing",
+        objectKey: `uploads/${publicId}.${imageMimeType === "image/png" ? "png" : "jpg"}`
+      })
+    };
   return new ImportServiceImpl({
     uploadRepository,
     textExtractor: deps?.textExtractor ?? { extractTextFromImage: async () => "extracted" },

@@ -1,6 +1,6 @@
 # Scalar — API endpoint documentation
 
-This backend ships an **OpenAPI 3** document for **`GET /health`**, **`POST /api/v1/import`**, and **`GET /api/v1/export`**.
+This backend ships an **OpenAPI 3** document for **`GET /api/v1/health`**, **`POST /api/v1/import`**, and **`GET /api/v1/export`**.
 
 ## Local Scalar UI
 
@@ -9,6 +9,8 @@ With the server running (default port `3001`), open:
 `http://localhost:<PORT>/docs`
 
 That page loads **Scalar API Reference** from the CDN and points at **`/openapi.yaml`** on the same server.
+
+In production, the same backend is exposed under the **`/backend`** reverse-proxy prefix, so Scalar shows endpoints such as **`https://lowjungxuan.dpdns.org/backend/api/v1/health`**. For local "Try it" requests, select the `/` server in Scalar.
 
 ## OpenAPI URL (same host)
 

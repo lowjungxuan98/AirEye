@@ -92,8 +92,8 @@ cat > "$LOCAL_ENV_PATH" <<EOF
 FIREBASE_ANDROID_API_KEY=$firebase_android_api_key
 FIREBASE_IOS_API_KEY=$firebase_ios_api_key
 GRIM_DEBUG_PHYSICAL_DEVICE_ORIGIN=http://$mac_ip:3001
-GRIM_RELEASE_API_PREFIX=https://lowjungxuan.dpdns.org/api
-GRIM_RELEASE_HEALTH_URL=https://lowjungxuan.dpdns.org/health
+GRIM_RELEASE_API_PREFIX=https://lowjungxuan.dpdns.org/backend/api
+GRIM_RELEASE_HEALTH_URL=https://lowjungxuan.dpdns.org/backend/api/v1/health
 EOF
 
 echo

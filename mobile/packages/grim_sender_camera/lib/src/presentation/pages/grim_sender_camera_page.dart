@@ -23,10 +23,7 @@ class _GrimSenderCameraPageState extends ConsumerState<GrimSenderCameraPage> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations(const [
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    SystemChrome.setPreferredOrientations(const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     _flowController = ref.read(grimSenderCaptureFlowControllerProvider);
     _flowController.bind(
       _cameraController,

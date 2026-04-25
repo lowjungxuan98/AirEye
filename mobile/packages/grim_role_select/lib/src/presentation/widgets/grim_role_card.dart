@@ -19,7 +19,6 @@ class GrimRoleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -39,7 +38,12 @@ class GrimRoleCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(color: selected ? GrimColors.accent : GrimColors.onSurface, fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: 1),
+                  style: TextStyle(
+                    color: selected ? GrimColors.accent : GrimColors.onSurface,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(description, style: const TextStyle(color: GrimColors.sectionLabel, fontSize: 14, height: 1.3)),

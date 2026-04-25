@@ -9,7 +9,7 @@
 
 ## Routes
 
-`GET /health`, `POST /api/v1/capture`, `POST /api/v1/import`, `GET /api/v1/export`, `GET /api/v1/prompts`, `PUT /api/v1/prompts`, `GET /openapi.yaml`, `GET /docs` (Scalar).
+`GET /api/v1/health`, `POST /api/v1/capture`, `POST /api/v1/import`, `GET /api/v1/export`, `GET /api/v1/prompts`, `PUT /api/v1/prompts`, `GET /openapi.yaml`, `GET /docs` (Scalar). Production adds the reverse-proxy prefix, for example `https://lowjungxuan.dpdns.org/backend/api/v1/health`.
 
 ## Sequence
 
@@ -59,4 +59,4 @@ Under `uploads/{id}` the server stores JSON with at least `createdAt` and `updat
 
 **Updated:** 2026-04-25
 **Applies to:** grim backend + Flutter capture/import flow (`backend/src/`, `mobile/packages/grim_sender_camera`, `mobile/packages/grim_receiver_grid`)
-**Doc version:** 4
+**Doc version:** 5

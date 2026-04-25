@@ -5,7 +5,7 @@ This document describes the **current** Grim backend layout under `backend/src/`
 ## Entry points
 
 - **`server.ts`** — loads environment (`loadServerEnv` from `libs/configs/env.config.ts`), builds production instances (local `createProductionDependencies`), calls `createApp(...)`, starts HTTP.
-- **`app.ts`** — `createApp(deps)` returns a configured Express app: OpenAPI static file, Scalar docs, health router, `/api/v1` router (import, capture, export, prompts), global error handler. Exports `AppDependencies`.
+- **`app.ts`** — `createApp(deps)` returns a configured Express app: OpenAPI static file, Scalar docs, `/api/v1` router (health, import, capture, export, prompts), legacy health alias, global error handler. Exports `AppDependencies`.
 
 There is **no** separate `dependencies.ts`; composition for production lives next to startup in `server.ts`.
 
@@ -20,7 +20,8 @@ There is **no** separate `dependencies.ts`; composition for production lives nex
 
 **Mounted paths today (from `app.ts`):**
 
-- `GET /health` — via `createHealthRouter` (not under `/api/v1`).
+- `GET /api/v1/health` — via `createHealthRouter` under `/api/v1`.
+- `GET /health` — legacy compatibility alias for local/old callers.
 - `GET /openapi.yaml`, `GET /docs`, `GET /docs/` — defined in `app.ts`.
 - `POST /api/v1/import`, `POST /api/v1/capture`, `GET /api/v1/export`, `GET /api/v1/prompts`, `PUT /api/v1/prompts` — under `express.Router()` mounted at `/api/v1`.
 
@@ -58,5 +59,5 @@ There is **no** separate `dependencies.ts`; composition for production lives nex
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend architecture (`backend/src/`, `backend/package.json` -> version `0.1.7`)
-**Doc version:** 4
+**Applies to:** grim backend architecture (`backend/src/`, `backend/package.json` -> version `0.1.8`)
+**Doc version:** 5

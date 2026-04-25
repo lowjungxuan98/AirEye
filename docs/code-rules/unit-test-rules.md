@@ -26,7 +26,7 @@ These rules apply to **`backend/test/`** (Vitest). Grim splits tests into three 
   | `src/libs/llm/text-processor.ts` | `test/unit-test/libs/llm/text-processor.test.ts` |
   | `src/libs/firebase/realtime.ts` | `test/unit-test/libs/firebase/realtime.test.ts` |
 
-- **HTTP app integration (Supertest + `createApp`)** — files under **`backend/test/api/`**, named **`*.integration.test.ts`**. Covers routes mounted from **`app.ts`**, global error JSON, stable middleware (e.g. **`OPTIONS /openapi.yaml`** CORS), **`GET /health`**, **`POST /api/v1/import`**, **`GET /api/v1/export`**, and **404** behavior. Use **Supertest** (already a dev dependency).
+- **HTTP app integration (Supertest + `createApp`)** — files under **`backend/test/api/`**, named **`*.integration.test.ts`**. Covers routes mounted from **`app.ts`**, global error JSON, stable middleware (e.g. **`OPTIONS /openapi.yaml`** CORS), **`GET /api/v1/health`** plus the legacy **`GET /health`** alias, **`POST /api/v1/import`**, **`GET /api/v1/export`**, and **404** behavior. Use **Supertest** (already a dev dependency).
 
 - **Shared test doubles at the `test/` root** — **`test/test-utils.ts`**, **`test/in-memory-upload-repository.ts`**, **`test/setup-env.ts`**. Do not tuck these under **`test/unit-test/libs/`**.
 
@@ -80,5 +80,5 @@ These rules apply to **`backend/test/`** (Vitest). Grim splits tests into three 
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend tests (`backend/test/`, `backend/package.json` -> version `0.1.7`)
-**Doc version:** 1
+**Applies to:** grim backend tests (`backend/test/`, `backend/package.json` -> version `0.1.8`)
+**Doc version:** 2

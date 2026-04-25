@@ -6,7 +6,7 @@ info:
 
     | Area | Base path |
     |------|-----------|
-    | Health | `GET /health` |
+    | Health | `GET /api/v1/health` |
     | Import | `POST /api/v1/import` — `multipart/form-data`, required file field **`image`** (`text/event-stream`) |
     | Capture | `POST /api/v1/capture` |
     | Export | `GET /api/v1/export` |
@@ -18,11 +18,13 @@ info:
     **Prompts:** text loaded from `extract_text_prompt.txt`, `analyzing_text_prompt.txt`, and `format_guard_prompt.txt` under **`GRIM_PROMPTS_DIR`** (default `./prompts` relative to the server process). **`PUT /api/v1/prompts`** overwrites those strings on disk and updates the in-memory copy used by the next import. Optional **`GRIM_PROMPT_ADMIN_SECRET`** forces clients to send **`X-Grim-Prompt-Secret`**.
 
     **Interactive docs:** with the backend running, open **`/docs`** on the same origin for embedded [Scalar API Reference](https://scalar.com/products/api-references), or import this file’s URL elsewhere.
-  version: 0.2.3
+  version: 0.2.4
 
 servers:
+  - url: /backend
+    description: Production reverse-proxy prefix (`https://lowjungxuan.dpdns.org/backend`)
   - url: /
-    description: Same origin as the loaded API reference
+    description: Local backend origin during development
 
 tags:
   - name: health
@@ -44,7 +46,7 @@ tags:
     description: Runtime LLM provider state stored in Firebase Realtime Database under `provider_state/current_provide`
 
 paths:
-  /health:
+  /api/v1/health:
     get:
       tags: [health]
       summary: Integration health
@@ -69,7 +71,7 @@ paths:
                 allOk:
                   summary: All integrations healthy
                   value:
-                    version: 0.1.7
+                    version: 0.1.8
                     ok: true
                     firebase:
                       ok: true
@@ -90,7 +92,7 @@ paths:
                 llmUnauthorized:
                   summary: LLM provider key rejected (API reachable)
                   value:
-                    version: 0.1.7
+                    version: 0.1.8
                     ok: false
                     firebase:
                       ok: true
@@ -617,7 +619,7 @@ components:
         version:
           type: string
           description: Backend application version from `backend/package.json`
-          example: 0.1.7
+          example: 0.1.8
         ok:
           type: boolean
           description: True only when **firebase**, **llm**, and **s3** are all `ok`

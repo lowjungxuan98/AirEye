@@ -2,12 +2,12 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { buildTestApp, stableDegradedHealth, stableOkHealth } from "../test-utils";
 
-describe("GET /health (HTTP integration)", () => {
+describe("GET /api/v1/health (HTTP integration)", () => {
   it("returns 200 and a health report when checks pass", async () => {
     const app = buildTestApp({
       runHealthChecks: async () => stableOkHealth()
     });
-    const res = await request(app).get("/health").expect(200);
+    const res = await request(app).get("/api/v1/health").expect(200);
     expect(res.body).toMatchObject({
       version: expect.any(String),
       ok: true,
@@ -24,8 +24,15 @@ describe("GET /health (HTTP integration)", () => {
           firebase: { ok: false, latencyMs: 1, error: "unavailable" }
         })
     });
-    const res = await request(app).get("/health").expect(503);
+    const res = await request(app).get("/api/v1/health").expect(503);
     expect(res.body).toMatchObject({ ok: false, firebase: { ok: false } });
     expect(res.body.firebase.error).toBeDefined();
+  });
+
+  it("keeps the legacy root health route available", async () => {
+    const app = buildTestApp({
+      runHealthChecks: async () => stableOkHealth()
+    });
+    await request(app).get("/health").expect(200);
   });
 });

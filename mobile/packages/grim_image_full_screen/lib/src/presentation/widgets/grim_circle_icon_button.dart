@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 
 class GrimCircleIconButton extends StatelessWidget {
-  const GrimCircleIconButton({super.key, required this.icon, required this.onPressed, this.tooltip, this.isLoading = false});
+  const GrimCircleIconButton({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    this.tooltip,
+    this.isLoading = false,
+  });
 
   final IconData icon;
   final VoidCallback? onPressed;
@@ -24,11 +30,7 @@ class GrimCircleIconButton extends StatelessWidget {
         shape: const CircleBorder(),
       ),
       icon: isLoading
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-            )
+          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
           : Icon(icon, size: 22),
     );
   }

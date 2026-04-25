@@ -15,20 +15,13 @@ class GrimImageDownloadService {
       throw StateError('Photo library access was denied.');
     }
 
-    final response = await _dio.get<List<int>>(
-      imageUrl,
-      options: Options(responseType: ResponseType.bytes),
-    );
+    final response = await _dio.get<List<int>>(imageUrl, options: Options(responseType: ResponseType.bytes));
     final bytes = response.data;
     if (bytes == null || bytes.isEmpty) {
       throw StateError('Downloaded image was empty.');
     }
 
-    await Gal.putImageBytes(
-      Uint8List.fromList(bytes),
-      album: 'GRIM',
-      name: _downloadNameFromUrl(imageUrl),
-    );
+    await Gal.putImageBytes(Uint8List.fromList(bytes), album: 'GRIM', name: _downloadNameFromUrl(imageUrl));
   }
 }
 

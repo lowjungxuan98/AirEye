@@ -125,10 +125,7 @@ class GrimReceiverGridPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
                 Center(
-                  child: FilledButton(
-                    onPressed: () => _refreshExport(ref),
-                    child: const Text('Retry'),
-                  ),
+                  child: FilledButton(onPressed: () => _refreshExport(ref), child: const Text('Retry')),
                 ),
               ],
             ),

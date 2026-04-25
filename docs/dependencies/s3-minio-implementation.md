@@ -21,6 +21,8 @@ Required environment variables live in `backend/src/libs/configs/env.config.ts`:
 - `S3_BUCKET_TESTING`
 - `S3_PRESIGN_TTL_SECONDS`
 
+Production uses the public MinIO reverse-proxy endpoint `https://lowjungxuan.dpdns.org/minIO` for `S3_ENDPOINT` (see `backend/.env.example`). The AWS SDK client still uses `forcePathStyle: true`, so bucket/object paths are appended under that prefix.
+
 `resolveS3Bucket(...)` selects the bucket from `NODE_ENV`: `production` uses `S3_BUCKET_PRODUCTION`, `test` uses `S3_BUCKET_TESTING`, and every other value uses `S3_BUCKET_DEVELOPMENT`.
 
 ## Import Upload Behavior
@@ -58,8 +60,8 @@ The S3 adapter test is `backend/test/unit-test/libs/s3/s3.util.test.ts`. It uses
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend S3/MinIO storage (`backend/src/libs/s3/s3.util.ts`, `backend/package.json` -> version `0.1.7`)
-**Doc version:** 1
+**Applies to:** grim backend S3/MinIO storage (`backend/src/libs/s3/s3.util.ts`, `backend/package.json` -> version `0.1.8`)
+**Doc version:** 2
 **Upstream refs:**
 - https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 - https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/javascript_s3_code_examples.html

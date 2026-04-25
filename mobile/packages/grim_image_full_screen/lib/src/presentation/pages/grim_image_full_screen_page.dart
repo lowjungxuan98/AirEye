@@ -128,7 +128,9 @@ class _GrimImageFullScreenPageState extends ConsumerState<GrimImageFullScreenPag
   }
 
   Future<void> _copyFinalText(BuildContext context, WidgetRef ref) async {
-    final result = await ref.read(grimImageFullScreenControllerProvider.notifier).copyFinalText(_currentContent.finalText);
+    final result = await ref
+        .read(grimImageFullScreenControllerProvider.notifier)
+        .copyFinalText(_currentContent.finalText);
     if (!context.mounted) {
       return;
     }
@@ -136,7 +138,9 @@ class _GrimImageFullScreenPageState extends ConsumerState<GrimImageFullScreenPag
   }
 
   Future<void> _downloadImage(BuildContext context, WidgetRef ref) async {
-    final result = await ref.read(grimImageFullScreenControllerProvider.notifier).downloadImage(_currentContent.imageUrl);
+    final result = await ref
+        .read(grimImageFullScreenControllerProvider.notifier)
+        .downloadImage(_currentContent.imageUrl);
     if (!context.mounted) {
       return;
     }

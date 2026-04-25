@@ -10,11 +10,11 @@ abstract final class GrimEndpoints {
   );
   static const String _releaseApiPrefix = String.fromEnvironment(
     'GRIM_RELEASE_API_PREFIX',
-    defaultValue: 'https://lowjungxuan.dpdns.org/api',
+    defaultValue: 'https://lowjungxuan.dpdns.org/backend/api',
   );
   static const String _releaseHealthUrl = String.fromEnvironment(
     'GRIM_RELEASE_HEALTH_URL',
-    defaultValue: 'https://lowjungxuan.dpdns.org/health',
+    defaultValue: 'https://lowjungxuan.dpdns.org/backend/api/v1/health',
   );
 
   static const String _androidEmulatorOrigin = 'http://10.0.2.2:3001';

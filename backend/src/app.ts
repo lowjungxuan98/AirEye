@@ -82,6 +82,7 @@ export function createApp({
   app.use(createHealthRouter(runHealthChecks));
 
   const v1Router = express.Router();
+  v1Router.use(createHealthRouter(runHealthChecks));
   v1Router.use(createImportRouter(importService));
   v1Router.use(createExportRouter(exportService));
   v1Router.use(createCaptureRouter(captureService));

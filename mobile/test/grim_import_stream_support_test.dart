@@ -84,14 +84,14 @@ void main() {
   group('GrimHealthReport', () {
     test('parses backend health payload', () {
       final report = GrimHealthReport.fromJson(<String, dynamic>{
-        'version': '0.1.7',
+        'version': '0.1.8',
         'ok': true,
         'firebase': <String, dynamic>{'ok': true, 'latencyMs': 1},
         'llm': <String, dynamic>{'ok': true, 'latencyMs': 2},
         's3': <String, dynamic>{'ok': true, 'latencyMs': 3},
       });
 
-      expect(report.version, '0.1.7');
+      expect(report.version, '0.1.8');
       expect(report.ok, isTrue);
       expect(report.llm.ok, isTrue);
       expect(report.s3.latencyMs, 3);
@@ -99,7 +99,7 @@ void main() {
 
     test('summarizes unhealthy dependencies', () {
       final report = GrimHealthReport.fromJson(<String, dynamic>{
-        'version': '0.1.7',
+        'version': '0.1.8',
         'ok': false,
         'firebase': <String, dynamic>{'ok': true, 'latencyMs': 1},
         'llm': <String, dynamic>{'ok': false, 'latencyMs': 2, 'error': 'HTTP 401'},

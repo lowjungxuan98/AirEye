@@ -73,7 +73,7 @@ The public health JSON reports this dependency under `llm`; that field is an agg
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend (`backend/src/libs/llm/`, `backend/package.json` -> version `0.1.7`)
+**Applies to:** grim backend (`backend/src/libs/llm/`, `backend/package.json` -> version `0.1.8`)
 **Doc version:** 2
 **Upstream refs:**
 - https://platform.openai.com/docs/libraries/javascript

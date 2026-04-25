@@ -1,6 +1,6 @@
 # Backend API specification (v1)
 
-- `GET /health`
+- `GET /api/v1/health`
 - `POST /api/v1/capture`
 - `POST /api/v1/import`
 - `GET /api/v1/export`
@@ -11,9 +11,11 @@
 
 Authoritative request/response shapes: **`backend/openapi.yaml`** (served at `GET /openapi.yaml` when the server runs).
 
-## `GET /health`
+## `GET /api/v1/health`
 
 Integration checks (Firebase Realtime Database, extract/final LLM stage configs aggregated under `llm`, S3 bucket readiness). Returns **200** when `ok` is true, **503** when `ok` is false. Response body matches OpenAPI schema **`IntegrationHealthReport`** with top-level keys `ok`, `firebase`, `llm`, and `s3`.
+
+Production public URL: `https://lowjungxuan.dpdns.org/backend/api/v1/health`. The backend still serves `GET /health` as a legacy compatibility alias.
 
 ## `POST /api/v1/capture`
 
@@ -49,5 +51,5 @@ Typical errors: **400**, **413**, **415**, **500** — codes and messages match 
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend API (`backend/openapi.yaml`, `backend/package.json` -> version `0.1.7`)
-**Doc version:** 4
+**Applies to:** grim backend API (`backend/openapi.yaml`, `backend/package.json` -> version `0.1.8`)
+**Doc version:** 5

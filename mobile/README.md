@@ -43,8 +43,8 @@ GRIM_DEBUG_PHYSICAL_DEVICE_ORIGIN=http://<your-mac-lan-ip>:3001
 
 Release builds use:
 
-- health: `https://lowjungxuan.dpdns.org/health`
-- API v1: `https://lowjungxuan.dpdns.org/api/v1/*`
+- health: `https://lowjungxuan.dpdns.org/backend/api/v1/health`
+- API v1: `https://lowjungxuan.dpdns.org/backend/api/v1/*`
 
 These can be overridden in CI or locally with `GRIM_RELEASE_HEALTH_URL` and `GRIM_RELEASE_API_PREFIX`.
 

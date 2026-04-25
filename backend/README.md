@@ -23,7 +23,7 @@ Vitest loads **`backend/.env` first** (`test/setup-env.ts`). **Configure `.env` 
 
 Required environment variables:
 
-- `S3_ENDPOINT`
+- `S3_ENDPOINT` — production MinIO reverse-proxy endpoint is `https://lowjungxuan.dpdns.org/minIO`
 - `S3_ACCESS_KEY_ID`
 - `S3_SECRET_ACCESS_KEY`
 - `S3_REGION`
@@ -47,8 +47,9 @@ Optional:
 
 - `GET /docs` — Scalar API Reference UI (loads `openapi.yaml` from this server)
 - `GET /openapi.yaml` — OpenAPI 3 spec (health, import, capture, export, prompts, provider)
-- `GET /health`
+- `GET /api/v1/health`
   - integration checks (Firebase Realtime Database, extract/final LLM configs aggregated under `llm`, S3); **200** or **503**; JSON matches OpenAPI schema `IntegrationHealthReport` with top-level keys `ok`, `firebase`, `llm`, and `s3`
+  - production public URL: `https://lowjungxuan.dpdns.org/backend/api/v1/health`; `GET /health` remains available as a legacy local alias
 - `POST /api/v1/capture`
   - receiver-triggered capture request
   - sends a silent FCM topic data message to sender devices: `kind: capture_request`, `notificationType: silent`, `role: sender`
@@ -102,5 +103,5 @@ docker run --rm -p 3001:3001 --env-file .env grim-backend:local
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend (`backend/package.json` -> version `0.1.7`)
-**Doc version:** 7
+**Applies to:** grim backend (`backend/package.json` -> version `0.1.8`)
+**Doc version:** 8
