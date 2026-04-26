@@ -17,9 +17,10 @@ class GrimImageFullScreenPage extends ConsumerStatefulWidget {
     this.contents = const [],
     this.initialIndex = 0,
     this.onClose,
+    this.onPageViewed,
   });
 
-  GrimImageFullScreenPage.content({super.key, required GrimFullScreenImage content, this.onClose})
+  GrimImageFullScreenPage.content({super.key, required GrimFullScreenImage content, this.onClose, this.onPageViewed})
     : imageUrl = content.imageUrl,
       finalText = content.finalText,
       contents = <GrimFullScreenImage>[content],
@@ -30,6 +31,7 @@ class GrimImageFullScreenPage extends ConsumerStatefulWidget {
   final List<GrimFullScreenImage> contents;
   final int initialIndex;
   final VoidCallback? onClose;
+  final ValueChanged<int>? onPageViewed;
 
   @override
   ConsumerState<GrimImageFullScreenPage> createState() => _GrimImageFullScreenPageState();
@@ -53,6 +55,7 @@ class _GrimImageFullScreenPageState extends ConsumerState<GrimImageFullScreenPag
     super.initState();
     _currentIndex = widget.initialIndex.clamp(0, _contents.length - 1);
     _pageController = PageController(initialPage: _currentIndex);
+    widget.onPageViewed?.call(_currentIndex);
   }
 
   @override
@@ -78,7 +81,10 @@ class _GrimImageFullScreenPageState extends ConsumerState<GrimImageFullScreenPag
               color: Colors.black,
               child: PageView.builder(
                 controller: _pageController,
-                onPageChanged: (index) => setState(() => _currentIndex = index),
+                onPageChanged: (index) {
+                  setState(() => _currentIndex = index);
+                  widget.onPageViewed?.call(index);
+                },
                 itemCount: _contents.length,
                 itemBuilder: (context, index) {
                   final content = _contents[index];

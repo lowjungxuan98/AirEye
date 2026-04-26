@@ -4,6 +4,7 @@ import '../data/grim_capture_remote_data_source.dart';
 import '../data/grim_capture_repository_impl.dart';
 import '../data/grim_export_remote_data_source.dart';
 import '../data/grim_export_repository_impl.dart';
+import '../data/grim_opened_image_store.dart';
 import '../domain/grim_capture_repository.dart';
 import '../domain/grim_export_page_result.dart';
 import '../domain/grim_export_repository.dart';
@@ -25,6 +26,10 @@ final grimCaptureRepositoryProvider = Provider<GrimCaptureRepository>((ref) {
 
 final grimReceiverFcmManagerProvider = Provider<GrimFcmManager>((ref) {
   return GrimFcmManager();
+});
+
+final grimOpenedImageStoreProvider = Provider<GrimOpenedImageStore>((ref) {
+  return GrimOpenedImageStore();
 });
 
 /// First page of export rows for the grid (4×12 tiles; max API limit is 50).

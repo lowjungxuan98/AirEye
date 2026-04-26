@@ -4,9 +4,10 @@ import 'package:grim_core/grim_core.dart';
 import '../../domain/grim_export_row.dart';
 
 class GrimReceiverGridTile extends StatelessWidget {
-  const GrimReceiverGridTile({super.key, required this.row, required this.onImageTap});
+  const GrimReceiverGridTile({super.key, required this.row, required this.isNew, required this.onImageTap});
 
   final GrimExportRow row;
+  final bool isNew;
   final void Function(GrimExportRow row) onImageTap;
 
   static const Color _tileA = Color(0xFF14161C);
@@ -52,7 +53,34 @@ class GrimReceiverGridTile extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2, color: GrimColors.accent),
                 ),
               ),
+            if (isNew) const _NewImageBadge(),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NewImageBadge extends StatelessWidget {
+  const _NewImageBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 6,
+      left: 6,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: GrimColors.accentAlt,
+          borderRadius: BorderRadius.circular(4),
+          boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 6, offset: Offset(0, 2))],
+        ),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          child: Text(
+            'NEW',
+            style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0),
+          ),
         ),
       ),
     );

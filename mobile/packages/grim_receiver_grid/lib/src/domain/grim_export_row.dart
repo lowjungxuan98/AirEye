@@ -10,4 +10,5 @@ class GrimExportRow {
 
   bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;
   bool get hasError => errorMessage != null && errorMessage!.isNotEmpty;
+  String? get openedImageKey => hasImage ? '$createdAt' : null;
 }

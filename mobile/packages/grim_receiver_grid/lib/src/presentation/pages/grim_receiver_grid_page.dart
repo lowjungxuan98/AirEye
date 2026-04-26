@@ -4,6 +4,7 @@ import 'package:grim_image_full_screen/grim_image_full_screen.dart';
 
 import '../../application/grim_receiver_grid_controller.dart';
 import '../../application/grim_receiver_grid_providers.dart';
+import '../../domain/grim_export_row.dart';
 import '../widgets/grim_receiver_grid_tile.dart';
 
 class GrimReceiverGridPage extends ConsumerWidget {
@@ -16,6 +17,10 @@ class GrimReceiverGridPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final exportAsync = ref.watch(grimReceiverExportPageProvider);
     final gridState = ref.watch(grimReceiverGridControllerProvider);
+
+    ref.listen(grimReceiverExportPageProvider, (_, next) {
+      next.whenData((page) => _cacheExportImages(context, page.data));
+    });
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -79,6 +84,7 @@ class GrimReceiverGridPage extends ConsumerWidget {
                           final row = page.data[index];
                           return GrimReceiverGridTile(
                             row: row,
+                            isNew: gridState.isNewImage(row),
                             onImageTap: (selectedRow) {
                               final initialIndex = imageRows.indexOf(selectedRow);
                               Navigator.of(context).push(
@@ -86,6 +92,14 @@ class GrimReceiverGridPage extends ConsumerWidget {
                                   builder: (_) => GrimImageFullScreenPage(
                                     contents: fullScreenImages,
                                     initialIndex: initialIndex < 0 ? 0 : initialIndex,
+                                    onPageViewed: (viewedIndex) {
+                                      if (viewedIndex < 0 || viewedIndex >= imageRows.length) {
+                                        return;
+                                      }
+                                      ref
+                                          .read(grimReceiverGridControllerProvider.notifier)
+                                          .markImageOpened(imageRows[viewedIndex]);
+                                    },
                                   ),
                                 ),
                               );
@@ -165,5 +179,17 @@ class GrimReceiverGridPage extends ConsumerWidget {
 
   static Future<void> _refreshExport(WidgetRef ref) async {
     await ref.read(grimReceiverGridControllerProvider.notifier).refreshExport();
+  }
+
+  static void _cacheExportImages(BuildContext context, List<GrimExportRow> rows) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      for (final row in rows) {
+        final imageUrl = row.imageUrl;
+        if (imageUrl != null && imageUrl.isNotEmpty) {
+          precacheImage(NetworkImage(imageUrl), context).ignore();
+        }
+      }
+    });
   }
 }

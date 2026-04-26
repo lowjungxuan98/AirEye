@@ -20,8 +20,9 @@ export class ImportService implements ImportServiceContract {
   }
 
   /**
-   * Order: image storage → SSE extracting_text → image text extraction → SSE analyzing_text → final text →
-   * SSE format_guard → guarded final text → Realtime Database (single write) → FCM hint →
+   * Order: image storage → RTDB initial record + FCM export refresh → SSE extracting_text →
+   * image text extraction → SSE analyzing_text → final text → SSE format_guard → guarded final text →
+   * Realtime Database (update) → FCM new result + export refresh →
    * SSE final row (or SSE error after RTDB error write).
    */
   async streamImport(request: ImportRequest, emit: ImportStreamEmitter): Promise<void> {
@@ -42,6 +43,21 @@ export class ImportService implements ImportServiceContract {
         uploadId,
         request.imageMimeType
       );
+
+      await uploadRepository.createPendingUpload(uploadId, {
+        createdAt,
+        updatedAt: createdAt,
+        imageUrl: image.imageUrl,
+        bucket: image.bucket,
+        objectKey: image.objectKey
+      });
+
+      try {
+        await notifier.broadcastExportRefresh();
+      } catch (error) {
+        this.logger.error("failed to send initial FCM export refresh", error);
+      }
+
       emit({ status: "extracting_text" });
       const extractedText = await textExtractor.extractTextFromImage(
         request.imageBuffer,
@@ -56,14 +72,10 @@ export class ImportService implements ImportServiceContract {
       emit({ data: { guardedFinalText } });
       const updatedAt = this.now();
 
-      await uploadRepository.createPendingUpload(uploadId, {
-        createdAt,
+      await uploadRepository.updateUpload(uploadId, {
         updatedAt,
         extractedText,
-        finalText: guardedFinalText,
-        imageUrl: image.imageUrl,
-        bucket: image.bucket,
-        objectKey: image.objectKey
+        finalText: guardedFinalText
       });
 
       try {

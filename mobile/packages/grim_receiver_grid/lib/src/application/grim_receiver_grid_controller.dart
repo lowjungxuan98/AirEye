@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:grim_core/grim_core.dart';
 
+import '../domain/grim_export_row.dart';
 import 'grim_receiver_grid_providers.dart';
 import 'grim_receiver_grid_state.dart';
 
@@ -14,6 +15,7 @@ class GrimReceiverGridController extends Notifier<GrimReceiverGridState> {
   @override
   GrimReceiverGridState build() {
     final fcmManager = ref.watch(grimReceiverFcmManagerProvider);
+    unawaited(_loadOpenedImageKeys());
     unawaited(_fcmSubscription?.cancel());
     _fcmSubscription = fcmManager.onMessage.listen((message) {
       if (!_isExportRefreshMessage(message)) {
@@ -31,6 +33,19 @@ class GrimReceiverGridController extends Notifier<GrimReceiverGridState> {
     });
 
     return const GrimReceiverGridState();
+  }
+
+  Future<void> _loadOpenedImageKeys() async {
+    try {
+      final openedImageKeys = await ref.read(grimOpenedImageStoreProvider).loadOpenedImageKeys();
+      if (ref.mounted) {
+        state = state.copyWith(hasLoadedOpenedImageKeys: true, openedImageKeys: openedImageKeys);
+      }
+    } catch (_) {
+      if (ref.mounted) {
+        state = state.copyWith(hasLoadedOpenedImageKeys: true);
+      }
+    }
   }
 
   Future<GrimReceiverCaptureResult> requestCapture() async {
@@ -54,6 +69,19 @@ class GrimReceiverGridController extends Notifier<GrimReceiverGridState> {
   Future<void> refreshExport() async {
     ref.invalidate(grimReceiverExportPageProvider);
     await ref.read(grimReceiverExportPageProvider.future);
+  }
+
+  Future<void> markImageOpened(GrimExportRow row) async {
+    final imageKey = row.openedImageKey;
+    if (imageKey == null || state.openedImageKeys.contains(imageKey)) {
+      return;
+    }
+
+    final openedImageKeys = {...state.openedImageKeys, imageKey};
+    state = state.copyWith(openedImageKeys: openedImageKeys);
+    try {
+      await ref.read(grimOpenedImageStoreProvider).markImageOpened(imageKey);
+    } catch (_) {}
   }
 
   static bool _isExportRefreshMessage(dynamic message) {

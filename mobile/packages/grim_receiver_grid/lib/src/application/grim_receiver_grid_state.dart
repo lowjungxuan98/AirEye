@@ -1,10 +1,31 @@
+import '../domain/grim_export_row.dart';
+
 class GrimReceiverGridState {
-  const GrimReceiverGridState({this.isRequestingCapture = false});
+  const GrimReceiverGridState({
+    this.isRequestingCapture = false,
+    this.hasLoadedOpenedImageKeys = false,
+    this.openedImageKeys = const <String>{},
+  });
 
   final bool isRequestingCapture;
+  final bool hasLoadedOpenedImageKeys;
+  final Set<String> openedImageKeys;
 
-  GrimReceiverGridState copyWith({bool? isRequestingCapture}) {
-    return GrimReceiverGridState(isRequestingCapture: isRequestingCapture ?? this.isRequestingCapture);
+  bool isNewImage(GrimExportRow row) {
+    final imageKey = row.openedImageKey;
+    return hasLoadedOpenedImageKeys && imageKey != null && !openedImageKeys.contains(imageKey);
+  }
+
+  GrimReceiverGridState copyWith({
+    bool? isRequestingCapture,
+    bool? hasLoadedOpenedImageKeys,
+    Set<String>? openedImageKeys,
+  }) {
+    return GrimReceiverGridState(
+      isRequestingCapture: isRequestingCapture ?? this.isRequestingCapture,
+      hasLoadedOpenedImageKeys: hasLoadedOpenedImageKeys ?? this.hasLoadedOpenedImageKeys,
+      openedImageKeys: openedImageKeys ?? this.openedImageKeys,
+    );
   }
 }
 

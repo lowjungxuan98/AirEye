@@ -13,6 +13,7 @@ dependencies:
     path: ../grim_core
   grim_image_full_screen:
     path: ../grim_image_full_screen
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:
