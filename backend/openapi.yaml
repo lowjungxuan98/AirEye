@@ -124,7 +124,7 @@ paths:
         |-----------|----------|--------|
         | **`image`** | yes | Binary image body; `image/*` MIME type preferred; max **500 MB** |
 
-        When the pipeline **succeeds**, the server sends two receiver-targeted FCM **topic** messages on the configured topic. The visible message is `kind: new_result`, `notificationType: notify`, `role: receiver`. The silent message is `kind: export_refresh`, `notificationType: silent`, `role: receiver`, with `url: /api/v1/export?page=1&limit=20`. Topic defaults to **`grim_new_result`** (override with env `GRIM_FCM_TOPIC`). No FCM send on pipeline failure.
+        After the initial pending upload row is written, the server sends a receiver-targeted FCM **topic** message on the configured topic: `kind: export_refresh`, `notificationType: silent`, `role: receiver`. When the pipeline **succeeds**, it sends the same refresh flag again after the final row update. The mobile app maps this flag to its existing export endpoint function. Topic defaults to **`grim_new_result`** (override with env `GRIM_FCM_TOPIC`).
 
         **LLM prompts (configurable):** the extract stage uses current **`extractTextPrompt`** with the uploaded image. The analyzing stage receives **system** = current **`analyzingTextPrompt`** and **user** = the extract stage’s **`extractedText`** string. The format guard stage receives **system** = current **`formatGuardPrompt`** and **user** = only the step-10 final text. Defaults ask for structured JSON (questions/options/type/answer) and reject wrong patterns before the Firebase write. The extract and final stages may use different provider configs. Change prompts with **`GET/PUT /api/v1/prompts`**.
 
@@ -386,7 +386,7 @@ paths:
       description: |
         Sends a silent FCM topic data message through the configured Grim notifier. The payload is targeted at sender devices: `kind: capture_request`, `notificationType: silent`, `notification_type: silent`, `role: sender`, and `targetRole: sender`.
 
-        This uses the same configured topic as import success signals: default **`grim_new_result`**, override with env **`GRIM_FCM_TOPIC`**.
+        This uses the same configured topic as the import success refresh signal: default **`grim_new_result`**, override with env **`GRIM_FCM_TOPIC`**.
 
         Response is returned after Firebase accepts the send request.
       operationId: postCapture
@@ -407,7 +407,7 @@ paths:
       tags: [export]
       summary: Export uploads
       description: |
-        Returns a **paginated**, **newest-first** list of rows from Realtime Database (`uploads/{id}`). Each row has `createdAt`. When the pipeline has finished successfully, `finalText`, `imageUrl`, and `updatedAt` appear. On failure, `errorMessage` and `updatedAt` appear.
+        Returns a **paginated**, **newest-first** list of rows from Realtime Database (`uploads/{id}`). Each row has `createdAt`. Pending rows can include `imageUrl` and `updatedAt` before text processing finishes. When the pipeline has finished successfully, `finalText`, `imageUrl`, and `updatedAt` appear. On failure, `errorMessage` and `updatedAt` appear.
 
         **Query:** optional `page` (default **1**, min **1**), optional `limit` (default **20**, max **50**, page size).
 

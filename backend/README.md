@@ -60,10 +60,10 @@ Optional:
   - **Scalar:** if “Try it” fails, remove a manual **`Content-Type: multipart/form-data`** header so the UI can send a proper boundary
   - stores the image in S3/MinIO with `ContentType` metadata and a MIME-derived key extension such as `.jpg`
   - returns **200** `text/event-stream` (SSE): status events, then terminal JSON (success row or `error`)
-  - on success, writes the row to Realtime Database, then sends two receiver FCM signals on topic `grim_new_result` (or `GRIM_FCM_TOPIC`): visible `kind: new_result` and silent `kind: export_refresh` with `url: /api/v1/export?page=1&limit=20`
+  - writes the pending row to Realtime Database, sends a silent receiver FCM refresh flag, and on success sends the same refresh flag again after the final row update: `kind: export_refresh`
 - `GET /api/v1/export`
   - optional `page` (default 1), optional `limit` (default 20, max 50)
-  - returns `200` paginated JSON (`data`, `page`, `limit`, `is_next`); newest first by `createdAt`; completed rows add `finalText`, `imageUrl`, `updatedAt`; failed rows add `errorMessage`, `updatedAt`
+  - returns `200` paginated JSON (`data`, `page`, `limit`, `is_next`); newest first by `createdAt`; pending rows can include `imageUrl`, completed rows add `finalText`, and failed rows add `errorMessage`
 - `GET /api/v1/prompts`, `PUT /api/v1/prompts` — read or overwrite extract, analyzing, and format guard prompt templates (`backend/prompts/*.txt` by default; optional `GRIM_PROMPTS_DIR`, `GRIM_PROMPT_ADMIN_SECRET`). **PUT** accepts **`multipart/form-data`** with file or text fields **`extract_text`**, **`analyzing_text`**, and **`format_guard`**, or **`application/json`** with **`extractTextPrompt`**, **`analyzingTextPrompt`**, and **`formatGuardPrompt`**.
 - `GET /api/v1/provider`, `PUT /api/v1/provider` — read or switch the active LLM provider. State is stored in Realtime Database at `provider_state/current_provide`; accepted values are `openrouter`, `openai`, and `nvidia_nim`.
 

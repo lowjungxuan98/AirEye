@@ -10,11 +10,11 @@ describe("DEFAULT_FCM_BROADCAST_TOPIC", () => {
 });
 
 describe("FirebaseNotifier", () => {
-  it("broadcasts a topic data message using credentials from .env", async () => {
+  it("broadcasts an export refresh topic data message using credentials from .env", async () => {
     const env = loadServerEnv();
     const app = getFirebaseAdminApp(env);
     const topic = env.GRIM_FCM_TOPIC ?? DEFAULT_FCM_BROADCAST_TOPIC;
     const notifier = new FirebaseNotifier(app, topic);
-    await expect(notifier.broadcastNewResult()).resolves.toBeUndefined();
+    await expect(notifier.broadcastExportRefresh()).resolves.toBeUndefined();
   });
 });

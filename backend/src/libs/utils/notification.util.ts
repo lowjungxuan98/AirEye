@@ -1,19 +1,17 @@
 import type { Message } from "firebase-admin/messaging";
 
-export const GRIM_NOTIFICATION_TYPES = ["silent", "notify"] as const;
+export const GRIM_NOTIFICATION_TYPES = ["silent"] as const;
 export type GrimNotificationType = (typeof GRIM_NOTIFICATION_TYPES)[number];
 
 export const GRIM_NOTIFICATION_ROLES = ["receiver", "sender"] as const;
 export type GrimNotificationRole = (typeof GRIM_NOTIFICATION_ROLES)[number];
 
-export type GrimNotificationKind = "new_result" | "capture_request" | "export_refresh";
+export type GrimNotificationKind = "capture_request" | "export_refresh";
 
 export type GrimNotificationOptions = {
   kind: GrimNotificationKind;
   type: GrimNotificationType;
   role: GrimNotificationRole;
-  title?: string;
-  body?: string;
   data?: Record<string, string | number | boolean | null | undefined>;
 };
 
@@ -30,50 +28,19 @@ export function buildFcmTopicNotificationMessage(
     targetRole: options.role
   });
 
-  const message: Message = {
+  return {
     topic,
     data,
     android: {
       priority: "high"
     },
     apns: {
-      headers: options.type === "silent" ? { "apns-priority": "5" } : { "apns-priority": "10" },
+      headers: { "apns-priority": "5" },
       payload: {
-        aps: options.type === "silent" ? { contentAvailable: true } : {}
+        aps: { contentAvailable: true }
       }
     }
   };
-
-  if (options.type === "notify") {
-    const notification = {
-      title: options.title ?? "GRIM",
-      body: options.body ?? "New result is ready."
-    };
-
-    return {
-      ...message,
-      notification,
-      android: {
-        ...message.android,
-        notification: {
-          ...notification,
-          channelId: "grim_results",
-          priority: "high"
-        }
-      },
-      apns: {
-        ...message.apns,
-        payload: {
-          aps: {
-            alert: notification,
-            sound: "default"
-          }
-        }
-      }
-    };
-  }
-
-  return message;
 }
 
 function stringifyFcmData(

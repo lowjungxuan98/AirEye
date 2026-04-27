@@ -23,7 +23,7 @@ Implemented in this repo:
 - `mobile/packages/grim_core/pubspec.yaml` owns `flutter_local_notifications` for foreground Android notification display.
 - `flutterfire configure` has generated `mobile/lib/firebase_options.dart`, `mobile/android/app/google-services.json`, `mobile/ios/Runner/GoogleService-Info.plist`, and `mobile/firebase.json`.
 - `mobile/lib/main.dart` initializes Firebase with `DefaultFirebaseOptions.currentPlatform` and calls `GrimFcmManager().initialize()` before `runApp(...)`.
-- `mobile/packages/grim_core/lib/src/fcm/grim_fcm_manager.dart` registers a top-level background handler, creates the Android channel `grim_results`, requests notification permission, sets Apple foreground presentation options, subscribes to topic `grim_new_result`, returns the FCM token, shows foreground Android local notifications from non-silent `onMessage` events, suppresses local notifications for `notificationType: silent`, and exposes `onMessage`, `onMessageOpenedApp`, `getInitialMessage()`, and `onTokenRefresh`.
+- `mobile/packages/grim_core/lib/src/fcm/grim_fcm_manager.dart` registers a top-level background handler, requests notification permission, subscribes to topic `grim_new_result`, returns the FCM token, suppresses local notifications for `notificationType: silent`, and exposes `onMessage`, `onMessageOpenedApp`, `getInitialMessage()`, and `onTokenRefresh`.
 - Android has the Google Services Gradle plugin applied, declares `android.permission.POST_NOTIFICATIONS`, and declares `grim_results` as Firebase Messaging's default notification channel.
 - The backend sends high-priority Android topic messages through `FirebaseNotifier` on topic `grim_new_result` unless `GRIM_FCM_TOPIC` overrides it.
 - `mobile/packages/grim_receiver_grid` can call `POST /api/v1/capture` from the receiver grid action.
@@ -34,7 +34,7 @@ Still missing or not verifiable from the repo:
 - Apple push capabilities are not committed yet: no `aps-environment` entitlement, no `UIBackgroundModes` entry, and no checked-in evidence of Push Notifications plus Background fetch / Remote notifications being enabled in Xcode.
 - The Firebase console APNs authentication key cannot be verified from source control.
 - iOS Debug currently builds with bundle ID `com.lowjx.grim.mobile.dev`, while the committed Firebase iOS config is for `com.lowjx.grim.mobile`. Register/configure the debug app too, or align the debug bundle ID, before testing iOS push.
-- The receiver grid does not yet bind silent `kind: export_refresh` to automatic invalidation of `grimReceiverExportPageProvider`; it currently supports pull-to-refresh / reload for `GET /api/v1/export`.
+- The receiver controller listens for foreground silent `kind: export_refresh` and refreshes `GET /api/v1/export`; pull-to-refresh / reload remain available.
 - The app shell does not yet bind `getInitialMessage()` or `onMessageOpenedApp` to a refresh or navigation action.
 - The current manager does not wait for an APNs token before Apple FCM API calls such as topic subscription or `getToken()`. Firebase notes that the APNs token is not guaranteed to be available before FCM plugin calls.
 - Some Android OEM builds can block background FCM delivery despite valid Firebase setup. On the attached Xiaomi/HyperOS test device, logcat showed `Greezer Denial` and `result=CANCELLED` for `com.google.android.c2dm.intent.RECEIVE`.
@@ -140,20 +140,14 @@ Future<void> bindNotificationNavigation(GrimFcmManager fcm) async {
 
 Keep `handleMessage(...)` app-specific and route through Grim's existing navigation or Riverpod state rather than making feature widgets listen to FCM directly.
 
-## Foreground notification behavior
+## Foreground message behavior
 
-The current backend sends three Grim message kinds:
+The current backend sends two Grim message kinds:
 
 - `capture_request`: silent data-only message for sender devices.
-- `new_result`: visible notification for receiver devices with data `kind: new_result`.
-- `export_refresh`: silent data-only message for receiver devices with `url: /api/v1/export?page=1&limit=20`.
+- `export_refresh`: silent data-only message for receiver devices.
 
-Firebase's receive-messages doc notes that notification messages arriving while the app is in the foreground do not show a visible notification by default. Grim handles this explicitly:
-
-- Android: `GrimFcmManager` creates the `grim_results` channel and mirrors foreground non-silent `FirebaseMessaging.onMessage` events to `flutter_local_notifications`.
-- Apple platforms: call `setForegroundNotificationPresentationOptions(...)`, which `GrimFcmManager.initialize()` already does.
-
-Silent messages are identified by `notificationType: silent` or `notification_type: silent`; the manager does not show a local notification for them.
+Both current backend messages are silent data-only flags. Silent messages are identified by `notificationType: silent` or `notification_type: silent`; the manager does not show a local notification for them.
 
 ## Capture/import flow
 
@@ -162,8 +156,8 @@ The current implemented foreground flow is:
 1. Receiver grid calls `POST /api/v1/capture`.
 2. Backend sends silent `kind: capture_request`, `role: sender`.
 3. Sender camera page receives the foreground FCM event, calls `takePicturePath()`, then uploads the photo through `GrimImportStreamClient.streamImportFile(...)`.
-4. Backend import success sends receiver `new_result` and `export_refresh` signals.
-5. Receiver reads canonical result rows through `GET /api/v1/export`.
+4. Backend sends receiver `export_refresh` after the pending row is written, then sends another `export_refresh` after the final row update succeeds.
+5. Receiver maps each `export_refresh` to its existing export endpoint function and reads canonical result rows through `GET /api/v1/export`.
 
 Taking a photo requires the active sender camera controller. Background FCM handlers can initialize Firebase, but they do not currently open the camera or import an image.
 
@@ -191,7 +185,7 @@ Keep FCM as a hint and refresh from `GET /api/v1/export`. Do not carry large res
 - Android: test foreground and background notification display on a physical device or Google APIs emulator, grant notification permission on Android 13+, and verify a backend send reaches a subscribed app.
 - Android OEMs: on Xiaomi/HyperOS or MIUI, also test after enabling app autostart and disabling battery restrictions for GRIM.
 - iOS: test on a physical device, enable Push Notifications and Background Modes, upload the APNs key in Firebase, ensure the app's bundle ID matches the Firebase app config, and verify `getAPNSToken()` is non-null before FCM token/topic calls.
-- App UX: wire receiver foreground `export_refresh`, notification-tap, and terminated-open handling to a single app event that refreshes export data.
+- App UX: wire notification-tap and terminated-open handling to the same receiver refresh event used by foreground `export_refresh`.
 - Backend contract: keep `grimDefaultFcmTopic` aligned with `DEFAULT_FCM_BROADCAST_TOPIC` or document any environment-specific override.
 
 ## References

@@ -38,7 +38,7 @@ There is **no** separate `dependencies.ts`; composition for production lives nex
 | Constants | `libs/constants/limits.contant.ts` | Export/import size limits (filename is spelled **`contant`** in the repo) |
 | Utils | `libs/utils/http.util.ts` | `wrapAsync`, `mapRequestError` |
 | | `libs/utils/api-error.util.ts` | `ApiError` |
-| | `libs/utils/notification.util.ts` | Shared FCM message construction for silent/notify + sender/receiver roles |
+| | `libs/utils/notification.util.ts` | Shared FCM message construction for silent sender/receiver role flags |
 | | `libs/utils/sort-by-created-at.util.ts` | `sortByCreatedAtDesc` (used by Realtime repo + in-memory test repo) |
 
 **Dependency direction (actual imports):** `libs/*` imports types and ports from `api/v1/model/*` where those contracts are defined (e.g. `UploadRepository`, `ImageStorage`). There is no separate `src/domain/` or `src/errors/` folder today.

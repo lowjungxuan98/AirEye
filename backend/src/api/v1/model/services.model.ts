@@ -35,7 +35,6 @@ export interface ImageStorage {
 }
 
 export interface ResultNotifier {
-  broadcastNewResult(): Promise<void>;
   broadcastCaptureRequest(): Promise<void>;
   broadcastExportRefresh(): Promise<void>;
 }

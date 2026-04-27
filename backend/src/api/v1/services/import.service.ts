@@ -22,7 +22,7 @@ export class ImportService implements ImportServiceContract {
   /**
    * Order: image storage → RTDB initial record + FCM export refresh → SSE extracting_text →
    * image text extraction → SSE analyzing_text → final text → SSE format_guard → guarded final text →
-   * Realtime Database (update) → FCM new result + export refresh →
+   * Realtime Database (update) → FCM export refresh →
    * SSE final row (or SSE error after RTDB error write).
    */
   async streamImport(request: ImportRequest, emit: ImportStreamEmitter): Promise<void> {
@@ -79,7 +79,6 @@ export class ImportService implements ImportServiceContract {
       });
 
       try {
-        await notifier.broadcastNewResult();
         await notifier.broadcastExportRefresh();
       } catch (error) {
         this.logger.error("failed to send FCM topic broadcast", error);

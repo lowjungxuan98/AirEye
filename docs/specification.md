@@ -27,8 +27,8 @@ Production public URL: `https://lowjungxuan.dpdns.org/backend/api/v1/health`. Th
 
 - `multipart/form-data`, required field **`image`**
 - **200** with **`Content-Type: text/event-stream`** — Server-Sent Events until the pipeline finishes. Each `data:` line is JSON: progress statuses (`extracting_text`, `analyzing_text`, `format_guard`), intermediate text payloads, then either the success row (`id`, `createdAt`, `updatedAt`, `extractedText`, `finalText`, `imageUrl`, `bucket`, `objectKey`) or a terminal `{"error":{"code","message"}}`.
-- Pipeline order on the server: **S3/MinIO** image upload (`ContentType` metadata plus MIME-derived key extension) → **extract LLM config** (image text extraction) → **final LLM config** (final text) → **format guard LLM pass** → **Realtime Database** (one write under `uploads/{id}`) → **FCM** topic signals only after a successful DB write.
-- Import success sends two receiver signals on topic `grim_new_result` by default: visible `kind: new_result`, `notificationType: notify`, `role: receiver`; silent `kind: export_refresh`, `notificationType: silent`, `role: receiver`, `url: /api/v1/export?page=1&limit=20`.
+- Pipeline order on the server: **S3/MinIO** image upload (`ContentType` metadata plus MIME-derived key extension) → **Realtime Database** pending row → **FCM** `export_refresh` → **extract LLM config** (image text extraction) → **final LLM config** (final text) → **format guard LLM pass** → **Realtime Database** final update → **FCM** `export_refresh` on success.
+- Import sends a receiver refresh flag after the pending upload row is written, and sends the same flag again after a successful final row update. Topic defaults to `grim_new_result`; payload is silent `kind: export_refresh`, `notificationType: silent`, `notification_type: silent`, `role: receiver`, `targetRole: receiver`. Mobile maps the flag to its existing export endpoint function.
 
 Typical errors: **400**, **413**, **415**, **500** — codes and messages match OpenAPI `ErrorBody` examples.
 

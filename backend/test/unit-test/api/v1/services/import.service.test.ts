@@ -17,7 +17,6 @@ describe("ImportService", () => {
       }))
     };
     const notifier = {
-      broadcastNewResult: vi.fn(async () => {}),
       broadcastCaptureRequest: vi.fn(async () => {}),
       broadcastExportRefresh: vi.fn(async () => {})
     };
@@ -65,8 +64,7 @@ describe("ImportService", () => {
     expect(finalTextBuilder.buildFinalText).toHaveBeenCalledWith("extracted");
     expect(finalTextFormatGuard.guardFinalText).toHaveBeenCalledWith("final:extracted");
     expect(imageStorage.uploadImage).toHaveBeenCalledWith(Buffer.from("img"), "upl_testid", "image/png");
-    expect(notifier.broadcastNewResult).toHaveBeenCalled();
-    expect(notifier.broadcastExportRefresh).toHaveBeenCalled();
+    expect(notifier.broadcastExportRefresh).toHaveBeenCalledTimes(2);
 
     const done = await uploadRepository.getUpload("upl_testid");
     expect(done?.createdAt).toBe(99);
@@ -87,6 +85,7 @@ describe("ImportService", () => {
     };
     const logger = { error: vi.fn(), warn: vi.fn(), info: vi.fn() };
     const emit = vi.fn();
+    const notifier = { broadcastCaptureRequest: vi.fn(), broadcastExportRefresh: vi.fn() };
 
     const service = new ImportService({
       uploadRepository,
@@ -94,7 +93,7 @@ describe("ImportService", () => {
       finalTextBuilder: { buildFinalText: vi.fn(async () => "") },
       finalTextFormatGuard: { guardFinalText: vi.fn(async (t: string) => t) },
       imageStorage: { uploadImage: vi.fn(async () => ({ imageUrl: "u", bucket: "b", objectKey: "k" })) },
-      notifier: { broadcastNewResult: vi.fn(), broadcastCaptureRequest: vi.fn(), broadcastExportRefresh: vi.fn() },
+      notifier,
       logger,
       now: () => 7,
       generateUploadId: () => "upl_fail"
@@ -110,6 +109,7 @@ describe("ImportService", () => {
     const row = await uploadRepository.getUpload("upl_fail");
     expect(row?.errorMessage).toBe("vision failed");
     expect(row?.updatedAt).toBe(7);
+    expect(notifier.broadcastExportRefresh).toHaveBeenCalledOnce();
     expect(logger.error).toHaveBeenCalled();
   });
 
@@ -126,7 +126,7 @@ describe("ImportService", () => {
       finalTextBuilder: { buildFinalText: vi.fn() },
       finalTextFormatGuard: { guardFinalText: vi.fn(async (t: string) => t) },
       imageStorage: { uploadImage: vi.fn(async () => ({ imageUrl: "u", bucket: "b", objectKey: "k" })) },
-      notifier: { broadcastNewResult: vi.fn(), broadcastCaptureRequest: vi.fn(), broadcastExportRefresh: vi.fn() },
+      notifier: { broadcastCaptureRequest: vi.fn(), broadcastExportRefresh: vi.fn() },
       logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
       generateUploadId: () => "upl_api"
     });

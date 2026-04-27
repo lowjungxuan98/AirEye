@@ -1,5 +1,4 @@
 # Miscellaneous
-firepit-log.txt
 *.class
 *.log
 *.pyc
@@ -45,6 +44,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Local mobile configuration. Use scripts/mobile_setup.sh to create these.
+# Firebase config — keep out of version control
+# Download from Firebase Console or use CI secrets
+google-services.json
+GoogleService-Info.plist
+
+# Local environment variables (never commit)
 .env.local
-.env.*.local

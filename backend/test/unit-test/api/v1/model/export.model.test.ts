@@ -9,7 +9,7 @@ describe("toPublicExportListItem", () => {
       createdAt: 1,
       updatedAt: 2
     };
-    expect(toPublicExportListItem(row)).toEqual({ createdAt: 1 });
+    expect(toPublicExportListItem(row)).toEqual({ createdAt: 1, updatedAt: 2 });
   });
 
   it("includes error path when errorMessage is set", () => {
@@ -38,6 +38,20 @@ describe("toPublicExportListItem", () => {
       createdAt: 1,
       updatedAt: 2,
       finalText: "hello",
+      imageUrl: "https://example.com/x"
+    });
+  });
+
+  it("includes imageUrl for pending rows before finalText is ready", () => {
+    const row: GrimUploadRow = {
+      id: "upl_1",
+      createdAt: 1,
+      updatedAt: 2,
+      imageUrl: "https://example.com/x"
+    };
+    expect(toPublicExportListItem(row)).toEqual({
+      createdAt: 1,
+      updatedAt: 2,
       imageUrl: "https://example.com/x"
     });
   });

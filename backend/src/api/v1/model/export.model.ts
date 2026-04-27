@@ -26,5 +26,13 @@ export function toPublicExportListItem(row: GrimUploadRow): ExportListItem {
     };
   }
 
-  return { createdAt: row.createdAt };
+  if (row.imageUrl !== undefined) {
+    return {
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      imageUrl: row.imageUrl
+    };
+  }
+
+  return { createdAt: row.createdAt, updatedAt: row.updatedAt };
 }

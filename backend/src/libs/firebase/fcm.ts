@@ -12,18 +12,6 @@ export class FirebaseNotifier implements ResultNotifier {
     private readonly broadcastTopic: string = DEFAULT_FCM_BROADCAST_TOPIC
   ) {}
 
-  async broadcastNewResult(): Promise<void> {
-    await getMessaging(this.firebaseApp).send(
-      buildFcmTopicNotificationMessage(this.broadcastTopic, {
-        kind: "new_result",
-        type: "notify",
-        role: "receiver",
-        title: "GRIM",
-        body: "New result is ready."
-      })
-    );
-  }
-
   async broadcastCaptureRequest(): Promise<void> {
     await getMessaging(this.firebaseApp).send(
       buildFcmTopicNotificationMessage(this.broadcastTopic, {
@@ -39,14 +27,7 @@ export class FirebaseNotifier implements ResultNotifier {
       buildFcmTopicNotificationMessage(this.broadcastTopic, {
         kind: "export_refresh",
         type: "silent",
-        role: "receiver",
-        data: {
-          method: "GET",
-          path: "/api/v1/export",
-          page: 1,
-          limit: 20,
-          url: "/api/v1/export?page=1&limit=20"
-        }
+        role: "receiver"
       })
     );
   }

@@ -10,16 +10,15 @@ Usage:
   ./scripts/notification.sh [kind] [topic] [--dry-run]
 
 Kinds:
-  new_result       Visible receiver notification (default)
   capture_request Silent sender capture request
-  export_refresh  Silent receiver export refresh
-  all             Send all three test messages in order
+  export_refresh  Silent receiver export refresh (default)
+  all             Send both test messages in order
 
 Examples:
   ./scripts/notification.sh
   ./scripts/notification.sh all
   ./scripts/notification.sh capture_request grim_new_result
-  ./scripts/notification.sh new_result --dry-run
+  ./scripts/notification.sh export_refresh --dry-run
 
 Environment:
   Reads backend/.env for FIREBASE_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS,
@@ -28,7 +27,7 @@ Environment:
 USAGE
 }
 
-kind="new_result"
+kind="export_refresh"
 topic=""
 dry_run="false"
 
@@ -42,7 +41,7 @@ while [[ $# -gt 0 ]]; do
       dry_run="true"
       shift
       ;;
-    new_result|capture_request|export_refresh|all)
+    capture_request|export_refresh|all)
       kind="$1"
       shift
       ;;
@@ -75,11 +74,11 @@ const dotenv = require("dotenv");
 
 dotenv.config({ path: ".env" });
 
-const kind = process.env.GRIM_NOTIFICATION_KIND || "new_result";
+const kind = process.env.GRIM_NOTIFICATION_KIND || "export_refresh";
 const topic = process.env.GRIM_NOTIFICATION_TOPIC || process.env.GRIM_FCM_TOPIC || "grim_new_result";
 const dryRun = process.env.GRIM_NOTIFICATION_DRY_RUN === "true";
 
-const validKinds = new Set(["new_result", "capture_request", "export_refresh", "all"]);
+const validKinds = new Set(["capture_request", "export_refresh", "all"]);
 if (!validKinds.has(kind)) {
   throw new Error(`Invalid kind: ${kind}`);
 }
@@ -109,53 +108,17 @@ function buildMessage(options) {
       priority: "high"
     },
     apns: {
-      headers: options.type === "silent" ? { "apns-priority": "5" } : { "apns-priority": "10" },
+      headers: { "apns-priority": "5" },
       payload: {
-        aps: options.type === "silent" ? { contentAvailable: true } : {}
+        aps: { contentAvailable: true }
       }
     }
   };
 
-  if (options.type !== "notify") {
-    return message;
-  }
-
-  const notification = {
-    title: options.title || "GRIM",
-    body: options.body || "New result is ready."
-  };
-
-  return {
-    ...message,
-    notification,
-    android: {
-      ...message.android,
-      notification: {
-        ...notification,
-        channelId: "grim_results",
-        priority: "high"
-      }
-    },
-    apns: {
-      ...message.apns,
-      payload: {
-        aps: {
-          alert: notification,
-          sound: "default"
-        }
-      }
-    }
-  };
+  return message;
 }
 
 const messageOptions = {
-  new_result: {
-    kind: "new_result",
-    type: "notify",
-    role: "receiver",
-    title: "GRIM",
-    body: "New result is ready."
-  },
   capture_request: {
     kind: "capture_request",
     type: "silent",
@@ -164,18 +127,11 @@ const messageOptions = {
   export_refresh: {
     kind: "export_refresh",
     type: "silent",
-    role: "receiver",
-    data: {
-      method: "GET",
-      path: "/api/v1/export",
-      page: 1,
-      limit: 20,
-      url: "/api/v1/export?page=1&limit=20"
-    }
+    role: "receiver"
   }
 };
 
-const selectedKinds = kind === "all" ? ["new_result", "capture_request", "export_refresh"] : [kind];
+const selectedKinds = kind === "all" ? ["capture_request", "export_refresh"] : [kind];
 const messages = selectedKinds.map((selectedKind) => buildMessage(messageOptions[selectedKind]));
 
 if (dryRun) {

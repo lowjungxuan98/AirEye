@@ -1,69 +1,17 @@
-# GRIM Mobile
+# mobile
 
-Flutter mobile client for GRIM.
+A new Flutter project.
 
-## First-time setup
+## Getting Started
 
-From the repo root:
+This project is a starting point for a Flutter application.
 
-```bash
-./scripts/mobile_setup.sh
-```
+A few resources to get you started if this is your first Flutter project:
 
-The script:
+- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
+- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
 
-- generates `mobile/android/app/upload-keystore.jks` when it does not exist
-- writes local Android signing config to `mobile/android/key.properties`
-- writes local Dart defines to `mobile/.env.local`
-- uploads required GitHub Actions secrets with `gh secret set`
-
-The generated files are ignored by git.
-
-Run locally:
-
-```bash
-cd mobile
-flutter pub get
-flutter run --dart-define-from-file=.env.local
-```
-
-## API URLs
-
-Debug/profile builds resolve the backend host at startup:
-
-- Android emulator: `http://10.0.2.2:3001`
-- iOS simulator: `http://localhost:3001`
-- Physical iOS/Android device: `http://192.168.68.57:3001` by default
-
-Override physical-device debug origin in `.env.local`:
-
-```text
-GRIM_DEBUG_PHYSICAL_DEVICE_ORIGIN=http://<your-mac-lan-ip>:3001
-```
-
-Release builds use:
-
-- health: `https://lowjungxuan.dpdns.org/backend/api/v1/health`
-- API v1: `https://lowjungxuan.dpdns.org/backend/api/v1/*`
-
-The health URL is derived in source from `GRIM_RELEASE_API_PREFIX` plus `/v1/health`.
-
-## Firebase API keys
-
-`lib/firebase_options.dart` reads client API keys from Dart defines:
-
-- `FIREBASE_ANDROID_API_KEY`
-- `FIREBASE_IOS_API_KEY`
-
-Firebase client API keys identify the Firebase project; Firebase authorization still comes from Firebase Security Rules, App Check, IAM, and backend-owned credentials. Keep Firebase Admin service account keys and FCM server keys server-side only.
-
-## Mobile releases
-
-Push a tag like:
-
-```bash
-git tag mobile-v0.1.0
-git push origin mobile-v0.1.0
-```
-
-`.github/workflows/mobile-release.yml` analyzes/tests the app, builds a signed release APK, and uploads it to the GitHub Release when mobile files changed since the previous `mobile-v*` tag.
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.

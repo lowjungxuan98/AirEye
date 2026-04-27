@@ -8,9 +8,9 @@ The backend sends FCM topic messages through `FirebaseNotifier` in `backend/src/
 
 Shared payload construction lives in `backend/src/libs/utils/notification.util.ts`:
 
-- notification type: `silent` or `notify`
+- notification type: `silent`
 - target role: `sender` or `receiver`
-- notification kind: `new_result`, `capture_request`, or `export_refresh`
+- notification kind: `capture_request` or `export_refresh`
 
 The configured topic defaults to `grim_new_result`; override with server env `GRIM_FCM_TOPIC`. Mobile must subscribe to the same topic.
 
@@ -19,8 +19,8 @@ The configured topic defaults to `grim_new_result`; override with server env `GR
 | Trigger | FCM kind | Type | Role | Visible notification | Purpose |
 |---------|----------|------|------|----------------------|---------|
 | `POST /api/v1/capture` | `capture_request` | `silent` | `sender` | No | Sender camera should capture and call import. |
-| Successful `POST /api/v1/import` | `new_result` | `notify` | `receiver` | Yes | Receiver can show that a new result is ready. |
-| Successful `POST /api/v1/import` | `export_refresh` | `silent` | `receiver` | No | Receiver can fetch `GET /api/v1/export?page=1&limit=20`. |
+| Pending row written during `POST /api/v1/import` | `export_refresh` | `silent` | `receiver` | No | Receiver should call its existing export endpoint function. |
+| Successful final row update during `POST /api/v1/import` | `export_refresh` | `silent` | `receiver` | No | Receiver should call its existing export endpoint function again. |
 
 Every payload includes string data values for:
 
@@ -30,13 +30,9 @@ Every payload includes string data values for:
 - `role`
 - `targetRole`
 
-`export_refresh` also includes `method`, `path`, `page`, `limit`, and `url`.
-
-## Silent vs notify
+## Silent delivery
 
 `silent` messages are data-only FCM messages. The backend does not attach a top-level `notification` payload. It sets high-priority Android delivery and APNs content-available metadata.
-
-`notify` messages include a top-level notification payload plus Android channel `grim_results` and APNs alert/sound data. The Flutter app creates the same Android channel in `GrimFcmManager.initialize()`.
 
 ## Firebase setup
 
@@ -71,15 +67,13 @@ buildFcmTopicNotificationMessage("grim_new_result", {
 });
 ```
 
-Representative Grim visible result payload:
+Representative Grim receiver refresh payload:
 
 ```ts
 buildFcmTopicNotificationMessage("grim_new_result", {
-  kind: "new_result",
-  type: "notify",
-  role: "receiver",
-  title: "GRIM",
-  body: "New result is ready."
+  kind: "export_refresh",
+  type: "silent",
+  role: "receiver"
 });
 ```
 

@@ -25,7 +25,7 @@ The handler must wait for **S3/MinIO**, configured extract-stage LLM image text 
 - format guard provider behavior
 - S3 upload metadata (`ContentType`) and object key extension behavior
 - Realtime DB read and write helpers
-- FCM topic broadcasts (`broadcastNewResult`, `broadcastExportRefresh`) are invoked after a successful pipeline
+- FCM export refresh broadcast (`broadcastExportRefresh`) is invoked after the pending row write and again after a successful final row update
 - FCM capture broadcast (`broadcastCaptureRequest`) is invoked by the capture service
 - pipeline completion persists `finalText` / `imageUrl` on success and error detail on failure
 - import stream emits status events in order and a terminal success or error payload
@@ -44,7 +44,7 @@ The handler must wait for **S3/MinIO**, configured extract-stage LLM image text 
 - import image → SSE stream completes → terminal payload includes `finalText` and `imageUrl` → export includes the same row
 - import image → provider failure → SSE terminal `error` and export includes `errorMessage` on the matching row
 - receiver calls capture → backend sends silent `capture_request` FCM → sender foreground camera imports a photo
-- import image → after a successful pipeline, receiver FCM topic broadcasts run (`new_result`, `export_refresh`) → export still returns the canonical list from the HTTP API
+- import image → pending row write sends receiver FCM topic broadcast (`export_refresh`) → successful final update sends another `export_refresh` → export still returns the canonical list from the HTTP API
 
 ## Tooling
 

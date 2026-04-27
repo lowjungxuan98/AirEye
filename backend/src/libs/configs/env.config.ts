@@ -30,7 +30,7 @@ export type ServerEnv = {
   /** Optional URL of a Scalar-hosted API Reference; local spec is always `GET /openapi.yaml`. */
   SCALAR_DOCS_URL?: string;
   /**
-   * FCM topic for `broadcastNewResult` (default `grim_new_result`). Clients must subscribe to this topic.
+   * FCM topic for capture/import refresh signals (default `grim_new_result`). Clients must subscribe to this topic.
    */
   GRIM_FCM_TOPIC?: string;
   /** Directory containing `extract_text_prompt.txt`, `analyzing_text_prompt.txt`, and `format_guard_prompt.txt` (default `./prompts` from process cwd). */

@@ -141,7 +141,6 @@ export function createImportServiceWithStubbedPipeline(deps?: Partial<ImportServ
     notifier:
       deps?.notifier ??
       {
-        broadcastNewResult: async () => {},
         broadcastCaptureRequest: async () => {},
         broadcastExportRefresh: async () => {}
       },
