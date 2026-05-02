@@ -7,8 +7,6 @@ on:
       - "docs/mobile/**"
       - ".github/workflows/mobile-release.yml"
   push:
-    branches:
-      - main
     tags:
       - "mobile-v*"
     paths:
