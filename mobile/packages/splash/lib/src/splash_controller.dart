@@ -7,10 +7,10 @@ class SplashController extends BaseController<SplashState> {
   SplashState build() => const SplashInitial();
 
   @override
-  bool get isLoading => state is SplashLoading;
+  bool get isLoading => false;
 
   @override
-  void setLoading() => state = const SplashLoading();
+  void setLoading() {}
 
   @override
   void setError(String message) => state = SplashError(message);

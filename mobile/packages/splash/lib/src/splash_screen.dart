@@ -22,12 +22,18 @@ class SplashScreen extends BasePage {
     });
 
     return Scaffold(
-      body: Center(
-        child: switch (state) {
-          SplashLoading() => const CircularProgressIndicator(),
-          SplashError(:final message) => Text(message, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-          _ => const FlutterLogo(size: 80),
-        },
+      body: Column(
+        children: [
+          Expanded(
+            child: switch (state) {
+              SplashError(:final message) => Center(
+                child: Text(message, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              ),
+              _ => Image(image: const AssetImage('assets/app_icon.png'), width: double.infinity, fit: BoxFit.fitWidth),
+            },
+          ),
+          if (state is SplashInitial) const LinearProgressIndicator(),
+        ],
       ),
     );
   }
