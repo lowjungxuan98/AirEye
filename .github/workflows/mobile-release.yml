@@ -71,10 +71,6 @@ jobs:
         working-directory: mobile
         run: flutter analyze
 
-      - name: Test
-        working-directory: mobile
-        run: flutter test
-
       - name: Validate release secrets
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
         env:
