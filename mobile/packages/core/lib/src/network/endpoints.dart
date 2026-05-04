@@ -11,6 +11,7 @@ class GrimEndpoints {
   static const String _importPath = '/api/v1/import';
   static const String _capturePath = '/api/v1/capture';
   static const String _exportPath = '/api/v1/export';
+  static const String _providerPath = '/api/v1/provider';
 
   static Future<String> _url(String pathAndQuery) {
     return GrimBaseUrl.resolve().then((base) => '$base$pathAndQuery');
@@ -92,6 +93,37 @@ class GrimEndpoints {
 
     final payload = _lastSseDataPayload(res.data ?? '');
     final model = ImportStreamSseData.fromJson(jsonDecode(payload) as JsonMap);
+    onSuccess?.call(model);
+    return model;
+  }
+
+  static Future<ProviderResponse> getProvider({
+    void Function(ProviderResponse response)? onSuccess,
+    void Function(Object error, StackTrace stackTrace)? onError,
+    void Function()? onFinally,
+  }) async {
+    final client = await GrimClient.create();
+    final url = await _url(_providerPath);
+
+    final res = await client.get<JsonMap>(url, onError: onError, onFinally: onFinally);
+
+    final model = ProviderResponse.fromJson(res.data ?? const <String, dynamic>{});
+    onSuccess?.call(model);
+    return model;
+  }
+
+  static Future<ProviderResponse> updateProvider({
+    required UpdateProviderRequest request,
+    void Function(ProviderResponse response)? onSuccess,
+    void Function(Object error, StackTrace stackTrace)? onError,
+    void Function()? onFinally,
+  }) async {
+    final client = await GrimClient.create();
+    final url = await _url(_providerPath);
+
+    final res = await client.put<JsonMap>(url, data: request.toJson(), onError: onError, onFinally: onFinally);
+
+    final model = ProviderResponse.fromJson(res.data ?? const <String, dynamic>{});
     onSuccess?.call(model);
     return model;
   }

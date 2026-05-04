@@ -1,6 +1,10 @@
 export 'json_map.dart';
+export 'llm_provider.dart';
+
+export 'request/update_provider_request.dart';
 
 export 'response/capture_response.dart';
+export 'response/provider_response.dart';
 export 'response/dependency_check.dart';
 export 'response/error_body.dart';
 export 'response/error_body_error.dart';

@@ -9,7 +9,9 @@ class SelectRoleLoading extends SelectRoleState {
 }
 
 class SelectRoleReady extends SelectRoleState {
-  const SelectRoleReady();
+  const SelectRoleReady({required this.provider, this.isUpdatingProvider = false});
+  final ProviderResponse provider;
+  final bool isUpdatingProvider;
 }
 
 class SelectRoleError extends SelectRoleState {

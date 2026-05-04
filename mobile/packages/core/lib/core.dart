@@ -23,3 +23,4 @@ export 'src/widgets/download_image.dart';
 export 'src/widgets/grim_back_button.dart';
 export 'src/widgets/camera/camera.dart';
 export 'src/widgets/grim_text_sheet.dart';
+export 'src/widgets/provider_selector.dart';
