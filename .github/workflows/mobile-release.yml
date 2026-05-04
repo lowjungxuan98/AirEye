@@ -76,12 +76,18 @@ jobs:
           MOBILE_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MOBILE_ANDROID_KEYSTORE_PASSWORD }}
           MOBILE_ANDROID_KEY_ALIAS: ${{ secrets.MOBILE_ANDROID_KEY_ALIAS }}
           MOBILE_ANDROID_KEY_PASSWORD: ${{ secrets.MOBILE_ANDROID_KEY_PASSWORD }}
+          GRIM_API_BASE_URL: ${{ secrets.GRIM_API_BASE_URL }}
           FIREBASE_ANDROID_API_KEY: ${{ secrets.FIREBASE_ANDROID_API_KEY }}
+          FIREBASE_ANDROID_APP_ID: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
         shell: bash
         run: |
           set -euo pipefail
           missing=()
-          for name in MOBILE_ANDROID_KEYSTORE_BASE64 MOBILE_ANDROID_KEYSTORE_PASSWORD MOBILE_ANDROID_KEY_ALIAS MOBILE_ANDROID_KEY_PASSWORD FIREBASE_ANDROID_API_KEY; do
+          for name in MOBILE_ANDROID_KEYSTORE_BASE64 MOBILE_ANDROID_KEYSTORE_PASSWORD MOBILE_ANDROID_KEY_ALIAS MOBILE_ANDROID_KEY_PASSWORD GRIM_API_BASE_URL FIREBASE_ANDROID_API_KEY FIREBASE_ANDROID_APP_ID FIREBASE_PROJECT_ID FIREBASE_MESSAGING_SENDER_ID FIREBASE_DATABASE_URL FIREBASE_STORAGE_BUCKET; do
             if [[ -z "${!name}" ]]; then
               missing+=("$name")
             fi
@@ -115,13 +121,24 @@ jobs:
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
         working-directory: mobile
         env:
+          GRIM_API_BASE_URL: ${{ secrets.GRIM_API_BASE_URL }}
           FIREBASE_ANDROID_API_KEY: ${{ secrets.FIREBASE_ANDROID_API_KEY }}
+          FIREBASE_ANDROID_APP_ID: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
         shell: bash
         run: |
           set -euo pipefail
           flutter build apk --release \
+            --dart-define=GRIM_API_BASE_URL="$GRIM_API_BASE_URL" \
             --dart-define=FIREBASE_ANDROID_API_KEY="$FIREBASE_ANDROID_API_KEY" \
-            --dart-define=GRIM_RELEASE_API_PREFIX=https://lowjungxuan.dpdns.org/backend/api
+            --dart-define=FIREBASE_ANDROID_APP_ID="$FIREBASE_ANDROID_APP_ID" \
+            --dart-define=FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
+            --dart-define=FIREBASE_MESSAGING_SENDER_ID="$FIREBASE_MESSAGING_SENDER_ID" \
+            --dart-define=FIREBASE_DATABASE_URL="$FIREBASE_DATABASE_URL" \
+            --dart-define=FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET"
 
       - name: Publish GitHub Release
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
