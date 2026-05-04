@@ -2,8 +2,6 @@ name: splash
 description: "A new Flutter package project."
 version: 0.0.1
 publish_to: none
-homepage:
-
 environment:
   sdk: ^3.11.5
   flutter: ">=1.17.0"
