@@ -6,8 +6,9 @@ import type {
 import type { LlmConfig, LlmProvider } from "../configs/env.config";
 import { ApiError } from "./api-error.util";
 import { OpenAICompatibleTextProcessor } from "../llm/text-processor";
+import { applyVisionFallback } from "../llm/vision_fallback";
 
-export const LLM_PROVIDERS = ["openrouter", "openai", "nvidia_nim"] as const;
+export const LLM_PROVIDERS = ["openrouter", "openai", "nvidia_nim", "deepseek"] as const;
 
 export type ProviderState = {
   current_provide: LlmProvider;
@@ -76,6 +77,8 @@ export class ProviderOrchestrator implements ImageTextExtractor, FinalTextBuilde
     if (!this.processors.has(this.defaultProvider)) {
       throw new Error(`Default LLM provider is not configured: ${this.defaultProvider}`);
     }
+
+    applyVisionFallback(this.processors);
   }
 
   getAvailableProviders(): LlmProvider[] {
@@ -148,6 +151,9 @@ export function parseProvider(value: unknown): LlmProvider | null {
   }
   if (normalized === "nvidia_nim" || normalized === "nim") {
     return "nvidia_nim";
+  }
+  if (normalized === "deepseek") {
+    return "deepseek";
   }
   return null;
 }

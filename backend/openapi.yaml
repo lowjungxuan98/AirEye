@@ -18,11 +18,9 @@ info:
     **Prompts:** text loaded from `extract_text_prompt.txt`, `analyzing_text_prompt.txt`, and `format_guard_prompt.txt` under **`GRIM_PROMPTS_DIR`** (default `./prompts` relative to the server process). **`PUT /api/v1/prompts`** overwrites those strings on disk and updates the in-memory copy used by the next import. Optional **`GRIM_PROMPT_ADMIN_SECRET`** forces clients to send **`X-Grim-Prompt-Secret`**.
 
     **Interactive docs:** with the backend running, open **`/docs`** on the same origin for embedded [Scalar API Reference](https://scalar.com/products/api-references), or import this file’s URL elsewhere.
-  version: 0.2.4
+  version: 0.2.5
 
 servers:
-  - url: /backend
-    description: Production reverse-proxy prefix (`https://lowjungxuan.dpdns.org/backend`)
   - url: /
     description: Local backend origin during development
 
@@ -340,7 +338,7 @@ paths:
                 $ref: "#/components/schemas/ProviderState"
               example:
                 current_provide: openrouter
-                available_providers: [openrouter, openai, nvidia_nim]
+                available_providers: [openrouter, openai, nvidia_nim, deepseek]
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
@@ -367,6 +365,9 @@ paths:
               nvidiaNim:
                 value:
                   current_provide: nvidia_nim
+              deepseek:
+                value:
+                  current_provide: deepseek
       responses:
         "200":
           description: Provider state after the update
@@ -706,7 +707,7 @@ components:
 
     LlmProvider:
       type: string
-      enum: [openrouter, openai, nvidia_nim]
+      enum: [openrouter, openai, nvidia_nim, deepseek]
 
     ProviderState:
       type: object
@@ -718,7 +719,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LlmProvider"
-          example: [openrouter, openai, nvidia_nim]
+          example: [openrouter, openai, nvidia_nim, deepseek]
 
     ProviderUpdateRequest:
       type: object

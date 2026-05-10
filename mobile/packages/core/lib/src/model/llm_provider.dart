@@ -1,7 +1,8 @@
 enum LlmProvider {
   openrouter('openrouter'),
   openai('openai'),
-  nvidiaNim('nvidia_nim');
+  nvidiaNim('nvidia_nim'),
+  deepseek('deepseek');
 
   const LlmProvider(this.value);
   final String value;

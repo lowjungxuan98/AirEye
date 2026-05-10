@@ -23,7 +23,7 @@ export function createPutProviderHandler(providerService: ProviderService): Requ
       throw new ApiError(
         400,
         "INVALID_PROVIDER",
-        "Expected provider to be one of: openrouter, openai, nvidia_nim"
+        "Expected provider to be one of: openrouter, openai, nvidia_nim, deepseek"
       );
     }
 

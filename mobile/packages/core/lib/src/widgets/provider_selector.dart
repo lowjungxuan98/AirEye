@@ -16,6 +16,7 @@ class ProviderSelectorWidget extends StatelessWidget {
     LlmProvider.openrouter => 'OpenRouter',
     LlmProvider.openai => 'OpenAI',
     LlmProvider.nvidiaNim => 'NVIDIA NIM',
+    LlmProvider.deepseek => 'DeepSeek',
   };
 
   @override

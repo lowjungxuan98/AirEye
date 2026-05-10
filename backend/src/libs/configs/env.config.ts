@@ -1,8 +1,9 @@
-export type LlmProvider = "openrouter" | "openai" | "nvidia_nim";
+export type LlmProvider = "openrouter" | "openai" | "nvidia_nim" | "deepseek";
 
 export const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 export const DEFAULT_OPENROUTER_MODEL = "openrouter/free";
 export const DEFAULT_NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
+export const DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 
 export type LlmConfig = {
   provider: LlmProvider;
@@ -166,7 +167,8 @@ function readProviderSpecificLlmEnv(provider: LlmProvider, stage: "EXTRACT" | "F
     readOptionalEnv(`${prefix}_BASE_URL`) ??
     readOptionalEnv(`${legacyPrefix}_BASE_URL`) ??
     (provider === "openrouter" ? DEFAULT_OPENROUTER_BASE_URL : undefined) ??
-    (provider === "nvidia_nim" ? DEFAULT_NVIDIA_BASE_URL : undefined);
+    (provider === "nvidia_nim" ? DEFAULT_NVIDIA_BASE_URL : undefined) ??
+    (provider === "deepseek" ? DEFAULT_DEEPSEEK_BASE_URL : undefined);
 
   return {
     provider,
@@ -185,6 +187,9 @@ function parseLlmProvider(value: string): LlmProvider {
   if (normalizedValue === "nvidia_nim" || normalizedValue === "nim") {
     return "nvidia_nim";
   }
+  if (normalizedValue === "deepseek") {
+    return "deepseek";
+  }
 
   throw new Error(`Invalid LLM_PROVIDER: ${value}`);
 }
@@ -198,6 +203,9 @@ function resolveDefaultProviderFromLegacyConfig(): LlmProvider {
   }
   if (readOptionalEnv("NVIDIA_API_KEY") || readOptionalEnv("NVIDIA_NIM_API_KEY")) {
     return "nvidia_nim";
+  }
+  if (readOptionalEnv("DEEPSEEK_API_KEY")) {
+    return "deepseek";
   }
 
   const hasLegacyOpenRouterConfig = Boolean(
@@ -250,9 +258,9 @@ function loadStageLlmEnv(stage: "EXTRACT" | "FINAL", sharedLlm: Partial<LlmConfi
   };
 }
 
-function providerEnvPrefix(provider: LlmProvider): "OPENROUTER" | "OPENAI" | "NVIDIA" {
+function providerEnvPrefix(provider: LlmProvider): "OPENROUTER" | "OPENAI" | "NVIDIA" | "DEEPSEEK" {
   if (provider === "nvidia_nim") {
     return "NVIDIA";
   }
-  return provider.toUpperCase() as "OPENROUTER" | "OPENAI";
+  return provider.toUpperCase() as "OPENROUTER" | "OPENAI" | "DEEPSEEK";
 }

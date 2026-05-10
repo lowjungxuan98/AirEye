@@ -16,6 +16,7 @@ import {
 } from "./libs/firebase/realtime";
 import { GrimPromptSettings } from "./libs/utils/prompt.util";
 import {
+  DEFAULT_DEEPSEEK_BASE_URL,
   DEFAULT_NVIDIA_BASE_URL,
   DEFAULT_OPENROUTER_BASE_URL,
   DEFAULT_OPENROUTER_MODEL,
@@ -88,7 +89,7 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
 function buildProviderConfigs(env: ServerEnv): Partial<Record<LlmProvider, ProviderStageConfig>> {
   const providers: Partial<Record<LlmProvider, ProviderStageConfig>> = {};
 
-  for (const provider of ["openrouter", "openai", "nvidia_nim"] as const) {
+  for (const provider of ["openrouter", "openai", "nvidia_nim", "deepseek"] as const) {
     const config = readProviderConfigFromEnv(provider);
     if (config) {
       providers[provider] = config;
@@ -136,7 +137,9 @@ function readProviderConfigFromEnv(provider: LlmProvider): ProviderStageConfig |
     process.env[`${legacyPrefix}_BASE_URL`]?.trim() ||
     (provider === "openrouter" ? DEFAULT_OPENROUTER_BASE_URL : undefined);
   const resolvedBaseURL =
-    baseURL || (provider === "nvidia_nim" ? DEFAULT_NVIDIA_BASE_URL : undefined);
+    baseURL ||
+    (provider === "nvidia_nim" ? DEFAULT_NVIDIA_BASE_URL : undefined) ||
+    (provider === "deepseek" ? DEFAULT_DEEPSEEK_BASE_URL : undefined);
 
   return {
     extract: {
