@@ -27,9 +27,16 @@ class SplashScreen extends BasePage {
           Expanded(
             child: switch (state) {
               SplashError(:final message) => Center(
-                child: Text(message, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                child: Text(
+                  message,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
-              _ => Image(image: const AssetImage('assets/app_icon.png'), width: double.infinity, fit: BoxFit.fitWidth),
+              _ => Image(
+                image: const AssetImage('assets/app_icon.png'),
+                width: double.infinity,
+                fit: BoxFit.fitWidth,
+              ),
             },
           ),
           if (state is SplashInitial) const LinearProgressIndicator(),

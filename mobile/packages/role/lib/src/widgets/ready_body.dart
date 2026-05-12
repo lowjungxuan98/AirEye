@@ -29,7 +29,9 @@ class ReadyBody extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Select your role to continue.',
-            style: textTheme.bodyMedium?.copyWith(color: GrimColors.sectionLabel),
+            style: textTheme.bodyMedium?.copyWith(
+              color: GrimColors.sectionLabel,
+            ),
           ),
           const SizedBox(height: 40),
           RoleCard(
@@ -42,6 +44,12 @@ class ReadyBody extends StatelessWidget {
             icon: Icons.phone_android_outlined,
             title: 'Receiver',
             onTap: () => controller.navigateToReceiver(context),
+          ),
+          const SizedBox(height: 12),
+          RoleCard(
+            icon: Icons.dns_outlined,
+            title: 'Server',
+            onTap: () => controller.navigateToServer(context),
           ),
           const Spacer(flex: 3),
           ProviderSection(

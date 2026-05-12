@@ -11,7 +11,9 @@ class GrimCopyTextButton extends StatelessWidget {
   Future<void> _copy(BuildContext context) async {
     await Clipboard.setData(ClipboardData(text: text));
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Text copied')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Text copied')));
     }
   }
 
@@ -20,7 +22,10 @@ class GrimCopyTextButton extends StatelessWidget {
     return GestureDetector(
       onTap: () => _copy(context),
       child: const DecoratedBox(
-        decoration: BoxDecoration(color: GrimColors.overlayDark, shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: GrimColors.overlayDark,
+          shape: BoxShape.circle,
+        ),
         child: Padding(
           padding: EdgeInsets.all(10),
           child: Icon(Icons.copy, color: GrimColors.onSurface, size: 22),

@@ -1,7 +1,13 @@
 import '../json_map.dart';
 
 class ExportListItem {
-  const ExportListItem({required this.createdAt, this.updatedAt, this.finalText, this.imageUrl, this.errorMessage});
+  const ExportListItem({
+    required this.createdAt,
+    this.updatedAt,
+    this.finalText,
+    this.imageUrl,
+    this.errorMessage,
+  });
 
   final int createdAt;
   final int? updatedAt;

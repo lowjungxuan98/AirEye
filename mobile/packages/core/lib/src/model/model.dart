@@ -1,5 +1,6 @@
 export 'json_map.dart';
 export 'llm_provider.dart';
+export 'server_config.dart';
 
 export 'request/update_provider_request.dart';
 

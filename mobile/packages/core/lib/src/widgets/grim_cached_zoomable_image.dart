@@ -21,7 +21,8 @@ class GrimCachedZoomableImage extends StatefulWidget {
   final Color backgroundColor;
 
   @override
-  State<GrimCachedZoomableImage> createState() => _GrimCachedZoomableImageState();
+  State<GrimCachedZoomableImage> createState() =>
+      _GrimCachedZoomableImageState();
 }
 
 class _GrimCachedZoomableImageState extends State<GrimCachedZoomableImage> {
@@ -75,12 +76,19 @@ class _GrimCachedZoomableImageState extends State<GrimCachedZoomableImage> {
           top: 8,
           left: 8,
           child: DecoratedBox(
-            decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(6)),
+            decoration: BoxDecoration(
+              color: Colors.green,
+              borderRadius: BorderRadius.circular(6),
+            ),
             child: const Padding(
               padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Text(
                 'NEW',
-                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
               ),
             ),
           ),

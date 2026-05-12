@@ -16,13 +16,14 @@ class IntegrationHealthReport {
   final DependencyCheck llm;
   final DependencyCheck s3;
 
-  factory IntegrationHealthReport.fromJson(JsonMap json) => IntegrationHealthReport(
-    version: json['version'] as String,
-    ok: json['ok'] as bool,
-    firebase: DependencyCheck.fromJson(json['firebase'] as JsonMap),
-    llm: DependencyCheck.fromJson(json['llm'] as JsonMap),
-    s3: DependencyCheck.fromJson(json['s3'] as JsonMap),
-  );
+  factory IntegrationHealthReport.fromJson(JsonMap json) =>
+      IntegrationHealthReport(
+        version: json['version'] as String,
+        ok: json['ok'] as bool,
+        firebase: DependencyCheck.fromJson(json['firebase'] as JsonMap),
+        llm: DependencyCheck.fromJson(json['llm'] as JsonMap),
+        s3: DependencyCheck.fromJson(json['s3'] as JsonMap),
+      );
 
   JsonMap toJson() => {
     'version': version,

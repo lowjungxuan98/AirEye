@@ -8,7 +8,6 @@ class SplashInitial extends SplashState {
   const SplashInitial();
 }
 
-
 class SplashNavigateToRole extends SplashState {
   const SplashNavigateToRole();
 }

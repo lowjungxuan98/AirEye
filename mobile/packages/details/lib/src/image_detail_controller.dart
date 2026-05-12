@@ -15,6 +15,7 @@ class ImageDetailController extends BaseController<ImageDetailState> {
   void setError(String message) => state = ImageDetailError(message);
 }
 
-final imageDetailControllerProvider = BaseNotifierProvider<ImageDetailController, ImageDetailState>(
-  ImageDetailController.new,
-);
+final imageDetailControllerProvider =
+    BaseNotifierProvider<ImageDetailController, ImageDetailState>(
+      ImageDetailController.new,
+    );

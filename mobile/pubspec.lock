@@ -13,10 +13,10 @@ packages:
     dependency: transitive
     description:
       name: _flutterfire_internals
-      sha256: bda3b7b55958bfd867addc40d067b4b11f7b8846d57671f5b5a6e7f9a56fe3ad
+      sha256: cc2ad182e5b3929a1a87a8eaf35413d8bb4baa4efec124bab3e538096cdbff0d
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.69"
+    version: "1.3.70"
   analyzer:
     dependency: "direct overridden"
     description:
@@ -41,6 +41,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.7.0"
+  asn1lib:
+    dependency: transitive
+    description:
+      name: asn1lib
+      sha256: "9a8f69025044eb466b9b60ef3bc3ac99b4dc6c158ae9c56d25eeccf5bc56d024"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.6.5"
   async:
     dependency: transitive
     description:
@@ -149,10 +157,10 @@ packages:
     dependency: "direct overridden"
     description:
       name: cli_util
-      sha256: "53f32da4e0c381951938e2229e217f3568699e3113463daa382261e0c6fead9e"
+      sha256: "5909d2c6b66817222779e1eedc19e0e28b76d1df7bd9856a4792ccb9881df358"
       url: "https://pub.dev"
     source: hosted
-    version: "0.5.0"
+    version: "0.5.1"
   clock:
     dependency: transitive
     description:
@@ -224,6 +232,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.9"
+  dartssh2:
+    dependency: transitive
+    description:
+      name: dartssh2
+      sha256: c139babed0d6851449100010639115e1ed88decf0db7eb714ce13935c7eb590c
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.17.1"
   dbus:
     dependency: transitive
     description:
@@ -307,50 +323,50 @@ packages:
     dependency: transitive
     description:
       name: firebase_core
-      sha256: d5a94b884dcb1e6d3430298e94bfe002238094cdfd5e29202d536ee2120f9158
+      sha256: "15bf6f85a6c8cf786344b2f163350428fc4bce105bc5332d42fb951d90b7664e"
       url: "https://pub.dev"
     source: hosted
-    version: "4.7.0"
+    version: "4.8.0"
   firebase_core_platform_interface:
     dependency: transitive
     description:
       name: firebase_core_platform_interface
-      sha256: "0ecda14c1bfc9ed8cac303dd0f8d04a320811b479362a9a4efb14fd331a473ce"
+      sha256: "7aafd426ad1926cfb1a7e9e012df5eff7d9a55200b31b04bc65ef45329ea5dee"
       url: "https://pub.dev"
     source: hosted
-    version: "6.0.3"
+    version: "7.0.0"
   firebase_core_web:
     dependency: transitive
     description:
       name: firebase_core_web
-      sha256: dc5096257cd67292d34d78ceeb90836f02a4be921b5f3934311a02bb2376118c
+      sha256: "73b01cba93a4f673596a7664f8265eb538f007a84a8f5880359db8ff76c3471b"
       url: "https://pub.dev"
     source: hosted
-    version: "3.6.0"
+    version: "3.6.1"
   firebase_messaging:
     dependency: transitive
     description:
       name: firebase_messaging
-      sha256: e5c93e8e7a9b0513f94bb684d2cf100e32e7dcdf2949574386b1955fc9a9b96a
+      sha256: "4ebb881070b40038d61799cff914b18a44649e2e47ab444fc32055c3d6bf2df0"
       url: "https://pub.dev"
     source: hosted
-    version: "16.2.0"
+    version: "16.2.1"
   firebase_messaging_platform_interface:
     dependency: transitive
     description:
       name: firebase_messaging_platform_interface
-      sha256: "8cbb7d842e5071bba836452aff262f7db4b14bb3a0d00c1896cf176df886d65a"
+      sha256: "50eb5e125ec38b4b0b900c9f096ec94f2eeb4243d5668604f1dea24340bdb428"
       url: "https://pub.dev"
     source: hosted
-    version: "4.7.9"
+    version: "4.7.10"
   firebase_messaging_web:
     dependency: transitive
     description:
       name: firebase_messaging_web
-      sha256: "8750bacf50573c0383535fc3f9c58c6a2f9dff5320a16a82c30631b9dad894f1"
+      sha256: "1dfd311e764ac42be99a0aa8d9d5f7602774085af4f873658769f1438f8af918"
       url: "https://pub.dev"
     source: hosted
-    version: "4.1.5"
+    version: "4.1.6"
   fixnum:
     dependency: transitive
     description:
@@ -436,6 +452,54 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.3.1"
+  flutter_secure_storage:
+    dependency: transitive
+    description:
+      name: flutter_secure_storage
+      sha256: "6848263f9744072d0977347c383fb8b57d9780319a6bf5238b5a2866a029de62"
+      url: "https://pub.dev"
+    source: hosted
+    version: "10.2.0"
+  flutter_secure_storage_darwin:
+    dependency: transitive
+    description:
+      name: flutter_secure_storage_darwin
+      sha256: "67cd1ff671add31dc13e45194398187a04bb63804b37fa47866afae296d73fcb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.1"
+  flutter_secure_storage_linux:
+    dependency: transitive
+    description:
+      name: flutter_secure_storage_linux
+      sha256: "2b5c76dce569ab752d55a1cee6a2242bcc11fdba927078fb88c503f150767cda"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.0"
+  flutter_secure_storage_platform_interface:
+    dependency: transitive
+    description:
+      name: flutter_secure_storage_platform_interface
+      sha256: "8ceea1223bee3c6ac1a22dabd8feefc550e4729b3675de4b5900f55afcb435d6"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.1"
+  flutter_secure_storage_web:
+    dependency: transitive
+    description:
+      name: flutter_secure_storage_web
+      sha256: "073a62b3aeb866ab4ce795f960413948e51e5a42a9b0c8333b6daf5bb3208a1c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.1"
+  flutter_secure_storage_windows:
+    dependency: transitive
+    description:
+      name: flutter_secure_storage_windows
+      sha256: "0191ba6ae4fca37144d7231a8df5cbdb450f2a858d90a0b60b8ded0af9f40ce7"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.2.0"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -750,6 +814,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.2"
+  pinenacl:
+    dependency: transitive
+    description:
+      name: pinenacl
+      sha256: "57e907beaacbc3c024a098910b6240758e899674de07d6949a67b52fd984cbdf"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.6.0"
   platform:
     dependency: transitive
     description:
@@ -766,6 +838,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
+  pointycastle:
+    dependency: transitive
+    description:
+      name: pointycastle
+      sha256: "92aa3841d083cc4b0f4709b5c74fd6409a3e6ba833ffc7dc6a8fee096366acf5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.0"
   pool:
     dependency: transitive
     description:
@@ -798,6 +878,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  quiver:
+    dependency: transitive
+    description:
+      name: quiver
+      sha256: ea0b925899e64ecdfbf9c7becb60d5b50e706ade44a85b2363be2a22d88117d2
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.2"
   receiver:
     dependency: transitive
     description:
@@ -848,6 +936,27 @@ packages:
     dependency: transitive
     description:
       path: "packages/sender"
+      relative: true
+    source: path
+    version: "0.0.1"
+  server:
+    dependency: transitive
+    description:
+      path: "packages/server"
+      relative: true
+    source: path
+    version: "0.0.1"
+  server_form:
+    dependency: transitive
+    description:
+      path: "packages/server_form"
+      relative: true
+    source: path
+    version: "0.0.1"
+  session_list:
+    dependency: transitive
+    description:
+      path: "packages/session_list"
       relative: true
     source: path
     version: "0.0.1"
@@ -939,10 +1048,10 @@ packages:
     dependency: transitive
     description:
       name: sqflite_common
-      sha256: "5e8377564d95166761a968ed96104e0569b6b6cc611faac92a36ab8a169112c3"
+      sha256: f8a08a13fb8f0f8c590df89d745000bed44a673ed94bac846739e1a016875c21
       url: "https://pub.dev"
     source: hosted
-    version: "2.5.6+1"
+    version: "2.5.7"
   sqflite_darwin:
     dependency: transitive
     description:
@@ -1015,6 +1124,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.2"
+  terminal:
+    dependency: transitive
+    description:
+      path: "packages/terminal"
+      relative: true
+    source: path
+    version: "0.0.1"
   test:
     dependency: "direct overridden"
     description:
@@ -1139,10 +1255,10 @@ packages:
     dependency: transitive
     description:
       name: win32
-      sha256: ba7d5750e3441caa1bbe31d9e516348fcf8dfcb32aa29ef87a844a59f4d1f1d0
+      sha256: a1fc9eb9248baa05dfc12ed5b66e377b3e23f095eec078e0371622b9033810d9
       url: "https://pub.dev"
     source: hosted
-    version: "6.1.0"
+    version: "6.2.0"
   win32_registry:
     dependency: transitive
     description:
@@ -1167,6 +1283,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.1"
+  xterm:
+    dependency: transitive
+    description:
+      path: "."
+      ref: "v5.0.0"
+      resolved-ref: "5d0ab069c0e7e47b7a6d5db27fee0ee9a4b80526"
+      url: "https://github.com/lowjungxuan98/xterm.dart"
+    source: git
+    version: "5.0.0"
   yaml:
     dependency: transitive
     description:
@@ -1175,6 +1300,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.3"
+  zmodem:
+    dependency: transitive
+    description:
+      path: "."
+      ref: "v0.0.7"
+      resolved-ref: d0cac54adc35de2efe191bbd6781345f77c6bb56
+      url: "https://github.com/lowjungxuan98/zmodem"
+    source: git
+    version: "0.0.7"
 sdks:
   dart: ">=3.11.5 <4.0.0"
   flutter: ">=3.41.0"

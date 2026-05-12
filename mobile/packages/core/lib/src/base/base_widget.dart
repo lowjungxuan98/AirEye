@@ -8,4 +8,5 @@ abstract class BaseStatefulWidget extends ConsumerStatefulWidget {
   const BaseStatefulWidget({super.key});
 }
 
-abstract class BaseWidgetState<T extends BaseStatefulWidget> extends ConsumerState<T> {}
+abstract class BaseWidgetState<T extends BaseStatefulWidget>
+    extends ConsumerState<T> {}

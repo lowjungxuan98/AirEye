@@ -25,9 +25,15 @@ class GrimEndpoints {
     final client = await GrimClient.create();
     final url = await _url(_healthPath);
 
-    final res = await client.get<JsonMap>(url, onError: onError, onFinally: onFinally);
+    final res = await client.get<JsonMap>(
+      url,
+      onError: onError,
+      onFinally: onFinally,
+    );
 
-    final model = IntegrationHealthReport.fromJson(res.data ?? const <String, dynamic>{});
+    final model = IntegrationHealthReport.fromJson(
+      res.data ?? const <String, dynamic>{},
+    );
     onSuccess?.call(model);
     return model;
   }
@@ -43,9 +49,15 @@ class GrimEndpoints {
     final client = await GrimClient.create();
     final url = await _url('$_exportPath?${qp.join('&')}');
 
-    final res = await client.get<JsonMap>(url, onError: onError, onFinally: onFinally);
+    final res = await client.get<JsonMap>(
+      url,
+      onError: onError,
+      onFinally: onFinally,
+    );
 
-    final model = ExportListResponse.fromJson(res.data ?? const <String, dynamic>{});
+    final model = ExportListResponse.fromJson(
+      res.data ?? const <String, dynamic>{},
+    );
     onSuccess?.call(model);
     return model;
   }
@@ -58,9 +70,15 @@ class GrimEndpoints {
     final client = await GrimClient.create();
     final url = await _url(_capturePath);
 
-    final res = await client.post<JsonMap>(url, onError: onError, onFinally: onFinally);
+    final res = await client.post<JsonMap>(
+      url,
+      onError: onError,
+      onFinally: onFinally,
+    );
 
-    final model = CaptureResponse.fromJson(res.data ?? const <String, dynamic>{});
+    final model = CaptureResponse.fromJson(
+      res.data ?? const <String, dynamic>{},
+    );
     onSuccess?.call(model);
     return model;
   }
@@ -83,7 +101,9 @@ class GrimEndpoints {
     final res = await client.post<String>(
       url,
       data: formData,
-      options: (options ?? Options()).copyWith(responseType: ResponseType.plain),
+      options: (options ?? Options()).copyWith(
+        responseType: ResponseType.plain,
+      ),
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,
       onReceiveProgress: onReceiveProgress,
@@ -105,9 +125,15 @@ class GrimEndpoints {
     final client = await GrimClient.create();
     final url = await _url(_providerPath);
 
-    final res = await client.get<JsonMap>(url, onError: onError, onFinally: onFinally);
+    final res = await client.get<JsonMap>(
+      url,
+      onError: onError,
+      onFinally: onFinally,
+    );
 
-    final model = ProviderResponse.fromJson(res.data ?? const <String, dynamic>{});
+    final model = ProviderResponse.fromJson(
+      res.data ?? const <String, dynamic>{},
+    );
     onSuccess?.call(model);
     return model;
   }
@@ -121,9 +147,16 @@ class GrimEndpoints {
     final client = await GrimClient.create();
     final url = await _url(_providerPath);
 
-    final res = await client.put<JsonMap>(url, data: request.toJson(), onError: onError, onFinally: onFinally);
+    final res = await client.put<JsonMap>(
+      url,
+      data: request.toJson(),
+      onError: onError,
+      onFinally: onFinally,
+    );
 
-    final model = ProviderResponse.fromJson(res.data ?? const <String, dynamic>{});
+    final model = ProviderResponse.fromJson(
+      res.data ?? const <String, dynamic>{},
+    );
     onSuccess?.call(model);
     return model;
   }

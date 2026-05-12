@@ -40,7 +40,11 @@ class _GrimTextSheetState extends State<GrimTextSheet> {
   Future<void> _toggle() async {
     final target = _expanded ? widget.minSize : widget.maxSize;
     setState(() => _expanded = !_expanded);
-    await _controller.animateTo(target, duration: const Duration(milliseconds: 220), curve: Curves.easeOut);
+    await _controller.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
   }
 
   @override
@@ -74,10 +78,22 @@ class _GrimTextSheetState extends State<GrimTextSheet> {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                   children: [
                     if (widget.error case final err?) ...[
-                      Text(err, style: TextStyle(color: theme.colorScheme.error, height: 1.35)),
+                      Text(
+                        err,
+                        style: TextStyle(
+                          color: theme.colorScheme.error,
+                          height: 1.35,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                     ],
-                    Text(widget.text, style: TextStyle(color: GrimColors.onSurface, height: 1.35)),
+                    Text(
+                      widget.text,
+                      style: TextStyle(
+                        color: GrimColors.onSurface,
+                        height: 1.35,
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -38,9 +38,11 @@ class ProviderSelectorWidget extends StatelessWidget {
           dropdownColor: colorScheme.surfaceContainerHigh,
           iconEnabledColor: colorScheme.onSurface,
           iconDisabledColor: colorScheme.onSurface.withValues(alpha: 0.38),
-          onChanged: isLoading ? null : (p) {
-            if (p != null) onSelect(p);
-          },
+          onChanged: isLoading
+              ? null
+              : (p) {
+                  if (p != null) onSelect(p);
+                },
           selectedItemBuilder: (_) => provider.availableProviders.map((p) {
             return Align(
               alignment: Alignment.centerLeft,
@@ -57,7 +59,9 @@ class ProviderSelectorWidget extends StatelessWidget {
               child: Text(
                 _label(p),
                 style: labelStyle?.copyWith(
-                  color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+                  color: isSelected
+                      ? colorScheme.primary
+                      : colorScheme.onSurface,
                 ),
               ),
             );

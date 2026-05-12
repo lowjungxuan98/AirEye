@@ -26,13 +26,18 @@ class GrimClient {
     }
   }
 
-  static Future<GrimClient> create({Map<String, dynamic>? defaultHeaders}) async {
+  static Future<GrimClient> create({
+    Map<String, dynamic>? defaultHeaders,
+  }) async {
     final baseUrl = await GrimBaseUrl.resolve();
 
     final dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        headers: <String, dynamic>{'accept': 'application/json', if (defaultHeaders != null) ...defaultHeaders},
+        headers: <String, dynamic>{
+          'accept': 'application/json',
+          if (defaultHeaders != null) ...defaultHeaders,
+        },
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 30),
         sendTimeout: const Duration(seconds: 30),

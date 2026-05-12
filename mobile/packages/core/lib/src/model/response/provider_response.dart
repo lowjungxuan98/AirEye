@@ -2,7 +2,10 @@ import '../json_map.dart';
 import '../llm_provider.dart';
 
 class ProviderResponse {
-  const ProviderResponse({required this.currentProvider, required this.availableProviders});
+  const ProviderResponse({
+    required this.currentProvider,
+    required this.availableProviders,
+  });
 
   final LlmProvider currentProvider;
   final List<LlmProvider> availableProviders;

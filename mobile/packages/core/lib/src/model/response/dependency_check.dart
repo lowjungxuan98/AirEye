@@ -1,7 +1,11 @@
 import '../json_map.dart';
 
 class DependencyCheck {
-  const DependencyCheck({required this.ok, required this.latencyMs, this.error});
+  const DependencyCheck({
+    required this.ok,
+    required this.latencyMs,
+    this.error,
+  });
 
   final bool ok;
   final int latencyMs;
@@ -13,5 +17,9 @@ class DependencyCheck {
     error: json['error'] as String?,
   );
 
-  JsonMap toJson() => {'ok': ok, 'latencyMs': latencyMs, if (error != null) 'error': error};
+  JsonMap toJson() => {
+    'ok': ok,
+    'latencyMs': latencyMs,
+    if (error != null) 'error': error,
+  };
 }

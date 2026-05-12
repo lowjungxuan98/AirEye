@@ -49,7 +49,10 @@ class _HighQualityCameraView extends StatelessWidget {
           bottom: 0,
           child: SafeArea(
             child: Center(
-              child: CameraFocusSlider(value: 1 - focusY, onChanged: onFocusYChanged),
+              child: CameraFocusSlider(
+                value: 1 - focusY,
+                onChanged: onFocusYChanged,
+              ),
             ),
           ),
         ),
@@ -63,7 +66,10 @@ class _HighQualityCameraView extends StatelessWidget {
                 heroTag: null,
                 onPressed: isTakingPicture ? null : onTakePicture,
                 child: isTakingPicture
-                    ? const SizedBox.square(dimension: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox.square(
+                        dimension: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.camera_alt),
               ),
             ),
@@ -82,7 +88,9 @@ class _HighQualityCameraView extends StatelessWidget {
         }
 
         final cameraAspectRatio = controller.value.aspectRatio;
-        final previewAspectRatio = viewSize.width >= viewSize.height ? cameraAspectRatio : 1 / cameraAspectRatio;
+        final previewAspectRatio = viewSize.width >= viewSize.height
+            ? cameraAspectRatio
+            : 1 / cameraAspectRatio;
         final viewAspectRatio = viewSize.width / viewSize.height;
 
         double previewWidth;
@@ -108,7 +116,11 @@ class _HighQualityCameraView extends StatelessWidget {
 
         return ClipRect(
           child: Center(
-            child: SizedBox(width: previewWidth, height: previewHeight, child: CameraPreview(controller)),
+            child: SizedBox(
+              width: previewWidth,
+              height: previewHeight,
+              child: CameraPreview(controller),
+            ),
           ),
         );
       },

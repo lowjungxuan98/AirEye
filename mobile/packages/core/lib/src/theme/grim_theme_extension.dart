@@ -67,6 +67,7 @@ class GrimThemeExtension extends ThemeExtension<GrimThemeExtension> {
 
 extension GrimThemeExtensionX on BuildContext {
   GrimThemeExtension get grimExtension {
-    return Theme.of(this).extension<GrimThemeExtension>() ?? GrimThemeExtension.dark;
+    return Theme.of(this).extension<GrimThemeExtension>() ??
+        GrimThemeExtension.dark;
   }
 }

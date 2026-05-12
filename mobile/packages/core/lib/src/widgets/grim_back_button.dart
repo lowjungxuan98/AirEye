@@ -28,7 +28,10 @@ class GrimBackButton extends StatelessWidget {
         child: Padding(
           padding: padding,
           child: DecoratedBox(
-            decoration: BoxDecoration(color: backgroundColor, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              shape: BoxShape.circle,
+            ),
             child: IconButton(
               icon: Icon(icon, color: color),
               onPressed: onPressed ?? () => Navigator.of(context).maybePop(),

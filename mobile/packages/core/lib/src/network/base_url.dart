@@ -27,7 +27,9 @@ class GrimBaseUrl {
       final info = await deviceInfo.androidInfo;
       if (info.isPhysicalDevice) {
         if (ip.isEmpty) {
-          throw StateError('Missing GRIM_API_IP_ADDRESS for debug physical device.');
+          throw StateError(
+            'Missing GRIM_API_IP_ADDRESS for debug physical device.',
+          );
         }
         return ip;
       }
@@ -38,7 +40,9 @@ class GrimBaseUrl {
       final info = await deviceInfo.iosInfo;
       if (info.isPhysicalDevice) {
         if (ip.isEmpty) {
-          throw StateError('Missing GRIM_API_IP_ADDRESS for debug physical device.');
+          throw StateError(
+            'Missing GRIM_API_IP_ADDRESS for debug physical device.',
+          );
         }
         return ip;
       }

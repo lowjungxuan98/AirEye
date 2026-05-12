@@ -1,4 +1,5 @@
 export 'package:flutter/material.dart';
+export 'package:flutter_riverpod/flutter_riverpod.dart';
 export 'package:camera/camera.dart' show CameraLensDirection, ResolutionPreset;
 export 'package:cross_file/cross_file.dart' show XFile;
 export 'package:dio/dio.dart' show MultipartFile;
@@ -24,3 +25,7 @@ export 'src/widgets/grim_back_button.dart';
 export 'src/widgets/camera/camera.dart';
 export 'src/widgets/grim_text_sheet.dart';
 export 'src/widgets/provider_selector.dart';
+export 'src/secure_storage/secure_storage.dart';
+export 'src/ssh/grim_ssh_client.dart';
+export 'src/ssh/grim_ssh_provider.dart';
+export 'src/terminal/grim_terminal.dart';

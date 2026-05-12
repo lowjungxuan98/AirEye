@@ -14,18 +14,21 @@ class SelectRoleView extends BasePage {
     return Scaffold(
       body: SafeArea(
         child: switch (state) {
-          SelectRoleLoading() => const Center(child: CircularProgressIndicator()),
+          SelectRoleLoading() => const Center(
+            child: CircularProgressIndicator(),
+          ),
           SelectRoleError(:final message) => Center(
             child: Text(
               message,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
-          SelectRoleReady(:final provider, :final isUpdatingProvider) => ReadyBody(
-            provider: provider,
-            isUpdatingProvider: isUpdatingProvider,
-            controller: controller,
-          ),
+          SelectRoleReady(:final provider, :final isUpdatingProvider) =>
+            ReadyBody(
+              provider: provider,
+              isUpdatingProvider: isUpdatingProvider,
+              controller: controller,
+            ),
         },
       ),
     );

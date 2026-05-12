@@ -34,9 +34,7 @@ class RoleCard extends StatelessWidget {
                 child: Icon(icon, color: colorScheme.primary, size: 22),
               ),
               const SizedBox(width: 16),
-              Expanded(
-                child: Text(title, style: textTheme.titleMedium),
-              ),
+              Expanded(child: Text(title, style: textTheme.titleMedium)),
               Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 14,

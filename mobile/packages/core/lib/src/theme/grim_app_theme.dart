@@ -30,16 +30,40 @@ abstract final class GrimAppTheme {
       outlineVariant: const Color(0xFF3A424D),
     );
 
-    final mergedText = Typography.material2021(platform: TargetPlatform.iOS, colorScheme: colorScheme).black.merge(
-      TextTheme(
-        headlineLarge: const TextStyle(color: _accent, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: 0.8),
-        titleMedium: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w700, fontSize: 15),
-        bodyMedium: TextStyle(color: colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500, fontSize: 13),
-        labelLarge: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.6, fontSize: 12),
-      ),
-    );
+    final mergedText =
+        Typography.material2021(
+          platform: TargetPlatform.iOS,
+          colorScheme: colorScheme,
+        ).black.merge(
+          TextTheme(
+            headlineLarge: const TextStyle(
+              color: _accent,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+            ),
+            titleMedium: TextStyle(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+            bodyMedium: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+            ),
+            labelLarge: const TextStyle(
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
+              fontSize: 12,
+            ),
+          ),
+        );
 
-    final textTheme = scaleTextThemeFontSizes(GoogleFonts.jetBrainsMonoTextTheme(mergedText), 0.9);
+    final textTheme = scaleTextThemeFontSizes(
+      GoogleFonts.jetBrainsMonoTextTheme(mergedText),
+      0.9,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -55,7 +79,10 @@ abstract final class GrimAppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: textTheme.titleLarge?.copyWith(color: _onSurface, fontWeight: FontWeight.w600),
+        titleTextStyle: textTheme.titleLarge?.copyWith(
+          color: _onSurface,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       cardTheme: CardThemeData(
         color: _surface,
@@ -70,7 +97,9 @@ abstract final class GrimAppTheme {
           backgroundColor: _accent,
           foregroundColor: colorScheme.onPrimary,
           disabledBackgroundColor: colorScheme.outline.withValues(alpha: 0.45),
-          disabledForegroundColor: colorScheme.onSurface.withValues(alpha: 0.38),
+          disabledForegroundColor: colorScheme.onSurface.withValues(
+            alpha: 0.38,
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: const StadiumBorder(),
           textStyle: textTheme.labelLarge!.copyWith(
@@ -114,7 +143,9 @@ abstract final class GrimAppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: _accent,
           side: BorderSide(color: colorScheme.outline),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           textStyle: textTheme.labelLarge!.copyWith(
             color: _accent,
@@ -130,7 +161,10 @@ abstract final class GrimAppTheme {
         foregroundColor: Colors.black,
         elevation: 6,
       ),
-      dividerTheme: DividerThemeData(color: colorScheme.outline.withValues(alpha: 0.5), thickness: 1),
+      dividerTheme: DividerThemeData(
+        color: colorScheme.outline.withValues(alpha: 0.5),
+        thickness: 1,
+      ),
       listTileTheme: ListTileThemeData(
         iconColor: colorScheme.onSurfaceVariant,
         textColor: colorScheme.onSurface,
@@ -148,7 +182,28 @@ abstract final class GrimAppTheme {
         contentTextStyle: textTheme.bodyMedium?.copyWith(color: _onSurface),
         behavior: SnackBarBehavior.floating,
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(color: _accent, circularTrackColor: Color(0xFF2A3038)),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: _surface,
+        labelStyle: TextStyle(color: GrimColors.sectionLabel),
+        hintStyle: TextStyle(color: GrimColors.muted),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: GrimColors.outline),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: _accent, width: 2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: _accent,
+        circularTrackColor: Color(0xFF2A3038),
+      ),
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: _accent,
         selectionColor: _accent.withValues(alpha: 0.35),

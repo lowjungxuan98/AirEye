@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
 class CameraFocusSlider extends StatelessWidget {
-  const CameraFocusSlider({super.key, required this.value, required this.onChanged});
+  const CameraFocusSlider({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
 
   final double value;
   final ValueChanged<double> onChanged;
@@ -12,7 +16,10 @@ class CameraFocusSlider extends StatelessWidget {
       width: 56,
       height: 220,
       child: DecoratedBox(
-        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.38), borderRadius: BorderRadius.circular(28)),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.38),
+          borderRadius: BorderRadius.circular(28),
+        ),
         child: RotatedBox(
           quarterTurns: 3,
           child: SliderTheme(
