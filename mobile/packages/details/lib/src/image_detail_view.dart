@@ -1,4 +1,6 @@
 import 'package:core/core.dart';
+import 'image_detail_controller.dart';
+import 'image_detail_state.dart';
 
 class ImageDetailView extends BasePage {
   const ImageDetailView({super.key, required this.item});
@@ -7,9 +9,19 @@ class ImageDetailView extends BasePage {
 
   @override
   Widget buildPage(context, ref) {
-    final imageUrl = item.imageUrl ?? '';
-    final text = item.finalText?.trim();
-    final err = item.errorMessage?.trim();
+    final state = ref.watch(imageDetailControllerProvider);
+    final controller = ref.read(imageDetailControllerProvider.notifier);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (state is ImageDetailInitial) {
+        controller.init(item);
+      }
+    });
+
+    final currentItem = state is ImageDetailReady ? state.item : item;
+    final imageUrl = currentItem.imageUrl ?? '';
+    final text = currentItem.finalText?.trim();
+    final err = currentItem.errorMessage?.trim();
 
     return Scaffold(
       backgroundColor: GrimColors.scaffold,

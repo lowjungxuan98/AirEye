@@ -1,9 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:gal/gal.dart';
 
 import '../theme/grim_colors.dart';
+import 'grim_text_sheet.dart';
 
 class GrimImageContextMenu extends StatelessWidget {
   const GrimImageContextMenu({
@@ -11,11 +14,18 @@ class GrimImageContextMenu extends StatelessWidget {
     required this.imageUrl,
     required this.text,
     required this.child,
+    this.error,
+    this.onDownload,
   });
 
   final String imageUrl;
   final String text;
+  final String? error;
   final Widget child;
+
+  /// When provided, called instead of internal download logic.
+  /// The caller is responsible for tracking download progress state.
+  final Future<void> Function()? onDownload;
 
   void _show(BuildContext context, LongPressStartDetails details) {
     final overlay =
@@ -31,10 +41,7 @@ class GrimImageContextMenu extends StatelessWidget {
       items: [
         PopupMenuItem(
           value: _Action.copy,
-          child: Text(
-            'Copy text',
-            style: TextStyle(color: GrimColors.onSurface),
-          ),
+          child: Text('Copy text', style: TextStyle(color: GrimColors.onSurface)),
         ),
         PopupMenuItem(
           value: _Action.download,
@@ -43,6 +50,10 @@ class GrimImageContextMenu extends StatelessWidget {
             style: TextStyle(color: GrimColors.onSurface),
           ),
         ),
+        PopupMenuItem(
+          value: _Action.showText,
+          child: Text('Show text', style: TextStyle(color: GrimColors.onSurface)),
+        ),
       ],
     ).then((action) {
       if (action == null || !context.mounted) return;
@@ -50,7 +61,13 @@ class GrimImageContextMenu extends StatelessWidget {
         case _Action.copy:
           _copy(context);
         case _Action.download:
-          _download(context);
+          if (onDownload != null) {
+            onDownload!();
+          } else {
+            _download(context);
+          }
+        case _Action.showText:
+          _showText(context);
       }
     });
   }
@@ -85,6 +102,19 @@ class GrimImageContextMenu extends StatelessWidget {
     }
   }
 
+  void _showText(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => GrimTextSheet(
+        text: text.isNotEmpty ? text : 'No text',
+        error: error?.isNotEmpty == true ? error : null,
+        onClose: () => Navigator.pop(context),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -94,4 +124,4 @@ class GrimImageContextMenu extends StatelessWidget {
   }
 }
 
-enum _Action { copy, download }
+enum _Action { copy, download, showText }

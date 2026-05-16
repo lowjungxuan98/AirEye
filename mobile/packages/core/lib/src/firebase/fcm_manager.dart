@@ -138,6 +138,27 @@ class GrimFcmManager {
     );
   }
 
+  /// Subscribes [onRefresh] to foreground FCM `export_refresh` messages
+  /// targeting the receiver role, for the lifetime of [ref].
+  static void subscribeExportRefresh(
+    Ref ref,
+    Future<void> Function() onRefresh, {
+    void Function()? onDispose,
+  }) {
+    subscribeForeground(
+      ref,
+      (message) async {
+        final data = message.data;
+        if (data['kind'] != 'export_refresh') return;
+        final role = data['role']?.toString();
+        final targetRole = data['targetRole']?.toString();
+        if (role != 'receiver' && targetRole != 'receiver') return;
+        await onRefresh();
+      },
+      onDispose: onDispose,
+    );
+  }
+
   /// Call after [init] to handle the "app opened from terminated state via tap" case.
   static Future<RemoteMessage?> getInitialMessage() {
     return FirebaseMessaging.instance.getInitialMessage();

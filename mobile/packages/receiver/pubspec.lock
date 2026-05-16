@@ -248,7 +248,7 @@ packages:
     source: hosted
     version: "8.1.0"
   dio:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: dio
       sha256: aff32c08f92787a557dd5c0145ac91536481831a01b4648136373cddb0e64f8c
@@ -487,7 +487,7 @@ packages:
     source: hosted
     version: "4.0.0"
   gal:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: gal
       sha256: "969598f986789127fd407a750413249e1352116d4c2be66e81837ffeeaafdfee"
@@ -798,6 +798,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  pulsator:
+    dependency: transitive
+    description:
+      name: pulsator
+      sha256: "34258bf5cacfccfa5f0506293449e7e14d12611e9c96cc79c72859ab323a140c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0+2"
   quiver:
     dependency: transitive
     description:

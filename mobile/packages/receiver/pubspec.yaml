@@ -13,6 +13,8 @@ dependencies:
     path: ../core
   details:
     path: ../details
+  dio: ^5.9.2
+  gal: ^2.3.2
 
 dev_dependencies:
   flutter_test:

@@ -1,7 +1,7 @@
 import 'package:core/core.dart';
-import 'package:details/details.dart';
 import 'receiver_controller.dart';
 import 'receiver_state.dart';
+import 'widgets/grid_item.dart';
 
 class ReceiverView extends BasePage {
   const ReceiverView({super.key});
@@ -47,80 +47,73 @@ class ReceiverView extends BasePage {
               :final isLoadingMore,
               :final isRefreshing,
             ) =>
-              RefreshIndicator(
-                onRefresh: controller.refresh,
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (n) {
-                    if (n.metrics.extentAfter < 400) {
-                      controller.loadNextPage();
-                    }
-                    return false;
-                  },
-                  child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      SliverPadding(
-                        padding: const EdgeInsets.only(top: 100),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 4,
-                                crossAxisSpacing: 0,
-                                mainAxisSpacing: 0,
-                              ),
-                          delegate: SliverChildBuilderDelegate((
-                            context,
-                            index,
-                          ) {
-                            final item = items[index];
-                            final imageUrl = item.imageUrl;
-                            if (imageUrl == null || imageUrl.isEmpty) {
-                              return Container(color: GrimColors.surfaceAlt);
-                            }
-                            return _GridItem(item: item, imageUrl: imageUrl);
-                          }, childCount: items.length),
-                        ),
-                      ),
-                      if (isLoadingMore || isRefreshing)
-                        const SliverToBoxAdapter(
-                          child: Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Center(child: CircularProgressIndicator()),
+              Stack(
+                children: [
+                  RefreshIndicator(
+                    onRefresh: controller.refresh,
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (n) {
+                        if (n.metrics.extentAfter < 400) {
+                          controller.loadNextPage();
+                        }
+                        return false;
+                      },
+                      child: CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          SliverPadding(
+                            padding: const EdgeInsets.only(top: 100),
+                            sliver: SliverGrid(
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 4,
+                                    crossAxisSpacing: 0,
+                                    mainAxisSpacing: 0,
+                                  ),
+                              delegate: SliverChildBuilderDelegate((
+                                context,
+                                index,
+                              ) {
+                                final item = items[index];
+                                final imageUrl = item.imageUrl;
+                                if (imageUrl == null || imageUrl.isEmpty) {
+                                  return Container(
+                                    color: GrimColors.surfaceAlt,
+                                  );
+                                }
+                                return GridItem(
+                                  item: item,
+                                  imageUrl: imageUrl,
+                                );
+                              }, childCount: items.length),
+                            ),
                           ),
-                        ),
-                    ],
+                          if (isLoadingMore)
+                            const SliverToBoxAdapter(
+                              child: Padding(
+                                padding: EdgeInsets.all(12),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                  if (isRefreshing)
+                    const ColoredBox(
+                      color: Color(0x80000000),
+                      child: SizedBox.expand(
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ),
+                ],
               ),
             _ => const SizedBox.shrink(),
           },
           const GrimBackButton(),
         ],
-      ),
-    );
-  }
-}
-
-class _GridItem extends StatelessWidget {
-  const _GridItem({required this.item, required this.imageUrl});
-
-  final ExportListItem item;
-  final String imageUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => ImageDetailView(item: item))),
-        onLongPress: () {},
-        child: GrimImageContextMenu(
-          imageUrl: imageUrl,
-          text: item.finalText?.trim() ?? '',
-          child: GrimCachedZoomableImage(imageUrl: imageUrl),
-        ),
       ),
     );
   }

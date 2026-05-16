@@ -878,6 +878,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  pulsator:
+    dependency: transitive
+    description:
+      name: pulsator
+      sha256: "34258bf5cacfccfa5f0506293449e7e14d12611e9c96cc79c72859ab323a140c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0+2"
   quiver:
     dependency: transitive
     description:

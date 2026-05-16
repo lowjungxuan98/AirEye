@@ -10,6 +10,7 @@ class GrimTextSheet extends StatefulWidget {
     this.minSize = 0.12,
     this.initialSize = 0.18,
     this.maxSize = 0.7,
+    this.onClose,
   });
 
   final String text;
@@ -17,6 +18,7 @@ class GrimTextSheet extends StatefulWidget {
   final double minSize;
   final double initialSize;
   final double maxSize;
+  final VoidCallback? onClose;
 
   @override
   State<GrimTextSheet> createState() => _GrimTextSheetState();
@@ -61,15 +63,36 @@ class _GrimTextSheetState extends State<GrimTextSheet> {
           child: Column(
             children: [
               const SizedBox(height: 10),
-              Center(
-                child: IconButton(
-                  onPressed: _toggle,
-                  icon: Icon(
-                    _expanded ? Icons.expand_more : Icons.expand_less,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              Row(
+                children: [
+                  SizedBox(width: widget.onClose != null ? 48 : 0),
+                  Expanded(
+                    child: Center(
+                      child: IconButton(
+                        onPressed: _toggle,
+                        icon: Icon(
+                          _expanded ? Icons.expand_more : Icons.expand_less,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.7),
+                        ),
+                        tooltip: _expanded ? 'Collapse' : 'Expand',
+                      ),
+                    ),
                   ),
-                  tooltip: _expanded ? 'Collapse' : 'Expand',
-                ),
+                  if (widget.onClose != null)
+                    IconButton(
+                      onPressed: widget.onClose,
+                      icon: Icon(
+                        Icons.close,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
+                      ),
+                      tooltip: 'Close',
+                    )
+                  else
+                    const SizedBox(width: 48),
+                ],
               ),
               const SizedBox(height: 8),
               Expanded(

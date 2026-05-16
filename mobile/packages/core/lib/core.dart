@@ -17,6 +17,7 @@ export 'src/theme/grim_app_theme.dart';
 export 'src/theme/grim_colors.dart';
 export 'src/theme/grim_theme_extension.dart';
 export 'src/theme/grim_text_theme_utils.dart';
+export 'package:pulsator/pulsator.dart' show Pulsator, PulseStyle;
 export 'src/widgets/grim_cached_zoomable_image.dart';
 export 'src/widgets/copy_text.dart';
 export 'src/widgets/grim_image_context_menu.dart';

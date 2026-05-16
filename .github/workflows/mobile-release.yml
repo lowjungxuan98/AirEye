@@ -142,6 +142,7 @@ jobs:
 
       - name: Publish GitHub Release
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
+        id: publish_release
         working-directory: mobile
         env:
           GH_TOKEN: ${{ github.token }}
@@ -150,10 +151,44 @@ jobs:
           set -euo pipefail
           apk="build/app/outputs/flutter-apk/app-release.apk"
           tag="${GITHUB_REF_NAME}"
+          asset="grim-${tag}-android-release.apk"
+          download_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/${asset}"
+          encoded=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$download_url")
+          qr_url="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encoded}"
+
+          notes="GRIM mobile release ${tag}
+
+          ## Download
+
+          **[Download APK](${download_url})**
+
+          ## Scan to Install
+
+          ![QR Code](${qr_url})"
+
           if ! gh release view "$tag" >/dev/null 2>&1; then
-            gh release create "$tag" --title "$tag" --notes "GRIM mobile release $tag"
+            gh release create "$tag" --title "$tag" --notes "$notes"
+          else
+            gh release edit "$tag" --notes "$notes"
           fi
-          gh release upload "$tag" "$apk#grim-${tag}-android-release.apk" --clobber
+          gh release upload "$tag" "$apk#${asset}" --clobber
+
+          echo "download_url=${download_url}" >> "$GITHUB_OUTPUT"
+          echo "qr_url=${qr_url}" >> "$GITHUB_OUTPUT"
+
+      - name: Write QR code to job summary
+        if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
+        shell: bash
+        run: |
+          {
+            echo "## APK Download"
+            echo ""
+            echo "**[Download APK](${{ steps.publish_release.outputs.download_url }})**"
+            echo ""
+            echo "### Scan to Install"
+            echo ""
+            echo "![](${{ steps.publish_release.outputs.qr_url }})"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Skip release
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'false'

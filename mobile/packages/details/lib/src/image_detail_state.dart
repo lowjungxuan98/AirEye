@@ -13,7 +13,8 @@ class ImageDetailLoading extends ImageDetailState {
 }
 
 class ImageDetailReady extends ImageDetailState {
-  const ImageDetailReady();
+  const ImageDetailReady(this.item);
+  final ExportListItem item;
 }
 
 class ImageDetailError extends ImageDetailState {

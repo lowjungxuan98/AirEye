@@ -4,12 +4,11 @@ import 'receiver_state.dart';
 class ReceiverController extends BaseController<ReceiverState> {
   @override
   ReceiverState build() {
-    GrimFcmManager.subscribeForeground(
+    GrimFcmManager.subscribeExportRefresh(
       ref,
-      _handleForegroundMessage,
+      _refreshFromNotification,
       onDispose: () => _isDisposed = true,
     );
-
     return const ReceiverInitial();
   }
 
@@ -54,22 +53,6 @@ class ReceiverController extends BaseController<ReceiverState> {
     } catch (e) {
       state = ReceiverError(e.toString());
     }
-  }
-
-  Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    final data = message.data;
-
-    if (data['kind'] != 'export_refresh') return;
-    if (!_isReceiverTarget(data)) return;
-
-    await _refreshFromNotification();
-  }
-
-  bool _isReceiverTarget(Map<String, dynamic> data) {
-    final role = data['role']?.toString();
-    final targetRole = data['targetRole']?.toString();
-
-    return role == 'receiver' || targetRole == 'receiver';
   }
 
   Future<void> _refreshFromNotification() async {
