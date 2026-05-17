@@ -59,5 +59,5 @@ There is **no** separate `dependencies.ts`; composition for production lives nex
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend architecture (`backend/src/`, `backend/package.json` -> version `0.1.8`)
+**Applies to:** grim backend architecture (`backend/src/`, `backend/package.json` -> version `0.2.4`)
 **Doc version:** 5

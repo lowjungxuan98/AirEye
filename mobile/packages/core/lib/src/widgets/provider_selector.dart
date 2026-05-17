@@ -15,7 +15,7 @@ class ProviderSelectorWidget extends StatelessWidget {
   String _label(LlmProvider p) => switch (p) {
     LlmProvider.openrouter => 'OpenRouter',
     LlmProvider.openai => 'OpenAI',
-    LlmProvider.nvidiaNim => 'NVIDIA NIM',
+    LlmProvider.nvidia => 'NVIDIA',
     LlmProvider.deepseek => 'DeepSeek',
   };
 

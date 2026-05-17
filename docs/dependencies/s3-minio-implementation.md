@@ -60,7 +60,7 @@ The S3 adapter test is `backend/test/unit-test/libs/s3/s3.util.test.ts`. It uses
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend S3/MinIO storage (`backend/src/libs/s3/s3.util.ts`, `backend/package.json` -> version `0.1.8`)
+**Applies to:** grim backend S3/MinIO storage (`backend/src/libs/s3/s3.util.ts`, `backend/package.json` -> version `0.2.4`)
 **Doc version:** 2
 **Upstream refs:**
 - https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html

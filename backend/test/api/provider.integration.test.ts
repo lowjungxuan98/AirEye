@@ -10,7 +10,7 @@ describe("GET /api/v1/provider", () => {
 
     expect(res.body).toEqual({
       current_provide: "openrouter",
-      available_providers: ["openrouter", "openai", "nvidia"]
+      available_providers: ["openrouter", "openai", "nvidia", "deepseek"]
     });
   });
 });

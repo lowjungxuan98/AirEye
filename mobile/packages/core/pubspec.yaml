@@ -23,6 +23,7 @@ dependencies:
   flutter_secure_storage: ^10.2.0
   gal: ^2.3.2
   google_fonts: ^8.1.0
+  package_info_plus: ^10.1.0
   pretty_dio_logger: ^1.4.0
   pulsator: ^1.0.0+2
   xterm:

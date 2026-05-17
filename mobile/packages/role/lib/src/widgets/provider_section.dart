@@ -17,7 +17,9 @@ class ProviderSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           'AI PROVIDER',
@@ -27,7 +29,7 @@ class ProviderSection extends StatelessWidget {
             letterSpacing: 1.2,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(height: 2),
         ProviderSelectorWidget(
           provider: provider,
           onSelect: controller.updateProvider,

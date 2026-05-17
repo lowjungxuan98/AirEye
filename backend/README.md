@@ -65,7 +65,7 @@ Optional:
   - optional `page` (default 1), optional `limit` (default 20, max 50)
   - returns `200` paginated JSON (`data`, `page`, `limit`, `is_next`); newest first by `createdAt`; pending rows can include `imageUrl`, completed rows add `finalText`, and failed rows add `errorMessage`
 - `GET /api/v1/prompts`, `PUT /api/v1/prompts` — read or overwrite extract, analyzing, and format guard prompt templates (`backend/prompts/*.txt` by default; optional `GRIM_PROMPTS_DIR`, `GRIM_PROMPT_ADMIN_SECRET`). **PUT** accepts **`multipart/form-data`** with file or text fields **`extract_text`**, **`analyzing_text`**, and **`format_guard`**, or **`application/json`** with **`extractTextPrompt`**, **`analyzingTextPrompt`**, and **`formatGuardPrompt`**.
-- `GET /api/v1/provider`, `PUT /api/v1/provider` — read or switch the active LLM provider. State is stored in Realtime Database at `provider_state/current_provide`; accepted values are `openrouter`, `openai`, and `nvidia_nim`.
+- `GET /api/v1/provider`, `PUT /api/v1/provider` — read or switch the active LLM provider. State is stored in Realtime Database at `provider_state/current_provide`; accepted values are `openrouter`, `openai`, `nvidia`, and `deepseek`.
 
 ### Docs
 
@@ -74,7 +74,7 @@ Reference docs used to design the current implementation and future follow-up wo
 - **`docs/dependencies/`** — vendor integration notes (S3/MinIO, OpenAI-compatible LLM providers via the OpenAI SDK, Scalar, Firebase); start at [`docs/dependencies/README.md`](../docs/dependencies/README.md).
 - Repository **`docs/`** (top level): `workflow.md` (target end-to-end backend flow), `specification.md`, `testing-plan.md`, plus `code-rules/`, `instructions/`, `design/`.
 
-The v1 backend wires S3 (MinIO-compatible), Firebase Admin / Realtime Database / FCM, and one OpenAI-compatible adapter class into **`backend/src/`**. The extract and final-text stages can use separate per-provider model env vars such as `OPENAI_EXTRACT_MODEL` and `OPENAI_FINAL_MODEL`; shared `LLM_*` vars are still supported as defaults, and legacy OpenRouter env aliases remain accepted for compatibility. Current supported providers are OpenRouter, OpenAI, and NVIDIA NIM. Optional **`SCALAR_DOCS_URL`** only logs a link if you publish docs elsewhere; local Scalar UI is always **`/docs`** when the server runs.
+The v1 backend wires S3 (MinIO-compatible), Firebase Admin / Realtime Database / FCM, and one OpenAI-compatible adapter class into **`backend/src/`**. The extract and final-text stages can use separate per-provider model env vars such as `OPENAI_EXTRACT_MODEL` and `OPENAI_FINAL_MODEL`; shared `LLM_*` vars are still supported as defaults, and legacy OpenRouter env aliases remain accepted for compatibility. Current supported providers are OpenRouter, OpenAI, NVIDIA, and DeepSeek. Optional **`SCALAR_DOCS_URL`** only logs a link if you publish docs elsewhere; local Scalar UI is always **`/docs`** when the server runs.
 
 ### GitHub Actions / GHCR
 
@@ -103,5 +103,5 @@ docker run --rm -p 3001:3001 --env-file .env grim-backend:local
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend (`backend/package.json` -> version `0.1.8`)
+**Applies to:** grim backend (`backend/package.json` -> version `0.2.4`)
 **Doc version:** 8

@@ -31,5 +31,5 @@ Practices aligned with the **current** Grim backend structure. Prefer these when
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend code practice (`backend/src/`, `backend/package.json` -> version `0.1.8`)
+**Applies to:** grim backend code practice (`backend/src/`, `backend/package.json` -> version `0.2.4`)
 **Doc version:** 1

@@ -151,7 +151,7 @@ jobs:
           set -euo pipefail
           apk="build/app/outputs/flutter-apk/app-release.apk"
           tag="${GITHUB_REF_NAME}"
-          asset="grim-${tag}-android-release.apk"
+          asset="app-release.apk"
           download_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/${asset}"
           encoded=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$download_url")
           qr_url="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encoded}"

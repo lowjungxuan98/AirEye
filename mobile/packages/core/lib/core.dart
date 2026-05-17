@@ -26,6 +26,7 @@ export 'src/widgets/grim_back_button.dart';
 export 'src/widgets/camera/camera.dart';
 export 'src/widgets/grim_text_sheet.dart';
 export 'src/widgets/provider_selector.dart';
+export 'src/widgets/app_version_label.dart';
 export 'src/secure_storage/secure_storage.dart';
 export 'src/ssh/grim_ssh_client.dart';
 export 'src/ssh/grim_ssh_provider.dart';

@@ -19,47 +19,71 @@ class ReadyBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Spacer(flex: 2),
-          Text('GRIM', style: textTheme.headlineLarge),
-          const SizedBox(height: 6),
-          Text(
-            'Select your role to continue.',
-            style: textTheme.bodyMedium?.copyWith(
-              color: GrimColors.sectionLabel,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('GRIM', style: textTheme.headlineLarge),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Select your role to continue.',
+                                style: textTheme.bodyMedium?.copyWith(
+                                  color: GrimColors.sectionLabel,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        ProviderSection(
+                          provider: provider,
+                          isLoading: isUpdatingProvider,
+                          controller: controller,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 40),
+                    RoleCard(
+                      icon: Icons.photo_camera_outlined,
+                      title: 'Sender',
+                      onTap: () => controller.navigateToSender(context),
+                    ),
+                    const SizedBox(height: 12),
+                    RoleCard(
+                      icon: Icons.phone_android_outlined,
+                      title: 'Receiver',
+                      onTap: () => controller.navigateToReceiver(context),
+                    ),
+                    const SizedBox(height: 12),
+                    RoleCard(
+                      icon: Icons.dns_outlined,
+                      title: 'Server',
+                      onTap: () => controller.navigateToServer(context),
+                    ),
+                    const Spacer(),
+                    const SizedBox(height: 24),
+                    const Center(child: AppVersionLabel()),
+                  ],
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 40),
-          RoleCard(
-            icon: Icons.photo_camera_outlined,
-            title: 'Sender',
-            onTap: () => controller.navigateToSender(context),
-          ),
-          const SizedBox(height: 12),
-          RoleCard(
-            icon: Icons.phone_android_outlined,
-            title: 'Receiver',
-            onTap: () => controller.navigateToReceiver(context),
-          ),
-          const SizedBox(height: 12),
-          RoleCard(
-            icon: Icons.dns_outlined,
-            title: 'Server',
-            onTap: () => controller.navigateToServer(context),
-          ),
-          const Spacer(flex: 3),
-          ProviderSection(
-            provider: provider,
-            isLoading: isUpdatingProvider,
-            controller: controller,
-          ),
-          const SizedBox(height: 32),
-        ],
-      ),
+        );
+      },
     );
   }
 }

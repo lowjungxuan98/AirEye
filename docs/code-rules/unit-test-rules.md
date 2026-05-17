@@ -80,5 +80,5 @@ These rules apply to **`backend/test/`** (Vitest). Grim splits tests into three 
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend tests (`backend/test/`, `backend/package.json` -> version `0.1.8`)
+**Applies to:** grim backend tests (`backend/test/`, `backend/package.json` -> version `0.2.4`)
 **Doc version:** 2

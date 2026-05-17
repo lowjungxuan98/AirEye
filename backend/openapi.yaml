@@ -72,7 +72,7 @@ paths:
                 allOk:
                   summary: All integrations healthy
                   value:
-                    version: 0.1.8
+                    version: 0.2.4
                     ok: true
                     firebase:
                       ok: true
@@ -93,7 +93,7 @@ paths:
                 llmUnauthorized:
                   summary: LLM provider key rejected (API reachable)
                   value:
-                    version: 0.1.8
+                    version: 0.2.4
                     ok: false
                     firebase:
                       ok: true
@@ -341,7 +341,7 @@ paths:
                 $ref: "#/components/schemas/ProviderState"
               example:
                 current_provide: openrouter
-                available_providers: [openrouter, openai, nvidia_nim, deepseek]
+                available_providers: [openrouter, openai, nvidia, deepseek]
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
@@ -365,9 +365,9 @@ paths:
               openai:
                 value:
                   current_provide: openai
-              nvidiaNim:
+              nvidia:
                 value:
-                  current_provide: nvidia_nim
+                  current_provide: nvidia
               deepseek:
                 value:
                   current_provide: deepseek
@@ -684,7 +684,7 @@ components:
         version:
           type: string
           description: Backend application version from `backend/package.json`
-          example: 0.1.8
+          example: 0.2.4
         ok:
           type: boolean
           description: True only when **firebase**, **llm**, and **s3** are all `ok`
@@ -784,7 +784,7 @@ components:
 
     LlmProvider:
       type: string
-      enum: [openrouter, openai, nvidia_nim, deepseek]
+      enum: [openrouter, openai, nvidia, deepseek]
 
     ProviderState:
       type: object
@@ -796,7 +796,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LlmProvider"
-          example: [openrouter, openai, nvidia_nim, deepseek]
+          example: [openrouter, openai, nvidia, deepseek]
 
     ProviderUpdateRequest:
       type: object

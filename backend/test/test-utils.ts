@@ -75,7 +75,7 @@ const inMemoryProviderService = (): ProviderService => {
   return {
     getSnapshot: async () => ({
       current_provide,
-      available_providers: ["openrouter", "openai", "nvidia"]
+      available_providers: ["openrouter", "openai", "nvidia", "deepseek"]
     }),
     setCurrentProvider: async (provider) => {
       current_provide = provider;
