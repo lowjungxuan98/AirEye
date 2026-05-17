@@ -21,6 +21,7 @@ class ReceiverReady extends ReceiverState {
     this.isRefreshing = false,
     this.isLoadingMore = false,
     this.isCapturing = false,
+    this.regeneratingIds = const <String>{},
   });
 
   final List<ExportListItem> items;
@@ -30,6 +31,7 @@ class ReceiverReady extends ReceiverState {
   final bool isRefreshing;
   final bool isLoadingMore;
   final bool isCapturing;
+  final Set<String> regeneratingIds;
 
   ReceiverReady copyWith({
     List<ExportListItem>? items,
@@ -39,6 +41,7 @@ class ReceiverReady extends ReceiverState {
     bool? isRefreshing,
     bool? isLoadingMore,
     bool? isCapturing,
+    Set<String>? regeneratingIds,
   }) {
     return ReceiverReady(
       items: items ?? this.items,
@@ -48,6 +51,7 @@ class ReceiverReady extends ReceiverState {
       isRefreshing: isRefreshing ?? this.isRefreshing,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       isCapturing: isCapturing ?? this.isCapturing,
+      regeneratingIds: regeneratingIds ?? this.regeneratingIds,
     );
   }
 }

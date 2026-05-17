@@ -3,6 +3,7 @@ export 'llm_provider.dart';
 export 'server_config.dart';
 
 export 'request/update_provider_request.dart';
+export 'request/regenerate_request.dart';
 
 export 'response/capture_response.dart';
 export 'response/provider_response.dart';

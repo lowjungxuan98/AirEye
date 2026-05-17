@@ -16,6 +16,7 @@ class GrimImageContextMenu extends StatelessWidget {
     required this.child,
     this.error,
     this.onDownload,
+    this.onRegenerate,
   });
 
   final String imageUrl;
@@ -26,6 +27,7 @@ class GrimImageContextMenu extends StatelessWidget {
   /// When provided, called instead of internal download logic.
   /// The caller is responsible for tracking download progress state.
   final Future<void> Function()? onDownload;
+  final Future<void> Function()? onRegenerate;
 
   void _show(BuildContext context, LongPressStartDetails details) {
     final overlay =
@@ -54,6 +56,14 @@ class GrimImageContextMenu extends StatelessWidget {
           value: _Action.showText,
           child: Text('Show text', style: TextStyle(color: GrimColors.onSurface)),
         ),
+        if (onRegenerate != null)
+          PopupMenuItem(
+            value: _Action.regenerate,
+            child: Text(
+              'Regenerate',
+              style: TextStyle(color: GrimColors.onSurface),
+            ),
+          ),
       ],
     ).then((action) {
       if (action == null || !context.mounted) return;
@@ -68,6 +78,8 @@ class GrimImageContextMenu extends StatelessWidget {
           }
         case _Action.showText:
           _showText(context);
+        case _Action.regenerate:
+          onRegenerate!();
       }
     });
   }
@@ -124,4 +136,4 @@ class GrimImageContextMenu extends StatelessWidget {
   }
 }
 
-enum _Action { copy, download, showText }
+enum _Action { copy, download, showText, regenerate }

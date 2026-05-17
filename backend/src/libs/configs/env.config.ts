@@ -1,16 +1,6 @@
-export type LlmProvider = "openrouter" | "openai" | "nvidia_nim" | "deepseek";
+export type LlmProvider = "openrouter" | "openai" | "nvidia" | "deepseek";
 
-export const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-export const DEFAULT_OPENROUTER_MODEL = "openrouter/free";
-export const DEFAULT_NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
-export const DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
-
-export type LlmConfig = {
-  provider: LlmProvider;
-  apiKey: string;
-  model: string;
-  baseURL?: string;
-};
+export const ALL_LLM_PROVIDERS: LlmProvider[] = ["openrouter", "openai", "nvidia", "deepseek"];
 
 export type ServerEnv = {
   PORT: number;
@@ -26,8 +16,10 @@ export type ServerEnv = {
   FIREBASE_SERVICE_ACCOUNT_JSON_BASE64?: string;
   FIREBASE_PROJECT_ID: string;
   FIREBASE_DATABASE_URL: string;
-  EXTRACT_LLM: LlmConfig;
-  FINAL_LLM: LlmConfig;
+  LLM_BASE_URL: string;
+  LLM_API_KEY: string;
+  LLM_PROVIDERS: LlmProvider[];
+  LLM_DEFAULT_PROVIDER: LlmProvider;
   /** Optional URL of a Scalar-hosted API Reference; local spec is always `GET /openapi.yaml`. */
   SCALAR_DOCS_URL?: string;
   /**
@@ -47,8 +39,6 @@ export function loadServerEnv(): ServerEnv {
     throw new Error(`Invalid PORT: ${portRaw}`);
   }
 
-  const sharedLlm = loadSharedLlmEnv();
-
   return {
     PORT: port,
     S3_ENDPOINT: readRequiredEnv("S3_ENDPOINT"),
@@ -62,8 +52,10 @@ export function loadServerEnv(): ServerEnv {
     ...loadFirebaseCredentialsEnv(),
     FIREBASE_PROJECT_ID: readRequiredEnv("FIREBASE_PROJECT_ID"),
     FIREBASE_DATABASE_URL: readRequiredEnv("FIREBASE_DATABASE_URL"),
-    EXTRACT_LLM: loadStageLlmEnv("EXTRACT", sharedLlm),
-    FINAL_LLM: loadStageLlmEnv("FINAL", sharedLlm),
+    LLM_BASE_URL: readRequiredEnv("LITELLM_BASE_URL"),
+    LLM_API_KEY: readRequiredEnv("LITELLM_API_KEY"),
+    LLM_PROVIDERS: parseLlmProviders(readOptionalEnv("LLM_PROVIDERS")),
+    LLM_DEFAULT_PROVIDER: parseLlmProvider(readOptionalEnv("LLM_DEFAULT_PROVIDER") ?? "nvidia"),
     SCALAR_DOCS_URL: readOptionalEnv("SCALAR_DOCS_URL"),
     GRIM_FCM_TOPIC: readOptionalEnv("GRIM_FCM_TOPIC"),
     GRIM_PROMPTS_DIR: readOptionalEnv("GRIM_PROMPTS_DIR"),
@@ -78,6 +70,22 @@ export function resolveS3Bucket(env: Pick<ServerEnv, "S3_BUCKET_DEVELOPMENT" | "
   return env.S3_BUCKET_DEVELOPMENT;
 }
 
+export function parseLlmProvider(value: string): LlmProvider {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "openrouter" || normalized === "openai" || normalized === "deepseek") {
+    return normalized;
+  }
+  if (normalized === "nvidia" || normalized === "nvidia_nim" || normalized === "nim") {
+    return "nvidia";
+  }
+  throw new Error(`Invalid LLM provider: ${value}`);
+}
+
+export function parseLlmProviders(csv: string | undefined): LlmProvider[] {
+  if (!csv) return [...ALL_LLM_PROVIDERS];
+  return csv.split(",").map((s) => parseLlmProvider(s.trim()));
+}
+
 function readOptionalEnv(name: string): string | undefined {
   const value = process.env[name]?.trim();
   return value || undefined;
@@ -85,22 +93,10 @@ function readOptionalEnv(name: string): string | undefined {
 
 function readRequiredEnv(name: string): string {
   const value = process.env[name]?.trim();
-
   if (!value) {
     throw new Error(`Missing required env var ${name}`);
   }
-
   return value;
-}
-
-function readOptionalIntEnv(name: string): number | undefined {
-  const raw = readOptionalEnv(name);
-  if (!raw) return undefined;
-  const value = Number(raw);
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`Invalid ${name}: ${raw}`);
-  }
-  return Math.floor(value);
 }
 
 function readRequiredIntEnv(name: string): number {
@@ -129,138 +125,4 @@ function loadFirebaseCredentialsEnv(): Pick<
     GOOGLE_APPLICATION_CREDENTIALS: credentialsPath,
     FIREBASE_SERVICE_ACCOUNT_JSON_BASE64: serviceAccountBase64
   };
-}
-
-function loadSharedLlmEnv(): Partial<LlmConfig> {
-  const explicitProvider = readOptionalEnv("LLM_PROVIDER");
-  const llmProvider = explicitProvider
-    ? parseLlmProvider(explicitProvider)
-    : resolveDefaultProviderFromLegacyConfig();
-  const apiKey = readOptionalEnv("LLM_API_KEY") ?? readOptionalEnv("OPENROUTER_API_KEY");
-  const model =
-    readOptionalEnv("LLM_MODEL") ??
-    readOptionalEnv("OPENROUTER_MODEL") ??
-    readOptionalEnv("OPENROUTER_IMAGE_MODEL") ??
-    (llmProvider === "openrouter" ? DEFAULT_OPENROUTER_MODEL : undefined);
-  const baseURL =
-    readOptionalEnv("LLM_BASE_URL") ??
-    (llmProvider === "openrouter" ? DEFAULT_OPENROUTER_BASE_URL : undefined);
-
-  return {
-    provider: apiKey || model || baseURL || explicitProvider ? llmProvider : undefined,
-    apiKey,
-    model,
-    baseURL
-  };
-}
-
-function readProviderSpecificLlmEnv(provider: LlmProvider, stage: "EXTRACT" | "FINAL"): Partial<LlmConfig> {
-  const prefix = provider === "nvidia_nim" ? "NVIDIA" : provider.toUpperCase();
-  const legacyPrefix = provider === "nvidia_nim" ? "NVIDIA_NIM" : prefix;
-  const model =
-    readOptionalEnv(`${prefix}_${stage}_MODEL`) ??
-    readOptionalEnv(`${legacyPrefix}_${stage}_MODEL`) ??
-    readOptionalEnv(`${prefix}_MODEL`) ??
-    readOptionalEnv(`${legacyPrefix}_MODEL`) ??
-    (provider === "openrouter" ? DEFAULT_OPENROUTER_MODEL : undefined);
-  const baseURL =
-    readOptionalEnv(`${prefix}_BASE_URL`) ??
-    readOptionalEnv(`${legacyPrefix}_BASE_URL`) ??
-    (provider === "openrouter" ? DEFAULT_OPENROUTER_BASE_URL : undefined) ??
-    (provider === "nvidia_nim" ? DEFAULT_NVIDIA_BASE_URL : undefined) ??
-    (provider === "deepseek" ? DEFAULT_DEEPSEEK_BASE_URL : undefined);
-
-  return {
-    provider,
-    apiKey: readOptionalEnv(`${prefix}_API_KEY`) ?? readOptionalEnv(`${legacyPrefix}_API_KEY`),
-    model,
-    baseURL
-  };
-}
-
-function parseLlmProvider(value: string): LlmProvider {
-  const normalizedValue = value.trim().toLowerCase();
-
-  if (normalizedValue === "openrouter" || normalizedValue === "openai") {
-    return normalizedValue;
-  }
-  if (normalizedValue === "nvidia_nim" || normalizedValue === "nim") {
-    return "nvidia_nim";
-  }
-  if (normalizedValue === "deepseek") {
-    return "deepseek";
-  }
-
-  throw new Error(`Invalid LLM_PROVIDER: ${value}`);
-}
-
-function resolveDefaultProviderFromLegacyConfig(): LlmProvider {
-  if (readOptionalEnv("OPENROUTER_API_KEY")) {
-    return "openrouter";
-  }
-  if (readOptionalEnv("OPENAI_API_KEY")) {
-    return "openai";
-  }
-  if (readOptionalEnv("NVIDIA_API_KEY") || readOptionalEnv("NVIDIA_NIM_API_KEY")) {
-    return "nvidia_nim";
-  }
-  if (readOptionalEnv("DEEPSEEK_API_KEY")) {
-    return "deepseek";
-  }
-
-  const hasLegacyOpenRouterConfig = Boolean(
-    readOptionalEnv("OPENROUTER_MODEL") || readOptionalEnv("OPENROUTER_IMAGE_MODEL")
-  );
-
-  if (hasLegacyOpenRouterConfig) {
-    return "openrouter";
-  }
-
-  return "openrouter";
-}
-
-function loadStageLlmEnv(stage: "EXTRACT" | "FINAL", sharedLlm: Partial<LlmConfig>): LlmConfig {
-  const stageProviderRaw = readOptionalEnv(`${stage}_LLM_PROVIDER`);
-  const stageProvider = stageProviderRaw ? parseLlmProvider(stageProviderRaw) : undefined;
-  const provider = stageProvider ?? sharedLlm.provider ?? resolveDefaultProviderFromLegacyConfig();
-  const canInheritSharedFields = !stageProvider || stageProvider === sharedLlm.provider;
-  const providerSpecific = readProviderSpecificLlmEnv(provider, stage);
-  const apiKey =
-    readOptionalEnv(`${stage}_LLM_API_KEY`) ??
-    (canInheritSharedFields ? sharedLlm.apiKey : undefined) ??
-    providerSpecific.apiKey;
-  if (!apiKey) {
-    throw new Error(
-      `Missing required env var ${stage}_LLM_API_KEY (or provider-specific ${providerEnvPrefix(provider)}_API_KEY)`
-    );
-  }
-
-  const model =
-    readOptionalEnv(`${stage}_LLM_MODEL`) ??
-    (canInheritSharedFields ? sharedLlm.model : undefined) ??
-    providerSpecific.model;
-  if (!model) {
-    throw new Error(
-      `Missing required env var ${stage}_LLM_MODEL (or provider-specific ${providerEnvPrefix(provider)}_${stage}_MODEL)`
-    );
-  }
-
-  const baseURL =
-    readOptionalEnv(`${stage}_LLM_BASE_URL`) ??
-    (canInheritSharedFields ? sharedLlm.baseURL : undefined) ??
-    providerSpecific.baseURL;
-
-  return {
-    provider,
-    apiKey,
-    model,
-    baseURL
-  };
-}
-
-function providerEnvPrefix(provider: LlmProvider): "OPENROUTER" | "OPENAI" | "NVIDIA" | "DEEPSEEK" {
-  if (provider === "nvidia_nim") {
-    return "NVIDIA";
-  }
-  return provider.toUpperCase() as "OPENROUTER" | "OPENAI" | "DEEPSEEK";
 }

@@ -29,11 +29,13 @@ export class FirebaseUploadRepository implements UploadRepository {
   }
 
   async updateUpload(id: string, updates: Partial<GrimUpload>): Promise<void> {
-    await this.database.ref(uploadPath(this.namespace, id)).update(updates);
+    const path = await this.resolveUploadPath(id);
+    await this.database.ref(path).update(updates);
   }
 
   async getUpload(id: string): Promise<GrimUploadRow | null> {
-    const snapshot = await this.database.ref(uploadPath(this.namespace, id)).once("value");
+    const path = await this.resolveUploadPath(id);
+    const snapshot = await this.database.ref(path).once("value");
     const value = snapshot.val() as GrimUpload | null;
     return value ? { ...value, id } : null;
   }
@@ -47,6 +49,18 @@ export class FirebaseUploadRepository implements UploadRepository {
     const raw = snapshot.val() as Record<string, GrimUpload> | null;
     const rows = Object.entries(raw ?? {}).map(([id, upload]) => ({ ...upload, id }));
     return sortByCreatedAtDesc(rows);
+  }
+
+  private async resolveUploadPath(id: string): Promise<string> {
+    const directPath = uploadPath(this.namespace, id);
+    const directSnapshot = await this.database.ref(directPath).once("value");
+    if (directSnapshot.exists()) {
+      return directPath;
+    }
+
+    const namespaceSnapshot = await this.database.ref(nsPath(this.namespace, "")).once("value");
+    const foundPath = findChildPathByKey(namespaceSnapshot.val(), id);
+    return foundPath ? nsPath(this.namespace, foundPath) : directPath;
   }
 }
 
@@ -77,4 +91,23 @@ function uploadPath(namespace: RealtimeNamespace, id: string): string {
 
 function nsPath(namespace: RealtimeNamespace, childPath: string): string {
   return `${namespace}/${childPath.replace(/^\/+/, "")}`;
+}
+
+function findChildPathByKey(value: unknown, targetKey: string, prefix = ""): string | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    const childPath = prefix ? `${prefix}/${key}` : key;
+    if (key === targetKey) {
+      return childPath;
+    }
+    const nested = findChildPathByKey(child, targetKey, childPath);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return null;
 }

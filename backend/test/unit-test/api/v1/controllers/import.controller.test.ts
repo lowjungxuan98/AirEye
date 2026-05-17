@@ -21,7 +21,7 @@ function parseSseDataLines(body: string): unknown[] {
 
 describe("createImportHandler", () => {
   it("throws INVALID_REQUEST when image file is missing", async () => {
-    const importService = { streamImport: vi.fn() };
+    const importService = { streamImport: vi.fn(), streamRegenerate: vi.fn() };
     const handler = createImportHandler(importService);
     const res = { write: vi.fn(), end: vi.fn(), headersSent: false } as unknown as Response;
     await expect(handler({ file: undefined } as unknown as Request, res)).rejects.toMatchObject({
@@ -32,6 +32,7 @@ describe("createImportHandler", () => {
 
   it("streams SSE with service emits when file is present", async () => {
     const importService = {
+      streamRegenerate: vi.fn(),
       streamImport: vi.fn(async (_req, emit) => {
         emit({ status: "extracting_text" });
         emit({ status: "analyzing_text" });
@@ -92,7 +93,10 @@ describe("createImportHandler", () => {
 
   it("propagates ApiError from the service when headers were not sent", async () => {
     const err = new ApiError(409, "CONFLICT", "nope");
-    const importService = { streamImport: vi.fn(async () => Promise.reject(err)) };
+    const importService = {
+      streamImport: vi.fn(async () => Promise.reject(err)),
+      streamRegenerate: vi.fn()
+    };
     const handler = createImportHandler(importService);
     const file = { buffer: testImagePngBuffer, mimetype: "image/jpeg" };
     const res = {
@@ -104,7 +108,7 @@ describe("createImportHandler", () => {
   });
 
   it("throws INTERNAL_ERROR when streamImport resolves without writing SSE", async () => {
-    const importService = { streamImport: vi.fn(async () => {}) };
+    const importService = { streamImport: vi.fn(async () => {}), streamRegenerate: vi.fn() };
     const handler = createImportHandler(importService);
     const file = { buffer: testImagePngBuffer, mimetype: "image/jpeg" };
     const res = {
@@ -124,6 +128,7 @@ describe("createImportHandler", () => {
 
   it("ends the response when streamImport throws after headers were sent", async () => {
     const importService = {
+      streamRegenerate: vi.fn(),
       streamImport: vi.fn(async (_req, emit) => {
         emit({ status: "extracting_text" });
         throw new Error("broken");

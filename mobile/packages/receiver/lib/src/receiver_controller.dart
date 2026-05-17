@@ -92,6 +92,45 @@ class ReceiverController extends BaseController<ReceiverState> {
     }
   }
 
+  Future<void> regenerate(ExportListItem item) async {
+    final current = state;
+    final imageUrl = item.imageUrl?.trim();
+    if (current is! ReceiverReady) return;
+    if (imageUrl == null || imageUrl.isEmpty) return;
+    if (current.regeneratingIds.contains(imageUrl)) return;
+
+    state = current.copyWith(
+      regeneratingIds: {...current.regeneratingIds, imageUrl},
+    );
+
+    try {
+      final response = await GrimEndpoints.regenerate(
+        request: RegenerateRequest(
+          imageUrl: imageUrl,
+          text: item.finalText?.trim() ?? '',
+        ),
+      );
+
+      if (response case ImportStreamSseError(:final value)) {
+        throw StateError(value.error.message);
+      }
+
+      await refresh();
+    } catch (_) {
+      await refresh();
+    } finally {
+      final latest = state;
+      if (latest is ReceiverReady) {
+        state = latest.copyWith(
+          regeneratingIds: {
+            for (final id in latest.regeneratingIds)
+              if (id != imageUrl) id,
+          },
+        );
+      }
+    }
+  }
+
   Future<void> loadNextPage() async {
     final current = state;
     if (current is! ReceiverReady) return;

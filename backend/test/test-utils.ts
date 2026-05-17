@@ -60,6 +60,9 @@ export type BuildTestAppInput = {
 const noopImportService: ImportService = {
   streamImport: async (_request, emit) => {
     emit({ error: { code: "INTERNAL_ERROR", message: "Import not configured in this test shell" } });
+  },
+  streamRegenerate: async (_request, emit) => {
+    emit({ error: { code: "INTERNAL_ERROR", message: "Regenerate not configured in this test shell" } });
   }
 };
 
@@ -72,7 +75,7 @@ const inMemoryProviderService = (): ProviderService => {
   return {
     getSnapshot: async () => ({
       current_provide,
-      available_providers: ["openrouter", "openai", "nvidia_nim"]
+      available_providers: ["openrouter", "openai", "nvidia"]
     }),
     setCurrentProvider: async (provider) => {
       current_provide = provider;
@@ -134,7 +137,12 @@ export function createImportServiceWithStubbedPipeline(deps?: Partial<ImportServ
     };
   return new ImportServiceImpl({
     uploadRepository,
-    textExtractor: deps?.textExtractor ?? { extractTextFromImage: async () => "extracted" },
+    textExtractor:
+      deps?.textExtractor ??
+      {
+        extractTextFromImage: async () => "extracted",
+        extractTextFromImageUrl: async () => "extracted"
+      },
     finalTextBuilder: deps?.finalTextBuilder ?? { buildFinalText: async (t) => `final:${t}` },
     finalTextFormatGuard: deps?.finalTextFormatGuard ?? { guardFinalText: async (t) => `guarded:${t}` },
     imageStorage,

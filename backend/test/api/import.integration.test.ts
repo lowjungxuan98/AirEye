@@ -23,7 +23,12 @@ describe("POST /api/v1/import (HTTP integration)", () => {
       emit({ status: "format_guard" });
       emit({ id: "upl_1", createdAt: 1, updatedAt: 2, finalText: "ok" });
     });
-    const app = buildTestApp({ importService: { streamImport } });
+    const app = buildTestApp({
+      importService: {
+        streamImport,
+        streamRegenerate: async () => {}
+      }
+    });
     const res = await request(app)
       .post("/api/v1/import")
       .attach("image", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), {
@@ -48,7 +53,12 @@ describe("POST /api/v1/import (HTTP integration)", () => {
     const streamImport = vi.fn(async (_req, emit) => {
       emit({ id: "upl_mime", createdAt: 0, updatedAt: 0, finalText: "ok" });
     });
-    const app = buildTestApp({ importService: { streamImport } });
+    const app = buildTestApp({
+      importService: {
+        streamImport,
+        streamRegenerate: async () => {}
+      }
+    });
     await request(app)
       .post("/api/v1/import")
       .attach("image", Buffer.from([0xff, 0xd8, 0xff]), {
@@ -121,7 +131,8 @@ describe("POST /api/v1/import (HTTP integration)", () => {
       importService: {
         streamImport: async () => {
           throw new ApiError(409, "CONFLICT", "upload id collision");
-        }
+        },
+        streamRegenerate: async () => {}
       }
     });
     const res = await request(app)

@@ -1,4 +1,5 @@
 import path from "node:path";
+import OpenAI from "openai";
 import type { AppDependencies } from "./app";
 import { createHealthRunner } from "./api/v1/services/health.service";
 import { CaptureService } from "./api/v1/services/capture.service";
@@ -15,21 +16,8 @@ import {
   type RealtimeNamespace
 } from "./libs/firebase/realtime";
 import { GrimPromptSettings } from "./libs/utils/prompt.util";
-import {
-  DEFAULT_DEEPSEEK_BASE_URL,
-  DEFAULT_NVIDIA_BASE_URL,
-  DEFAULT_OPENROUTER_BASE_URL,
-  DEFAULT_OPENROUTER_MODEL,
-  type LlmConfig,
-  type LlmProvider,
-  resolveS3Bucket
-} from "./libs/configs/env.config";
+import { resolveS3Bucket } from "./libs/configs/env.config";
 import { ProviderOrchestrator } from "./libs/utils/provider_orchestrator.util";
-
-type ProviderStageConfig = {
-  extract: LlmConfig;
-  final: LlmConfig;
-};
 
 export function createProductionDependencies(env: ServerEnv): AppDependencies {
   const promptsDir = env.GRIM_PROMPTS_DIR ?? path.resolve(__dirname, "..", "prompts");
@@ -56,9 +44,11 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
     bucket: resolveS3Bucket(env),
     presignTtlSeconds: env.S3_PRESIGN_TTL_SECONDS
   };
+  const llmClient = new OpenAI({ apiKey: env.LLM_API_KEY, baseURL: env.LLM_BASE_URL });
   const providerOrchestrator = new ProviderOrchestrator({
-    providers: buildProviderConfigs(env),
-    defaultProvider: env.EXTRACT_LLM.provider,
+    client: llmClient,
+    availableProviders: env.LLM_PROVIDERS,
+    defaultProvider: env.LLM_DEFAULT_PROVIDER,
     stateRepository: providerStateRepository,
     getExtractPromptText: () => promptSettings.getExtractTextPrompt(),
     getAnalyzingSystemPrompt: () => promptSettings.getAnalyzingTextPrompt(),
@@ -79,80 +69,9 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
     exportService,
     captureService,
     providerService: providerOrchestrator,
-    runHealthChecks: createHealthRunner(realtimeDb, env.EXTRACT_LLM, env.FINAL_LLM, s3Config),
+    runHealthChecks: createHealthRunner(realtimeDb, env.LLM_BASE_URL, env.LLM_API_KEY, s3Config),
     logger: console,
     promptSettings,
     promptAdminSecret: env.GRIM_PROMPT_ADMIN_SECRET
-  };
-}
-
-function buildProviderConfigs(env: ServerEnv): Partial<Record<LlmProvider, ProviderStageConfig>> {
-  const providers: Partial<Record<LlmProvider, ProviderStageConfig>> = {};
-
-  for (const provider of ["openrouter", "openai", "nvidia_nim", "deepseek"] as const) {
-    const config = readProviderConfigFromEnv(provider);
-    if (config) {
-      providers[provider] = config;
-    }
-  }
-
-  providers[env.EXTRACT_LLM.provider] ??= {
-    extract: env.EXTRACT_LLM,
-    final: env.FINAL_LLM
-  };
-
-  return providers;
-}
-
-function readProviderConfigFromEnv(provider: LlmProvider): ProviderStageConfig | null {
-  const prefix = provider === "nvidia_nim" ? "NVIDIA" : provider.toUpperCase();
-  const legacyPrefix = provider === "nvidia_nim" ? "NVIDIA_NIM" : prefix;
-  const apiKey = process.env[`${prefix}_API_KEY`]?.trim();
-  if (!apiKey) {
-    return null;
-  }
-
-  const extractModel =
-    process.env[`${prefix}_EXTRACT_MODEL`]?.trim() ||
-    process.env[`${legacyPrefix}_EXTRACT_MODEL`]?.trim() ||
-    process.env[`${prefix}_MODEL`]?.trim() ||
-    process.env[`${legacyPrefix}_MODEL`]?.trim() ||
-    (provider === "openrouter"
-      ? process.env.OPENROUTER_IMAGE_MODEL?.trim() || process.env.OPENROUTER_MODEL?.trim() || DEFAULT_OPENROUTER_MODEL
-      : undefined);
-  const finalModel =
-    process.env[`${prefix}_FINAL_MODEL`]?.trim() ||
-    process.env[`${legacyPrefix}_FINAL_MODEL`]?.trim() ||
-    process.env[`${prefix}_MODEL`]?.trim() ||
-    process.env[`${legacyPrefix}_MODEL`]?.trim() ||
-    (provider === "openrouter"
-      ? process.env.OPENROUTER_MODEL?.trim() || process.env.OPENROUTER_IMAGE_MODEL?.trim() || DEFAULT_OPENROUTER_MODEL
-      : undefined);
-  if (!extractModel || !finalModel) {
-    return null;
-  }
-
-  const baseURL =
-    process.env[`${prefix}_BASE_URL`]?.trim() ||
-    process.env[`${legacyPrefix}_BASE_URL`]?.trim() ||
-    (provider === "openrouter" ? DEFAULT_OPENROUTER_BASE_URL : undefined);
-  const resolvedBaseURL =
-    baseURL ||
-    (provider === "nvidia_nim" ? DEFAULT_NVIDIA_BASE_URL : undefined) ||
-    (provider === "deepseek" ? DEFAULT_DEEPSEEK_BASE_URL : undefined);
-
-  return {
-    extract: {
-      provider,
-      apiKey,
-      model: extractModel,
-      baseURL: resolvedBaseURL
-    },
-    final: {
-      provider,
-      apiKey,
-      model: finalModel,
-      baseURL: resolvedBaseURL
-    }
   };
 }

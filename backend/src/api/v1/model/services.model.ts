@@ -1,4 +1,5 @@
 import type { GrimUpload, GrimUploadRow, ImportRequest, ImportStreamSseData } from "./import.model";
+import type { RegenerateRequest } from "./regenerate.model";
 import type { LlmProvider } from "../../../libs/configs/env.config";
 
 export type UploadedImage = {
@@ -16,6 +17,7 @@ export interface UploadRepository {
 
 export interface ImageTextExtractor {
   extractTextFromImage(imageBuffer: Buffer, imageMimeType: string): Promise<string>;
+  extractTextFromImageUrl(imageUrl: string): Promise<string>;
 }
 
 export interface FinalTextBuilder {
@@ -57,6 +59,7 @@ export type ImportStreamEmitter = (data: ImportStreamSseData) => void;
 
 export interface ImportService {
   streamImport(request: ImportRequest, emit: ImportStreamEmitter): Promise<void>;
+  streamRegenerate(request: RegenerateRequest, emit: ImportStreamEmitter): Promise<void>;
 }
 
 export interface CaptureService {

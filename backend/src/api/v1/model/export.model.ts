@@ -13,6 +13,7 @@ export function toPublicExportListItem(row: GrimUploadRow): ExportListItem {
     return {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
+      imageUrl: row.imageUrl,
       errorMessage: row.errorMessage
     };
   }

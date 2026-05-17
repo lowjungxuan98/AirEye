@@ -46,6 +46,7 @@ class ReceiverView extends BasePage {
               :final items,
               :final isLoadingMore,
               :final isRefreshing,
+              :final regeneratingIds,
             ) =>
               Stack(
                 children: [
@@ -84,6 +85,11 @@ class ReceiverView extends BasePage {
                                 return GridItem(
                                   item: item,
                                   imageUrl: imageUrl,
+                                  isRegenerating: regeneratingIds.contains(
+                                    imageUrl,
+                                  ),
+                                  onRegenerate: () =>
+                                      controller.regenerate(item),
                                 );
                               }, childCount: items.length),
                             ),

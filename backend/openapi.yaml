@@ -8,6 +8,7 @@ info:
     |------|-----------|
     | Health | `GET /api/v1/health` |
     | Import | `POST /api/v1/import` — `multipart/form-data`, required file field **`image`** (`text/event-stream`) |
+    | Regenerate | `POST /api/v1/regenerate` — JSON body for rerunning an existing result (`text/event-stream`) |
     | Capture | `POST /api/v1/capture` |
     | Export | `GET /api/v1/export` |
     | Provider | `GET /api/v1/provider`, `PUT /api/v1/provider` |
@@ -34,6 +35,8 @@ tags:
       Extract, analyzing, and format guard instructions come from the **prompts** templates (`extract_text_prompt.txt`, `analyzing_text_prompt.txt`, `format_guard_prompt.txt`) unless changed at runtime via **`PUT /api/v1/prompts`**.
   - name: export
     description: Paginated newest-first list from Realtime Database (`page`, `limit`, `is_next`)
+  - name: regenerate
+    description: Rerun the LLM pipeline for an existing upload using its stored image URL and current result text
   - name: capture
     description: Receiver-triggered silent FCM topic request for sender devices to capture and import a photo
   - name: prompts
@@ -124,7 +127,7 @@ paths:
 
         After the initial pending upload row is written, the server sends a receiver-targeted FCM **topic** message on the configured topic: `kind: export_refresh`, `notificationType: silent`, `role: receiver`. When the pipeline **succeeds**, it sends the same refresh flag again after the final row update. The mobile app maps this flag to its existing export endpoint function. Topic defaults to **`grim_new_result`** (override with env `GRIM_FCM_TOPIC`).
 
-        **LLM prompts (configurable):** the extract stage uses current **`extractTextPrompt`** with the uploaded image. The analyzing stage receives **system** = current **`analyzingTextPrompt`** and **user** = the extract stage’s **`extractedText`** string. The format guard stage receives **system** = current **`formatGuardPrompt`** and **user** = only the step-10 final text. Defaults ask for structured JSON (questions/options/type/answer) and reject wrong patterns before the Firebase write. The extract and final stages may use different provider configs. Change prompts with **`GET/PUT /api/v1/prompts`**.
+        **LLM prompts (configurable):** the extract stage uses current **`extractTextPrompt`** with the uploaded image. The analyzing stage receives **system** = current **`analyzingTextPrompt`** and **user** = the extract stage’s **`extractedText`** string. The format guard stage receives **system** = current **`formatGuardPrompt`** and **user** = only the final answer text. Defaults classify items as **`single`**, **`multiple`**, or **`task`**; answer single/multiple items with full option text; answer task items with complete ordered steps; and reject unsupported item types before the Firebase write. The extract and final stages may use different provider configs. Change prompts with **`GET/PUT /api/v1/prompts`**.
 
         **Response:** **200** with **`Content-Type: text/event-stream`** (Server-Sent Events). The HTTP connection stays open until the pipeline completes. After the multipart **image** is buffered, the server runs **S3** (image upload) → **extract LLM config** (image text extraction) → **final LLM config** (final text) → **format guard LLM pass** (hardens final text format) → **Realtime Database** write under `uploads/{id}` (no row before that), then receiver FCM topic messages on success.
 
@@ -456,6 +459,57 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/regenerate:
+    post:
+      tags: [regenerate]
+      summary: Regenerate existing result (SSE stream)
+      description: |
+        Reruns the import LLM pipeline for an existing upload row without uploading image bytes again.
+
+        The client sends the currently displayed `imageUrl` and current result `text`.
+        The server extracts the Firebase upload key from the image object filename, for example `uploads/upl_abc-a1b2c3d4.jpg` maps to `upl_abc`, then loads that upload row before streaming starts.
+        The extract stage downloads the existing image bytes and reuses the same image extraction pipeline as `POST /api/v1/import`.
+
+        On success, the same upload row is updated in Realtime Database with new `extractedText`, guarded `finalText`, and `updatedAt`.
+        `createdAt`, `imageUrl`, `bucket`, and `objectKey` are preserved.
+
+        The SSE events use the same payload shapes as `POST /api/v1/import`: `extracting_text`, optional intermediate `data`, `analyzing_text`, `format_guard`, and a terminal `ImportStreamResult` or `ImportStreamTerminalError`.
+      operationId: postRegenerate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegenerateRequest"
+            examples:
+              retryExistingResult:
+                value:
+                  imageUrl: https://minio.example.test/grim-development/uploads/upl_abc-a1b2c3d4.jpg
+                  text: '{"questions":[{"type":"single","question":"Q1?","options":["A","B"],"answer":["B"]}]}'
+      responses:
+        "200":
+          description: SSE stream. Each event is one `data:` line containing JSON (`ImportStreamSseData`).
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              examples:
+                success:
+                  value: |
+                    data: {"status":"extracting_text"}
+
+                    data: {"status":"analyzing_text"}
+
+                    data: {"status":"format_guard"}
+
+                    data: {"id":"upl_abc","createdAt":1745000001000,"updatedAt":1745000002500,"extractedText":"…","finalText":"…","imageUrl":"https://minio.example.test/grim-development/uploads/upl_abc-a1b2c3d4.jpg","bucket":"grim-development","objectKey":"uploads/upl_abc-a1b2c3d4.jpg"}
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
 components:
   parameters:
     GrimPromptSecret:
@@ -592,6 +646,16 @@ components:
                 error:
                   code: UNAVAILABLE
                   message: storage offline
+    NotFound:
+      description: Requested resource was not found (HTTP 404)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+          example:
+            error:
+              code: NOT_FOUND
+              message: upload not found
 
   schemas:
     DependencyCheck:
@@ -645,8 +709,8 @@ components:
       required: [id, createdAt, updatedAt]
       description: |
         Success terminal event; mirrors the Realtime Database row under `uploads/{id}`.
-        **`extractedText`** is the vision model’s reply (prompt-controlled; default templates request JSON arrays of questions/options/type).
-        **`finalText`** is the format-guarded analyzing model reply (default templates request JSON including **`answer`** arrays per question).
+        **`extractedText`** is the vision model’s reply (prompt-controlled; default templates request JSON arrays of `single`, `multiple`, or `task` items).
+        **`finalText`** is the format-guarded analyzing model reply (default templates request JSON with **`answer`** arrays for single/multiple items and **`steps`** for task items).
       properties:
         id:
           type: string
@@ -660,11 +724,11 @@ components:
         extractedText:
           type: string
           description: Raw model output from the vision extract stage (string; often JSON when using default prompts).
-          example: '[{"question":"Q1?","options":["A","B"],"type":"single"}]'
+          example: '[{"type":"single","question":"Q1?","instructions":"","requiredAnswerCount":1,"options":["A","B"]}]'
         finalText:
           type: string
           description: Guarded model output after the format guard stage (string; expected to be JSON when using default prompts).
-          example: '[{"question":"Q1?","options":["A","B"],"type":"single","answer":["A"]}]'
+          example: '{"questions":[{"type":"single","question":"Q1?","options":["A","B"],"answer":["A"]}]}'
         imageUrl:
           type: string
           format: uri
@@ -694,7 +758,20 @@ components:
         - $ref: "#/components/schemas/ImportStreamStatus"
         - $ref: "#/components/schemas/ImportStreamResult"
         - $ref: "#/components/schemas/ImportStreamTerminalError"
-      description: JSON payload carried in one SSE `data:` line for `POST /api/v1/import`.
+      description: JSON payload carried in one SSE `data:` line for `POST /api/v1/import` or `POST /api/v1/regenerate`.
+
+    RegenerateRequest:
+      type: object
+      required: [imageUrl, text]
+      properties:
+        imageUrl:
+          type: string
+          format: uri
+          description: Current image URL from the export row. The object filename must begin with the upload key, e.g. `upl_abc-1234.jpg`.
+        text:
+          type: string
+          description: Current displayed result text; may be empty.
+          example: '{"questions":[{"type":"single","question":"Q1?","options":["A","B"],"answer":["B"]}]}'
 
     CaptureResponse:
       type: object
@@ -790,7 +867,7 @@ components:
           description: Full instructions for the image text extraction stage (JSON extraction rules + how to read the monitor).
         analyzingTextPrompt:
           type: string
-          description: Full system instructions for final text (answer derivation + JSON shape including `answer`).
+          description: Full system instructions for final text (answer derivation for `single`/`multiple` items and ordered step generation for `task` items).
         formatGuardPrompt:
           type: string
           description: Full system instructions for the post-analysis format guard stage.

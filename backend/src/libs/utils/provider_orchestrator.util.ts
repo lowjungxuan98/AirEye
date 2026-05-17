@@ -3,12 +3,13 @@ import type {
   FinalTextFormatGuard,
   ImageTextExtractor
 } from "../../api/v1/model/services.model";
-import type { LlmConfig, LlmProvider } from "../configs/env.config";
+import type { LlmProvider } from "../configs/env.config";
+import { parseLlmProvider } from "../configs/env.config";
 import { ApiError } from "./api-error.util";
 import { OpenAICompatibleTextProcessor } from "../llm/text-processor";
-import { applyVisionFallback } from "../llm/vision_fallback";
+import type OpenAI from "openai";
 
-export const LLM_PROVIDERS = ["openrouter", "openai", "nvidia_nim", "deepseek"] as const;
+export const LLM_PROVIDERS = ["openrouter", "openai", "nvidia", "deepseek"] as const;
 
 export type ProviderState = {
   current_provide: LlmProvider;
@@ -19,13 +20,9 @@ export interface ProviderStateRepository {
   setProviderState(state: ProviderState): Promise<void>;
 }
 
-type ProviderStageConfig = {
-  extract: LlmConfig;
-  final: LlmConfig;
-};
-
 export type ProviderOrchestratorOptions = {
-  providers: Partial<Record<LlmProvider, ProviderStageConfig>>;
+  client: OpenAI;
+  availableProviders: LlmProvider[];
   defaultProvider: LlmProvider;
   stateRepository: ProviderStateRepository;
   getExtractPromptText: () => string;
@@ -34,55 +31,26 @@ export type ProviderOrchestratorOptions = {
 };
 
 export class ProviderOrchestrator implements ImageTextExtractor, FinalTextBuilder, FinalTextFormatGuard {
-  private readonly processors = new Map<
-    LlmProvider,
-    {
-      extract: OpenAICompatibleTextProcessor;
-      final: OpenAICompatibleTextProcessor;
-    }
-  >();
+  private readonly client: OpenAI;
+  private readonly availableProviders: LlmProvider[];
   private readonly defaultProvider: LlmProvider;
   private readonly stateRepository: ProviderStateRepository;
+  private readonly getExtractPromptText: () => string;
+  private readonly getAnalyzingSystemPrompt: () => string;
+  private readonly getFormatGuardSystemPrompt: () => string;
 
   constructor(options: ProviderOrchestratorOptions) {
+    this.client = options.client;
+    this.availableProviders = options.availableProviders;
     this.defaultProvider = options.defaultProvider;
     this.stateRepository = options.stateRepository;
-
-    for (const provider of LLM_PROVIDERS) {
-      const config = options.providers[provider];
-      if (!config) {
-        continue;
-      }
-      this.processors.set(provider, {
-        extract: new OpenAICompatibleTextProcessor({
-          apiKey: config.extract.apiKey,
-          model: config.extract.model,
-          baseURL: config.extract.baseURL,
-          getExtractPromptText: options.getExtractPromptText,
-          getAnalyzingSystemPrompt: options.getAnalyzingSystemPrompt,
-          getFormatGuardSystemPrompt: options.getFormatGuardSystemPrompt
-        }),
-        final: new OpenAICompatibleTextProcessor({
-          apiKey: config.final.apiKey,
-          model: config.final.model,
-          baseURL: config.final.baseURL,
-          getExtractPromptText: options.getExtractPromptText,
-          getAnalyzingSystemPrompt: options.getAnalyzingSystemPrompt,
-          getFormatGuardSystemPrompt: options.getFormatGuardSystemPrompt,
-          enableWebSearchInAnalyze: provider === "openai"
-        })
-      });
-    }
-
-    if (!this.processors.has(this.defaultProvider)) {
-      throw new Error(`Default LLM provider is not configured: ${this.defaultProvider}`);
-    }
-
-    applyVisionFallback(this.processors);
+    this.getExtractPromptText = options.getExtractPromptText;
+    this.getAnalyzingSystemPrompt = options.getAnalyzingSystemPrompt;
+    this.getFormatGuardSystemPrompt = options.getFormatGuardSystemPrompt;
   }
 
   getAvailableProviders(): LlmProvider[] {
-    return LLM_PROVIDERS.filter((provider) => this.processors.has(provider));
+    return this.availableProviders;
   }
 
   async getCurrentProvider(): Promise<LlmProvider> {
@@ -91,7 +59,7 @@ export class ProviderOrchestrator implements ImageTextExtractor, FinalTextBuilde
       await this.setCurrentProvider(this.defaultProvider);
       return this.defaultProvider;
     }
-    if (!this.processors.has(state.current_provide)) {
+    if (!this.availableProviders.includes(state.current_provide)) {
       throw new ApiError(
         503,
         "PROVIDER_NOT_CONFIGURED",
@@ -102,7 +70,7 @@ export class ProviderOrchestrator implements ImageTextExtractor, FinalTextBuilde
   }
 
   async setCurrentProvider(provider: LlmProvider): Promise<ProviderState> {
-    if (!this.processors.has(provider)) {
+    if (!this.availableProviders.includes(provider)) {
       throw new ApiError(400, "INVALID_PROVIDER", `Provider is not configured: ${provider}`);
     }
     const state = { current_provide: provider };
@@ -119,25 +87,39 @@ export class ProviderOrchestrator implements ImageTextExtractor, FinalTextBuilde
 
   async extractTextFromImage(imageBuffer: Buffer, imageMimeType: string): Promise<string> {
     const provider = await this.getCurrentProvider();
-    return this.requireProcessor(provider).extract.extractTextFromImage(imageBuffer, imageMimeType);
+    return this.processor(this.imageProvider(provider), "image").extractTextFromImage(imageBuffer, imageMimeType);
+  }
+
+  async extractTextFromImageUrl(imageUrl: string): Promise<string> {
+    const provider = await this.getCurrentProvider();
+    return this.processor(this.imageProvider(provider), "image").extractTextFromImageUrl(imageUrl);
   }
 
   async buildFinalText(extractedText: string): Promise<string> {
     const provider = await this.getCurrentProvider();
-    return this.requireProcessor(provider).final.buildFinalText(extractedText);
+    return this.processor(provider, "reasoning").buildFinalText(extractedText);
   }
 
   async guardFinalText(finalText: string): Promise<string> {
     const provider = await this.getCurrentProvider();
-    return this.requireProcessor(provider).final.guardFinalText(finalText);
+    return this.processor(provider, "reasoning").guardFinalText(finalText);
   }
 
-  private requireProcessor(provider: LlmProvider) {
-    const processor = this.processors.get(provider);
-    if (!processor) {
-      throw new ApiError(503, "PROVIDER_NOT_CONFIGURED", `Provider is not configured: ${provider}`);
-    }
-    return processor;
+  /** DeepSeek has no vision API — fall back to OpenAI for image extraction. */
+  private imageProvider(provider: LlmProvider): LlmProvider {
+    return provider === "deepseek" ? "openai" : provider;
+  }
+
+  private processor(provider: LlmProvider, stage: "image" | "reasoning"): OpenAICompatibleTextProcessor {
+    return new OpenAICompatibleTextProcessor({
+      apiKey: "",
+      model: `${provider}-${stage}`,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      client: this.client as any,
+      getExtractPromptText: this.getExtractPromptText,
+      getAnalyzingSystemPrompt: this.getAnalyzingSystemPrompt,
+      getFormatGuardSystemPrompt: this.getFormatGuardSystemPrompt
+    });
   }
 }
 
@@ -145,15 +127,9 @@ export function parseProvider(value: unknown): LlmProvider | null {
   if (typeof value !== "string") {
     return null;
   }
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "openrouter" || normalized === "openai") {
-    return normalized;
+  try {
+    return parseLlmProvider(value);
+  } catch {
+    return null;
   }
-  if (normalized === "nvidia_nim" || normalized === "nim") {
-    return "nvidia_nim";
-  }
-  if (normalized === "deepseek") {
-    return "deepseek";
-  }
-  return null;
 }

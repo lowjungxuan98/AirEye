@@ -1,10 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  DEFAULT_NVIDIA_BASE_URL,
-  DEFAULT_OPENROUTER_BASE_URL,
-  DEFAULT_OPENROUTER_MODEL,
-  loadServerEnv
-} from "../../../../src/libs/configs/env.config";
+import { loadServerEnv, parseLlmProvider } from "../../../../src/libs/configs/env.config";
 
 const requiredBase = {
   S3_ENDPOINT: "http://127.0.0.1:9000",
@@ -17,37 +12,10 @@ const requiredBase = {
   S3_BUCKET_TESTING: "testing",
   GOOGLE_APPLICATION_CREDENTIALS: "/path/cred.json",
   FIREBASE_PROJECT_ID: "proj",
-  FIREBASE_DATABASE_URL: "https://proj.firebaseio.com"
+  FIREBASE_DATABASE_URL: "https://proj.firebaseio.com",
+  LITELLM_BASE_URL: "https://litellm.example.test/v1",
+  LITELLM_API_KEY: "sk-test"
 } as const;
-
-const llmKeys = [
-  "LLM_PROVIDER",
-  "LLM_API_KEY",
-  "LLM_MODEL",
-  "LLM_BASE_URL",
-  "EXTRACT_LLM_PROVIDER",
-  "EXTRACT_LLM_API_KEY",
-  "EXTRACT_LLM_MODEL",
-  "EXTRACT_LLM_BASE_URL",
-  "FINAL_LLM_PROVIDER",
-  "FINAL_LLM_API_KEY",
-  "FINAL_LLM_MODEL",
-  "FINAL_LLM_BASE_URL",
-  "OPENROUTER_API_KEY",
-  "OPENROUTER_MODEL",
-  "OPENROUTER_IMAGE_MODEL",
-  "OPENAI_API_KEY",
-  "OPENAI_EXTRACT_MODEL",
-  "OPENAI_FINAL_MODEL",
-  "OPENAI_BASE_URL",
-  "OPENROUTER_EXTRACT_MODEL",
-  "OPENROUTER_FINAL_MODEL",
-  "OPENROUTER_BASE_URL",
-  "NVIDIA_API_KEY",
-  "NVIDIA_EXTRACT_MODEL",
-  "NVIDIA_FINAL_MODEL",
-  "NVIDIA_BASE_URL"
-] as const;
 
 describe("loadServerEnv", () => {
   beforeEach(() => {
@@ -55,11 +23,6 @@ describe("loadServerEnv", () => {
     for (const [k, v] of Object.entries(requiredBase)) {
       vi.stubEnv(k, v);
     }
-    for (const key of llmKeys) {
-      vi.stubEnv(key, "");
-      delete process.env[key];
-    }
-    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key");
   });
 
   afterEach(() => {
@@ -83,9 +46,15 @@ describe("loadServerEnv", () => {
   });
 
   it("throws when a required env var is missing", () => {
-    vi.stubEnv("OPENROUTER_API_KEY", "");
-    delete process.env.OPENROUTER_API_KEY;
-    expect(() => loadServerEnv()).toThrow(/Missing required env var EXTRACT_LLM_API_KEY/);
+    vi.stubEnv("LITELLM_API_KEY", "");
+    delete process.env.LITELLM_API_KEY;
+    expect(() => loadServerEnv()).toThrow(/Missing required env var LITELLM_API_KEY/);
+  });
+
+  it("throws when LITELLM_BASE_URL is missing", () => {
+    vi.stubEnv("LITELLM_BASE_URL", "");
+    delete process.env.LITELLM_BASE_URL;
+    expect(() => loadServerEnv()).toThrow(/Missing required env var LITELLM_BASE_URL/);
   });
 
   it("accepts Firebase credentials from base64 when the local file path is unset", () => {
@@ -116,146 +85,34 @@ describe("loadServerEnv", () => {
     expect(() => loadServerEnv()).toThrow(/Missing Firebase credentials env/);
   });
 
-  it("defaults legacy OpenRouter config into both stage configs", () => {
+  it("loads LiteLLM base URL and API key from env", () => {
     const env = loadServerEnv();
-    expect(env.EXTRACT_LLM).toEqual({
-      provider: "openrouter",
-      apiKey: "openrouter-key",
-      model: DEFAULT_OPENROUTER_MODEL,
-      baseURL: DEFAULT_OPENROUTER_BASE_URL
-    });
-    expect(env.FINAL_LLM).toEqual({
-      provider: "openrouter",
-      apiKey: "openrouter-key",
-      model: DEFAULT_OPENROUTER_MODEL,
-      baseURL: DEFAULT_OPENROUTER_BASE_URL
-    });
+    expect(env.LLM_BASE_URL).toBe("https://litellm.example.test/v1");
+    expect(env.LLM_API_KEY).toBe("sk-test");
   });
 
-  it("maps legacy OpenRouter model aliases into both stage configs", () => {
-    vi.stubEnv("OPENROUTER_MODEL", "openrouter/auto");
-    vi.stubEnv("OPENROUTER_IMAGE_MODEL", "openrouter/free");
+  it("defaults LLM_PROVIDERS to all four providers when unset", () => {
+    Reflect.deleteProperty(process.env, "LLM_PROVIDERS");
     const env = loadServerEnv();
-    expect(env.EXTRACT_LLM.model).toBe("openrouter/auto");
-    expect(env.FINAL_LLM.model).toBe("openrouter/auto");
-    expect(env.EXTRACT_LLM.baseURL).toBe(DEFAULT_OPENROUTER_BASE_URL);
-    expect(env.FINAL_LLM.baseURL).toBe(DEFAULT_OPENROUTER_BASE_URL);
+    expect(env.LLM_PROVIDERS).toEqual(["openrouter", "openai", "nvidia", "deepseek"]);
   });
 
-  it("uses shared LLM vars as defaults for both stages", () => {
-    vi.stubEnv("LLM_PROVIDER", "openai");
-    vi.stubEnv("LLM_API_KEY", "openai-key");
-    vi.stubEnv("LLM_MODEL", "gpt-5.2");
-    vi.stubEnv("LLM_BASE_URL", "https://example.test/v1");
-    vi.stubEnv("OPENROUTER_MODEL", "openrouter/auto");
+  it("parses LLM_PROVIDERS from a comma-separated list", () => {
+    vi.stubEnv("LLM_PROVIDERS", "openai,nvidia");
     const env = loadServerEnv();
-    expect(env.EXTRACT_LLM).toEqual({
-      provider: "openai",
-      apiKey: "openai-key",
-      model: "gpt-5.2",
-      baseURL: "https://example.test/v1"
-    });
-    expect(env.FINAL_LLM).toEqual({
-      provider: "openai",
-      apiKey: "openai-key",
-      model: "gpt-5.2",
-      baseURL: "https://example.test/v1"
-    });
+    expect(env.LLM_PROVIDERS).toEqual(["openai", "nvidia"]);
   });
 
-  it("lets one stage override the shared defaults", () => {
-    vi.stubEnv("LLM_PROVIDER", "openrouter");
-    vi.stubEnv("LLM_API_KEY", "router-key");
-    vi.stubEnv("LLM_MODEL", "openrouter/auto");
-    vi.stubEnv("FINAL_LLM_PROVIDER", "openai");
-    vi.stubEnv("FINAL_LLM_API_KEY", "openai-key");
-    vi.stubEnv("FINAL_LLM_MODEL", "gpt-5.2");
+  it("defaults LLM_DEFAULT_PROVIDER to nvidia when unset", () => {
+    Reflect.deleteProperty(process.env, "LLM_DEFAULT_PROVIDER");
     const env = loadServerEnv();
-    expect(env.EXTRACT_LLM).toEqual({
-      provider: "openrouter",
-      apiKey: "router-key",
-      model: "openrouter/auto",
-      baseURL: DEFAULT_OPENROUTER_BASE_URL
-    });
-    expect(env.FINAL_LLM).toEqual({
-      provider: "openai",
-      apiKey: "openai-key",
-      model: "gpt-5.2",
-      baseURL: undefined
-    });
+    expect(env.LLM_DEFAULT_PROVIDER).toBe("nvidia");
   });
 
-  it("does not inherit shared model when a stage changes provider", () => {
-    vi.stubEnv("LLM_PROVIDER", "openrouter");
-    vi.stubEnv("LLM_API_KEY", "router-key");
-    vi.stubEnv("LLM_MODEL", "openrouter/auto");
-    vi.stubEnv("FINAL_LLM_PROVIDER", "openai");
-    vi.stubEnv("FINAL_LLM_API_KEY", "openai-key");
-    expect(() => loadServerEnv()).toThrow(/Missing required env var FINAL_LLM_MODEL/);
-  });
-
-  it("uses provider-specific runtime vars when stage-specific vars are unset", () => {
-    vi.stubEnv("OPENROUTER_API_KEY", "");
-    delete process.env.OPENROUTER_API_KEY;
-    vi.stubEnv("OPENAI_API_KEY", "openai-key");
-    vi.stubEnv("OPENAI_EXTRACT_MODEL", "gpt-extract");
-    vi.stubEnv("OPENAI_FINAL_MODEL", "gpt-final");
+  it("reads LLM_DEFAULT_PROVIDER from env", () => {
+    vi.stubEnv("LLM_DEFAULT_PROVIDER", "openai");
     const env = loadServerEnv();
-    expect(env.EXTRACT_LLM).toEqual({
-      provider: "openai",
-      apiKey: "openai-key",
-      model: "gpt-extract",
-      baseURL: undefined
-    });
-    expect(env.FINAL_LLM).toEqual({
-      provider: "openai",
-      apiKey: "openai-key",
-      model: "gpt-final",
-      baseURL: undefined
-    });
-  });
-
-  it("defaults NVIDIA provider-specific base URL for runtime config", () => {
-    vi.stubEnv("OPENROUTER_API_KEY", "");
-    delete process.env.OPENROUTER_API_KEY;
-    vi.stubEnv("NVIDIA_API_KEY", "nim-key");
-    vi.stubEnv("NVIDIA_EXTRACT_MODEL", "nvidia/extract");
-    vi.stubEnv("NVIDIA_FINAL_MODEL", "nvidia/final");
-    const env = loadServerEnv();
-    expect(env.EXTRACT_LLM).toEqual({
-      provider: "nvidia_nim",
-      apiKey: "nim-key",
-      model: "nvidia/extract",
-      baseURL: DEFAULT_NVIDIA_BASE_URL
-    });
-    expect(env.FINAL_LLM.model).toBe("nvidia/final");
-  });
-
-  it("uses the default NVIDIA base URL for a stage using NVIDIA NIM", () => {
-    vi.stubEnv("EXTRACT_LLM_PROVIDER", "nvidia_nim");
-    vi.stubEnv("EXTRACT_LLM_API_KEY", "nim-key");
-    vi.stubEnv("EXTRACT_LLM_MODEL", "nvidia/llama-3.1-nemotron-nano-vl-8b-v1");
-    expect(loadServerEnv().EXTRACT_LLM.baseURL).toBe(DEFAULT_NVIDIA_BASE_URL);
-  });
-
-  it("accepts stage-specific NVIDIA NIM config when the base URL is set", () => {
-    vi.stubEnv("EXTRACT_LLM_PROVIDER", "nvidia_nim");
-    vi.stubEnv("EXTRACT_LLM_API_KEY", "nim-key");
-    vi.stubEnv("EXTRACT_LLM_MODEL", "nvidia/llama-3.1-nemotron-nano-vl-8b-v1");
-    vi.stubEnv("EXTRACT_LLM_BASE_URL", "http://localhost:8000/v1");
-    const env = loadServerEnv();
-    expect(env.EXTRACT_LLM).toEqual({
-      provider: "nvidia_nim",
-      apiKey: "nim-key",
-      model: "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
-      baseURL: "http://localhost:8000/v1"
-    });
-    expect(env.FINAL_LLM.provider).toBe("openrouter");
-  });
-
-  it("rejects unknown providers", () => {
-    vi.stubEnv("EXTRACT_LLM_PROVIDER", "other");
-    expect(() => loadServerEnv()).toThrow(/Invalid LLM_PROVIDER/);
+    expect(env.LLM_DEFAULT_PROVIDER).toBe("openai");
   });
 
   it("returns optional vars when set and undefined when blank", () => {
@@ -268,5 +125,26 @@ describe("loadServerEnv", () => {
     expect(env.GRIM_FCM_TOPIC).toBeUndefined();
     expect(env.GRIM_PROMPTS_DIR).toBe("/tmp/prompts");
     expect(env.GRIM_PROMPT_ADMIN_SECRET).toBeUndefined();
+  });
+});
+
+describe("parseLlmProvider", () => {
+  it("maps nvidia_nim to nvidia for backward compatibility", () => {
+    expect(parseLlmProvider("nvidia_nim")).toBe("nvidia");
+    expect(parseLlmProvider("nim")).toBe("nvidia");
+  });
+
+  it("accepts nvidia directly", () => {
+    expect(parseLlmProvider("nvidia")).toBe("nvidia");
+  });
+
+  it("accepts known providers", () => {
+    expect(parseLlmProvider("openai")).toBe("openai");
+    expect(parseLlmProvider("openrouter")).toBe("openrouter");
+    expect(parseLlmProvider("deepseek")).toBe("deepseek");
+  });
+
+  it("throws for unknown providers", () => {
+    expect(() => parseLlmProvider("other")).toThrow(/Invalid LLM provider/);
   });
 });

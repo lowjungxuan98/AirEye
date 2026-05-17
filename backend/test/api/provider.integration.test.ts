@@ -10,7 +10,7 @@ describe("GET /api/v1/provider", () => {
 
     expect(res.body).toEqual({
       current_provide: "openrouter",
-      available_providers: ["openrouter", "openai", "nvidia_nim"]
+      available_providers: ["openrouter", "openai", "nvidia"]
     });
   });
 });
@@ -21,13 +21,13 @@ describe("PUT /api/v1/provider", () => {
 
     const res = await request(app)
       .put("/api/v1/provider")
-      .send({ current_provide: "nvidia_nim" })
+      .send({ current_provide: "nvidia" })
       .expect(200);
 
-    expect(res.body.current_provide).toBe("nvidia_nim");
+    expect(res.body.current_provide).toBe("nvidia");
 
     const again = await request(app).get("/api/v1/provider").expect(200);
-    expect(again.body.current_provide).toBe("nvidia_nim");
+    expect(again.body.current_provide).toBe("nvidia");
   });
 
   it("accepts provider as a body alias", async () => {

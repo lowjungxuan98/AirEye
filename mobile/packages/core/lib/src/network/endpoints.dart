@@ -9,6 +9,7 @@ import 'client.dart';
 class GrimEndpoints {
   static const String _healthPath = '/api/v1/health';
   static const String _importPath = '/api/v1/import';
+  static const String _regeneratePath = '/api/v1/regenerate';
   static const String _capturePath = '/api/v1/capture';
   static const String _exportPath = '/api/v1/export';
   static const String _providerPath = '/api/v1/provider';
@@ -106,6 +107,36 @@ class GrimEndpoints {
       ),
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+      onError: onError,
+      onFinally: onFinally,
+    );
+
+    final payload = _lastSseDataPayload(res.data ?? '');
+    final model = ImportStreamSseData.fromJson(jsonDecode(payload) as JsonMap);
+    onSuccess?.call(model);
+    return model;
+  }
+
+  static Future<ImportStreamSseData> regenerate({
+    required RegenerateRequest request,
+    void Function(ImportStreamSseData response)? onSuccess,
+    void Function(Object error, StackTrace stackTrace)? onError,
+    void Function()? onFinally,
+    ProgressCallback? onReceiveProgress,
+    CancelToken? cancelToken,
+    Options? options,
+  }) async {
+    final client = await GrimClient.create();
+    final url = await _url(_regeneratePath);
+
+    final res = await client.post<String>(
+      url,
+      data: request.toJson(),
+      options: (options ?? Options()).copyWith(
+        responseType: ResponseType.plain,
+      ),
+      cancelToken: cancelToken,
       onReceiveProgress: onReceiveProgress,
       onError: onError,
       onFinally: onFinally,

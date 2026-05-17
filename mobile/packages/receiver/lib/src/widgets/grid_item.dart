@@ -8,10 +8,18 @@ import 'text_ready_badge.dart';
 import 'processing_pulse.dart';
 
 class GridItem extends StatefulWidget {
-  const GridItem({required this.item, required this.imageUrl, super.key});
+  const GridItem({
+    required this.item,
+    required this.imageUrl,
+    this.isRegenerating = false,
+    this.onRegenerate,
+    super.key,
+  });
 
   final ExportListItem item;
   final String imageUrl;
+  final bool isRegenerating;
+  final Future<void> Function()? onRegenerate;
 
   @override
   State<GridItem> createState() => _GridItemState();
@@ -51,7 +59,9 @@ class _GridItemState extends State<GridItem> {
 
   @override
   Widget build(BuildContext context) {
-    final hasText = widget.item.finalText?.trim().isNotEmpty == true;
+    final hasText =
+        widget.item.finalText?.trim().isNotEmpty == true &&
+        !widget.isRegenerating;
     final progress = _progress;
 
     return Material(
@@ -71,6 +81,9 @@ class _GridItemState extends State<GridItem> {
                 text: widget.item.finalText?.trim() ?? '',
                 error: widget.item.errorMessage?.trim(),
                 onDownload: _download,
+                onRegenerate: widget.isRegenerating
+                    ? null
+                    : widget.onRegenerate,
                 child: GrimCachedZoomableImage(imageUrl: widget.imageUrl),
               ),
             ),
@@ -112,6 +125,21 @@ class _GridItemState extends State<GridItem> {
               right: 4,
               child: hasText ? const TextReadyBadge() : const ProcessingPulse(),
             ),
+            if (widget.isRegenerating)
+              const Positioned.fill(
+                child: ColoredBox(
+                  color: Color(0x66000000),
+                  child: Center(
+                    child: SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
