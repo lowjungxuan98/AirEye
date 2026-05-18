@@ -15,7 +15,6 @@ function createRepository(initialProvider?: string): ProviderStateRepository {
 
 function createOrchestrator(input: {
   providers: string[];
-  defaultProvider?: string;
   initialProvider?: string;
   client?: OpenAICompatibleChatClient;
   onLoadAvailableProviders?: () => void;
@@ -36,7 +35,6 @@ function createOrchestrator(input: {
       input.onLoadAvailableProviders?.();
       return input.providers;
     },
-    defaultProvider: input.defaultProvider ?? "nvidia",
     stateRepository: createRepository(input.initialProvider),
     getExtractPromptText: () => "extract",
     getAnalyzingSystemPrompt: () => "analyze",
@@ -45,25 +43,24 @@ function createOrchestrator(input: {
 }
 
 describe("ProviderOrchestrator provider selection", () => {
-  it("uses the configured default provider when it is available", async () => {
+  it("uses the first LiteLLM-discovered provider when no provider state exists", async () => {
     const orchestrator = createOrchestrator({
-      providers: ["openai", "nvidia"],
-      defaultProvider: "nvidia"
+      providers: ["openai", "nvidia"]
     });
 
     await expect(orchestrator.getSnapshot()).resolves.toEqual({
-      current_provide: "nvidia",
+      current_provide: "openai",
       available_providers: ["openai", "nvidia"]
     });
   });
 
-  it("falls back to the first discovered provider when the default is unavailable", async () => {
-    const orchestrator = createOrchestrator({
-      providers: ["openai", "openrouter"],
-      defaultProvider: "nvidia"
-    });
+  it("rejects when LiteLLM exposes no complete providers", async () => {
+    const orchestrator = createOrchestrator({ providers: [] });
 
-    await expect(orchestrator.getCurrentProvider()).resolves.toBe("openai");
+    await expect(orchestrator.getCurrentProvider()).rejects.toMatchObject({
+      statusCode: 503,
+      code: "PROVIDER_NOT_CONFIGURED"
+    });
   });
 
   it("uses stored provider state without loading available providers for pipeline calls", async () => {

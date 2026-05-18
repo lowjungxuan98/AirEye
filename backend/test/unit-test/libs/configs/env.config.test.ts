@@ -91,24 +91,6 @@ describe("loadServerEnv", () => {
     expect(env.LLM_API_KEY).toBe("sk-test");
   });
 
-  it("defaults LLM_DEFAULT_PROVIDER to nvidia when unset", () => {
-    Reflect.deleteProperty(process.env, "LLM_DEFAULT_PROVIDER");
-    const env = loadServerEnv();
-    expect(env.LLM_DEFAULT_PROVIDER).toBe("nvidia");
-  });
-
-  it("reads LLM_DEFAULT_PROVIDER from env", () => {
-    vi.stubEnv("LLM_DEFAULT_PROVIDER", "openai");
-    const env = loadServerEnv();
-    expect(env.LLM_DEFAULT_PROVIDER).toBe("openai");
-  });
-
-  it("reads optional LLM_PROVIDERS fallback from env", () => {
-    vi.stubEnv("LLM_PROVIDERS", "openai,nvidia_nim,openai,future-provider");
-    const env = loadServerEnv();
-    expect(env.LLM_PROVIDERS).toEqual(["openai", "nvidia", "future-provider"]);
-  });
-
   it("returns optional vars when set and undefined when blank", () => {
     vi.stubEnv("SCALAR_DOCS_URL", " https://docs.example ");
     vi.stubEnv("GRIM_FCM_TOPIC", "");
@@ -123,27 +105,13 @@ describe("loadServerEnv", () => {
 });
 
 describe("parseLlmProvider", () => {
-  it("maps nvidia_nim to nvidia for backward compatibility", () => {
-    expect(parseLlmProvider("nvidia_nim")).toBe("nvidia");
-    expect(parseLlmProvider("nim")).toBe("nvidia");
-  });
-
-  it("accepts nvidia directly", () => {
-    expect(parseLlmProvider("nvidia")).toBe("nvidia");
-  });
-
   it("normalizes provider values", () => {
     expect(parseLlmProvider("openai")).toBe("openai");
     expect(parseLlmProvider("openrouter")).toBe("openrouter");
     expect(parseLlmProvider("deepseek")).toBe("deepseek");
     expect(parseLlmProvider("glm")).toBe("glm");
+    expect(parseLlmProvider("nvidia_nim")).toBe("nvidia_nim");
     expect(parseLlmProvider("  Future_Provider  ")).toBe("future_provider");
-  });
-
-  it("maps Z.ai aliases to glm", () => {
-    expect(parseLlmProvider("zai")).toBe("glm");
-    expect(parseLlmProvider("zhipu")).toBe("glm");
-    expect(parseLlmProvider("zhipuai")).toBe("glm");
   });
 
   it("throws for empty providers", () => {

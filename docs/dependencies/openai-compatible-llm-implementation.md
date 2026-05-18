@@ -18,8 +18,6 @@ Runtime provider switching uses the LiteLLM proxy configuration:
 
 - `LITELLM_BASE_URL`
 - `LITELLM_API_KEY`
-- optional `LLM_DEFAULT_PROVIDER`
-- optional `LLM_PROVIDERS` compatibility fallback when the LiteLLM `/models` endpoint is unavailable
 
 There are no backend env vars for individual provider API keys or stage models. LiteLLM owns those routes. The active provider is stored in Realtime Database at `provider_state/current_provide` and is changed through `GET`/`PUT /api/v1/provider`.
 
@@ -37,7 +35,7 @@ Model names are derived from the selected provider:
 - image extraction: `<provider>-image`
 - final generation and format guard: `<provider>-reasoning`
 
-If no provider state exists yet, `LLM_DEFAULT_PROVIDER` is used when LiteLLM exposes both required routes for it. Otherwise the first complete provider discovered from LiteLLM becomes the initial provider. If LiteLLM model discovery is unavailable and `LLM_PROVIDERS` is set, the backend uses that comma-separated list as a compatibility fallback.
+If no provider state exists yet, the first complete provider discovered from LiteLLM becomes the initial provider.
 
 ## Import pipeline fit
 
@@ -75,7 +73,7 @@ The public health JSON reports this dependency under `llm`.
 ---
 
 **Updated:** 2026-05-18
-**Applies to:** grim backend (`backend/src/libs/llm/`, `backend/package.json` -> version `0.2.6`)
+**Applies to:** grim backend (`backend/src/libs/llm/`, `backend/package.json` -> version `0.2.7`)
 **Doc version:** 3
 **Upstream refs:**
 - https://platform.openai.com/docs/libraries/javascript

@@ -39,8 +39,6 @@ Required environment variables:
 
 Optional:
 
-- `LLM_DEFAULT_PROVIDER` — preferred base provider when no Firebase provider state exists; it must have both `<provider>-image` and `<provider>-reasoning` routes in LiteLLM, otherwise the first discovered complete provider is used
-- `LLM_PROVIDERS` — comma-separated compatibility fallback used only when LiteLLM model discovery is unavailable; prefer fixing `LITELLM_API_KEY` / LiteLLM `/models` access instead
 - `GRIM_FCM_TOPIC` — FCM topic for capture/import signals (default `grim_new_result`)
 - `GRIM_PROMPTS_DIR` — directory for `extract_text_prompt.txt`, `analyzing_text_prompt.txt`, and `format_guard_prompt.txt`
 - `GRIM_PROMPT_ADMIN_SECRET` — requires `X-Grim-Prompt-Secret` on prompt reads/writes when set
@@ -105,5 +103,5 @@ docker run --rm -p 3001:3001 --env-file .env grim-backend:local
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend (`backend/package.json` -> version `0.2.6`)
+**Applies to:** grim backend (`backend/package.json` -> version `0.2.7`)
 **Doc version:** 8

@@ -23,7 +23,6 @@ export interface ProviderStateRepository {
 export type ProviderOrchestratorOptions = {
   client: OpenAICompatibleChatClient;
   getAvailableProviders: () => Promise<LlmProvider[]>;
-  defaultProvider: LlmProvider;
   stateRepository: ProviderStateRepository;
   getExtractPromptText: () => string;
   getAnalyzingSystemPrompt: () => string;
@@ -33,7 +32,6 @@ export type ProviderOrchestratorOptions = {
 export class ProviderOrchestrator implements ImageTextExtractor, FinalTextBuilder, FinalTextFormatGuard {
   private readonly client: OpenAICompatibleChatClient;
   private readonly loadAvailableProviders: () => Promise<LlmProvider[]>;
-  private readonly defaultProvider: LlmProvider;
   private readonly stateRepository: ProviderStateRepository;
   private readonly getExtractPromptText: () => string;
   private readonly getAnalyzingSystemPrompt: () => string;
@@ -42,7 +40,6 @@ export class ProviderOrchestrator implements ImageTextExtractor, FinalTextBuilde
   constructor(options: ProviderOrchestratorOptions) {
     this.client = options.client;
     this.loadAvailableProviders = options.getAvailableProviders;
-    this.defaultProvider = options.defaultProvider;
     this.stateRepository = options.stateRepository;
     this.getExtractPromptText = options.getExtractPromptText;
     this.getAnalyzingSystemPrompt = options.getAnalyzingSystemPrompt;
@@ -64,11 +61,9 @@ export class ProviderOrchestrator implements ImageTextExtractor, FinalTextBuilde
   private async resolveCurrentProvider(availableProviders: LlmProvider[]): Promise<LlmProvider> {
     const state = await this.stateRepository.getProviderState();
     if (!state) {
-      const provider = availableProviders.includes(this.defaultProvider)
-        ? this.defaultProvider
-        : availableProviders[0];
+      const provider = availableProviders[0];
       if (!provider) {
-        throw providerNotConfigured(this.defaultProvider);
+        throw providerNotConfigured("no LiteLLM providers discovered");
       }
       await this.stateRepository.setProviderState({ current_provide: provider });
       return provider;

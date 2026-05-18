@@ -52,18 +52,7 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
   });
   const providerOrchestrator = new ProviderOrchestrator({
     client: llmClient,
-    getAvailableProviders: async () => {
-      try {
-        return await modelDiscovery.getAvailableProviders();
-      } catch (error) {
-        if (env.LLM_PROVIDERS?.length) {
-          console.warn("LiteLLM model discovery failed; using LLM_PROVIDERS fallback");
-          return env.LLM_PROVIDERS;
-        }
-        throw error;
-      }
-    },
-    defaultProvider: env.LLM_DEFAULT_PROVIDER,
+    getAvailableProviders: () => modelDiscovery.getAvailableProviders(),
     stateRepository: providerStateRepository,
     getExtractPromptText: () => promptSettings.getExtractTextPrompt(),
     getAnalyzingSystemPrompt: () => promptSettings.getAnalyzingTextPrompt(),
