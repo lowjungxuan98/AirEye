@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+import process from "node:process";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadServerEnv, parseLlmProvider } from "../../../../src/libs/configs/env.config";
 
