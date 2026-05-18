@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { ApiError } from "./api-error.util";
+import {
+  API_ERROR_MESSAGES,
+  invalidRequest,
+  promptFieldMustBeString
+} from "./api-error.util";
 
 export type PromptBundle = {
   extractTextPrompt: string;
@@ -78,16 +82,12 @@ export class GrimPromptSettings {
       body.analyzingTextPrompt === undefined &&
       body.formatGuardPrompt === undefined
     ) {
-      throw new ApiError(
-        400,
-        "INVALID_REQUEST",
-        "Provide at least one prompt: JSON keys extractTextPrompt / analyzingTextPrompt / formatGuardPrompt, or multipart fields extract_text / analyzing_text / format_guard (file or text)"
-      );
+      throw invalidRequest(API_ERROR_MESSAGES.missingPromptUpdate);
     }
 
     if (body.extractTextPrompt !== undefined) {
       if (typeof body.extractTextPrompt !== "string") {
-        throw new ApiError(400, "INVALID_REQUEST", "extractTextPrompt must be a string");
+        throw promptFieldMustBeString("extractTextPrompt");
       }
       fs.writeFileSync(this.extractPath, body.extractTextPrompt, "utf8");
       this.extractTextPrompt = body.extractTextPrompt;
@@ -95,7 +95,7 @@ export class GrimPromptSettings {
 
     if (body.analyzingTextPrompt !== undefined) {
       if (typeof body.analyzingTextPrompt !== "string") {
-        throw new ApiError(400, "INVALID_REQUEST", "analyzingTextPrompt must be a string");
+        throw promptFieldMustBeString("analyzingTextPrompt");
       }
       fs.writeFileSync(this.analyzingPath, body.analyzingTextPrompt, "utf8");
       this.analyzingTextPrompt = body.analyzingTextPrompt;
@@ -103,7 +103,7 @@ export class GrimPromptSettings {
 
     if (body.formatGuardPrompt !== undefined) {
       if (typeof body.formatGuardPrompt !== "string") {
-        throw new ApiError(400, "INVALID_REQUEST", "formatGuardPrompt must be a string");
+        throw promptFieldMustBeString("formatGuardPrompt");
       }
       fs.writeFileSync(this.formatGuardPath, body.formatGuardPrompt, "utf8");
       this.formatGuardPrompt = body.formatGuardPrompt;

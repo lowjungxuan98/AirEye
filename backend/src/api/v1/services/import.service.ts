@@ -7,7 +7,12 @@ import type {
 } from "../model/services.model";
 import type { GrimUpload, GrimUploadRow, ImportRequest } from "../model/import.model";
 import type { RegenerateRequest } from "../model/regenerate.model";
-import { ApiError } from "../../../libs/utils/api-error.util";
+import {
+  API_ERROR_MESSAGES,
+  invalidRequest,
+  toErrorPayload,
+  uploadNotFound
+} from "../../../libs/utils/api-error.util";
 
 export class ImportService implements ImportServiceContract {
   private readonly logger: Logger;
@@ -44,6 +49,12 @@ export class ImportService implements ImportServiceContract {
         uploadId,
         request.imageMimeType
       );
+      if (!image) {
+        emit({
+          error: toErrorPayload(new Error(API_ERROR_MESSAGES.uploadFailed))
+        });
+        return;
+      }
 
       await uploadRepository.createPendingUpload(uploadId, {
         createdAt,
@@ -124,7 +135,7 @@ export class ImportService implements ImportServiceContract {
     const uploadId = extractUploadIdFromImageUrl(request.imageUrl);
     const existing = await uploadRepository.getUpload(uploadId);
     if (!existing) {
-      throw new ApiError(404, "NOT_FOUND", "upload not found");
+      throw uploadNotFound();
     }
 
     try {
@@ -201,13 +212,7 @@ export class ImportService implements ImportServiceContract {
   }
 
   private toStreamError(error: unknown): { code: string; message: string } {
-    if (error instanceof ApiError) {
-      return { code: error.code, message: error.message };
-    }
-    if (error instanceof Error && error.message.trim()) {
-      return { code: "INTERNAL_ERROR", message: error.message.trim().slice(0, 200) };
-    }
-    return { code: "INTERNAL_ERROR", message: "Internal server error" };
+    return toErrorPayload(error);
   }
 
 }
@@ -225,7 +230,7 @@ function extractUploadIdFromImageUrl(imageUrl: string): string {
   const filename = decodedPath.split("/").pop() ?? "";
   const match = /^(upl_[A-Za-z0-9]+)(?:-|\.|$)/.exec(filename);
   if (!match) {
-    throw new ApiError(400, "INVALID_REQUEST", "imageUrl must contain an upload object name");
+    throw invalidRequest(API_ERROR_MESSAGES.imageUrlMissingUploadObjectName);
   }
   return match[1]!;
 }

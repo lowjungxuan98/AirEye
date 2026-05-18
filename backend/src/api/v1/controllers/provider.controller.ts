@@ -1,6 +1,10 @@
 import type { RequestHandler } from "express";
 import type { ProviderService } from "../model/services.model";
-import { ApiError } from "../../../libs/utils/api-error.util";
+import {
+  API_ERROR_MESSAGES,
+  invalidProvider,
+  invalidRequest
+} from "../../../libs/utils/api-error.util";
 import { parseProvider } from "../../../libs/utils/provider_orchestrator.util";
 
 export function createGetProviderHandler(providerService: ProviderService): RequestHandler {
@@ -13,18 +17,14 @@ export function createPutProviderHandler(providerService: ProviderService): Requ
   return async (req, res) => {
     const body = req.body as Record<string, unknown> | null;
     if (body === null || typeof body !== "object" || Array.isArray(body)) {
-      throw new ApiError(400, "INVALID_REQUEST", "Expected a JSON object body");
+      throw invalidRequest(API_ERROR_MESSAGES.expectedJsonObjectBody);
     }
 
     const provider = parseProvider(
       body.current_provide ?? body.current_provider ?? body.currentProvider ?? body.provider
     );
     if (!provider) {
-      throw new ApiError(
-        400,
-        "INVALID_PROVIDER",
-        "Expected provider to be one of: openrouter, openai, nvidia, deepseek"
-      );
+      throw invalidProvider();
     }
 
     await providerService.setCurrentProvider(provider);

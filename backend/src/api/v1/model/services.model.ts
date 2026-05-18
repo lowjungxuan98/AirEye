@@ -33,7 +33,7 @@ export interface ImageStorage {
     imageBuffer: Buffer,
     publicId: string,
     imageMimeType: string
-  ): Promise<UploadedImage>;
+  ): Promise<UploadedImage | null>;
 }
 
 export interface ResultNotifier {

@@ -1,12 +1,12 @@
 import type { Request, Response } from "express";
-import { ApiError } from "../../../libs/utils/api-error.util";
+import { API_ERROR_MESSAGES, internalError, invalidRequest } from "../../../libs/utils/api-error.util";
 import { writeSseData } from "../../../libs/utils/sse.util";
 import type { ImportService } from "../model/services.model";
 
 export function createImportHandler(importService: ImportService) {
   return async (req: Request, res: Response) => {
     if (!req.file) {
-      throw new ApiError(400, "INVALID_REQUEST", "image is required");
+      throw invalidRequest(API_ERROR_MESSAGES.imageRequired);
     }
     try {
       await importService.streamImport(
@@ -17,7 +17,7 @@ export function createImportHandler(importService: ImportService) {
         (data) => writeSseData(res, data)
       );
       if (!res.headersSent) {
-        throw new ApiError(500, "INTERNAL_ERROR", "Import produced no stream output");
+        throw internalError(API_ERROR_MESSAGES.importNoStreamOutput);
       }
     } catch (error) {
       if (!res.headersSent) {

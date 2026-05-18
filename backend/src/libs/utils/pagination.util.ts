@@ -1,7 +1,7 @@
-import { ApiError } from "./api-error.util";
+import { API_ERROR_MESSAGES, invalidRequest } from "./api-error.util";
 
 const createInvalidPageError = () =>
-  new ApiError(400, "INVALID_REQUEST", "page must be a positive integer");
+  invalidRequest(API_ERROR_MESSAGES.invalidPage);
 
 export function parsePage(value: unknown): number {
   if (value === undefined) {

@@ -1,6 +1,6 @@
 import type { Request, RequestHandler } from "express";
 import type { GrimPromptSettings, PromptUpdateBody } from "../../../libs/utils/prompt.util";
-import { ApiError } from "../../../libs/utils/api-error.util";
+import { API_ERROR_MESSAGES, invalidRequest } from "../../../libs/utils/api-error.util";
 
 type MulterFieldFiles = Record<string, Express.Multer.File[] | undefined>;
 
@@ -59,7 +59,7 @@ export function createPutPromptsHandler(settings: GrimPromptSettings): RequestHa
     } else {
       const body = req.body as unknown;
       if (body === null || typeof body !== "object" || Array.isArray(body)) {
-        throw new ApiError(400, "INVALID_REQUEST", "Expected a JSON object body or multipart/form-data");
+        throw invalidRequest(API_ERROR_MESSAGES.expectedJsonObjectBodyOrMultipart);
       }
       const json = body as PromptUpdateBody;
       update = {

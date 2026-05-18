@@ -1,7 +1,7 @@
 import { extname } from "node:path";
 import multer from "multer";
 import { PROMPT_FILE_MAX_BYTES } from "../constants/limits.contant";
-import { ApiError } from "./api-error.util";
+import { API_ERROR_MESSAGES, unsupportedFileType } from "./api-error.util";
 
 const IMAGE_MIME_TYPES_BY_EXTENSION: Partial<Record<string, string>> = {
   ".jpg": "image/jpeg",
@@ -47,7 +47,7 @@ export function createImportImageMulter(maxFileSizeBytes: number): multer.Multer
         return;
       }
 
-      cb(new ApiError(415, "UNSUPPORTED_FILE_TYPE", "Only image uploads are supported"));
+      cb(unsupportedFileType(API_ERROR_MESSAGES.unsupportedImageUpload));
     }
   });
 }
@@ -70,7 +70,7 @@ export function createPromptFilesMulter(): multer.Multer {
         return;
       }
 
-      cb(new ApiError(415, "UNSUPPORTED_FILE_TYPE", "Prompt files must be text/plain, text/*, or .txt"));
+      cb(unsupportedFileType(API_ERROR_MESSAGES.unsupportedPromptUpload));
     }
   });
 }

@@ -118,6 +118,45 @@ describe("ImportService", () => {
     expect(logger.error).toHaveBeenCalled();
   });
 
+  it("stops without a database entry when image upload returns null", async () => {
+    const uploadRepository = new InMemoryUploadRepository();
+    const textExtractor = {
+      extractTextFromImageUrl: vi.fn(),
+      extractTextFromImage: vi.fn()
+    };
+    const finalTextBuilder = { buildFinalText: vi.fn() };
+    const finalTextFormatGuard = { guardFinalText: vi.fn() };
+    const imageStorage = { uploadImage: vi.fn(async () => null) };
+    const notifier = { broadcastCaptureRequest: vi.fn(), broadcastExportRefresh: vi.fn() };
+    const emit = vi.fn();
+
+    const service = new ImportService({
+      uploadRepository,
+      textExtractor,
+      finalTextBuilder,
+      finalTextFormatGuard,
+      imageStorage,
+      notifier,
+      logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
+      generateUploadId: () => "upl_upload_failed"
+    });
+
+    await service.streamImport({ imageBuffer: Buffer.from("x"), imageMimeType: "image/jpeg" }, emit);
+
+    expect(await uploadRepository.getUpload("upl_upload_failed")).toBeNull();
+    expect(textExtractor.extractTextFromImageUrl).not.toHaveBeenCalled();
+    expect(finalTextBuilder.buildFinalText).not.toHaveBeenCalled();
+    expect(finalTextFormatGuard.guardFinalText).not.toHaveBeenCalled();
+    expect(notifier.broadcastExportRefresh).not.toHaveBeenCalled();
+    expect(emit).toHaveBeenCalledOnce();
+    expect(emit).toHaveBeenCalledWith({
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "upload failed"
+      }
+    });
+  });
+
   it("emits ApiError code when pipeline throws ApiError", async () => {
     const uploadRepository = new InMemoryUploadRepository();
     const emit = vi.fn();

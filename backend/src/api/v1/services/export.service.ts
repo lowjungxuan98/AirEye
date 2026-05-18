@@ -1,11 +1,11 @@
-import { ApiError } from "../../../libs/utils/api-error.util";
+import { API_ERROR_MESSAGES, invalidRequest } from "../../../libs/utils/api-error.util";
 import { EXPORT_DEFAULT_LIMIT, EXPORT_MAX_LIMIT } from "../../../libs/constants/limits.contant";
 import { buildPaginatedSlice, listUploadsFetchSize } from "../../../libs/utils/pagination.util";
 import { toPublicExportListItem, type ExportListItem } from "../model/export.model";
 import type { UploadRepository } from "../model/services.model";
 
 const createInvalidLimitError = () =>
-  new ApiError(400, "INVALID_REQUEST", "limit must be a positive integer");
+  invalidRequest(API_ERROR_MESSAGES.invalidLimit);
 
 export function parseExportLimit(value: unknown): number {
   if (value === undefined) {

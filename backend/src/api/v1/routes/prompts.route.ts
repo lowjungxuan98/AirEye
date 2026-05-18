@@ -1,7 +1,12 @@
 import type { NextFunction, Request, Response } from "express";
 import { Router, type RequestHandler } from "express";
 import multer from "multer";
-import { ApiError } from "../../../libs/utils/api-error.util";
+import {
+  API_ERROR_MESSAGES,
+  ApiError,
+  mapPromptMulterError as toPromptMulterApiError,
+  unauthorized
+} from "../../../libs/utils/api-error.util";
 import { mapRequestError, wrapAsync } from "../../../libs/utils/http.util";
 import { createPromptFilesMulter } from "../../../libs/utils/multer.util";
 import type { GrimPromptSettings } from "../../../libs/utils/prompt.util";
@@ -12,10 +17,7 @@ import {
 
 function mapPromptMulterError(err: unknown): ApiError {
   if (err instanceof multer.MulterError) {
-    if (err.code === "LIMIT_FILE_SIZE") {
-      return new ApiError(413, "PROMPT_FILE_TOO_LARGE", "Each prompt file must be at most 2 MB");
-    }
-    return new ApiError(400, "INVALID_REQUEST", err.message);
+    return toPromptMulterApiError(err);
   }
   return mapRequestError(err);
 }
@@ -49,7 +51,7 @@ export function promptAdminGuard(adminSecret: string | undefined): RequestHandle
     }
     const provided = req.header("x-grim-prompt-secret");
     if (provided !== adminSecret) {
-      next(new ApiError(401, "UNAUTHORIZED", "Invalid or missing X-Grim-Prompt-Secret header"));
+      next(unauthorized(API_ERROR_MESSAGES.invalidPromptSecret));
       return;
     }
     next();

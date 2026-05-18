@@ -1,5 +1,10 @@
 import type { Request, Response } from "express";
-import { ApiError } from "../../../libs/utils/api-error.util";
+import {
+  API_ERROR_MESSAGES,
+  fieldMustBeNonEmptyString,
+  internalError,
+  invalidRequest
+} from "../../../libs/utils/api-error.util";
 import { writeSseData } from "../../../libs/utils/sse.util";
 import type { RegenerateRequest } from "../model/regenerate.model";
 import type { ImportService } from "../model/services.model";
@@ -11,7 +16,7 @@ export function createRegenerateHandler(importService: ImportService) {
     try {
       await importService.streamRegenerate(request, (data) => writeSseData(res, data));
       if (!res.headersSent) {
-        throw new ApiError(500, "INTERNAL_ERROR", "Regenerate produced no stream output");
+        throw internalError(API_ERROR_MESSAGES.regenerateNoStreamOutput);
       }
     } catch (error) {
       if (!res.headersSent) {
@@ -27,14 +32,14 @@ export function createRegenerateHandler(importService: ImportService) {
 
 function parseRegenerateRequest(body: unknown): RegenerateRequest {
   if (body === null || typeof body !== "object" || Array.isArray(body)) {
-    throw new ApiError(400, "INVALID_REQUEST", "Expected a JSON object body");
+    throw invalidRequest(API_ERROR_MESSAGES.expectedJsonObjectBody);
   }
 
   const input = body as Partial<Record<keyof RegenerateRequest, unknown>>;
   const imageUrl = readNonEmptyString(input.imageUrl, "imageUrl");
 
   if (typeof input.text !== "string") {
-    throw new ApiError(400, "INVALID_REQUEST", "text must be a string");
+    throw invalidRequest(API_ERROR_MESSAGES.textMustBeString);
   }
 
   return { imageUrl, text: input.text };
@@ -42,7 +47,7 @@ function parseRegenerateRequest(body: unknown): RegenerateRequest {
 
 function readNonEmptyString(value: unknown, field: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
-    throw new ApiError(400, "INVALID_REQUEST", `${field} must be a non-empty string`);
+    throw fieldMustBeNonEmptyString(field);
   }
   return value.trim();
 }

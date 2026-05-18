@@ -5,7 +5,7 @@ import type {
 } from "../../api/v1/model/services.model";
 import type { LlmProvider } from "../configs/env.config";
 import { parseLlmProvider } from "../configs/env.config";
-import { ApiError } from "./api-error.util";
+import { invalidProvider, providerNotConfigured } from "./api-error.util";
 import { OpenAICompatibleTextProcessor } from "../llm/text-processor";
 import type OpenAI from "openai";
 
@@ -60,18 +60,14 @@ export class ProviderOrchestrator implements ImageTextExtractor, FinalTextBuilde
       return this.defaultProvider;
     }
     if (!this.availableProviders.includes(state.current_provide)) {
-      throw new ApiError(
-        503,
-        "PROVIDER_NOT_CONFIGURED",
-        `Current provider is not configured: ${state.current_provide}`
-      );
+      throw providerNotConfigured(state.current_provide);
     }
     return state.current_provide;
   }
 
   async setCurrentProvider(provider: LlmProvider): Promise<ProviderState> {
     if (!this.availableProviders.includes(provider)) {
-      throw new ApiError(400, "INVALID_PROVIDER", `Provider is not configured: ${provider}`);
+      throw invalidProvider(`Provider is not configured: ${provider}`);
     }
     const state = { current_provide: provider };
     await this.stateRepository.setProviderState(state);
