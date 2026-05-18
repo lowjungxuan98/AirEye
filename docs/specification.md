@@ -46,10 +46,10 @@ Typical errors: **400**, **413**, **415**, **500** — codes and messages match 
 ## `GET /api/v1/provider`, `PUT /api/v1/provider`
 
 - Reads or switches the active LLM provider stored in Realtime Database at `provider_state/current_provide`.
-- Accepted values: `openrouter`, `openai`, `nvidia`, `deepseek`.
+- Available values are discovered from LiteLLM model routes. A provider is listed only when both `<provider>-image` and `<provider>-reasoning` exist. If LiteLLM model discovery is unavailable, the backend may use the configured `LLM_PROVIDERS` fallback.
 
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend API (`backend/openapi.yaml`, `backend/package.json` -> version `0.2.4`)
+**Applies to:** grim backend API (`backend/openapi.yaml`, `backend/package.json` -> version `0.2.6`)
 **Doc version:** 5

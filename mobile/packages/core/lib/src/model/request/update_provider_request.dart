@@ -6,5 +6,5 @@ class UpdateProviderRequest {
 
   final LlmProvider provider;
 
-  JsonMap toJson() => {'current_provider': provider.value};
+  JsonMap toJson() => {'current_provide': provider.value};
 }

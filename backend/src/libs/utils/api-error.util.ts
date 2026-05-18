@@ -15,7 +15,7 @@ export const API_ERROR_MESSAGES = {
   uploadNotFound: "upload not found",
   uploadFailed: "upload failed",
   invalidProvider:
-    "Expected provider to be one of: openrouter, openai, nvidia, deepseek",
+    "Expected provider to be one of the LiteLLM providers with both -image and -reasoning routes",
   unsupportedImageUpload: "Only image uploads are supported",
   unsupportedPromptUpload: "Prompt files must be text/plain, text/*, or .txt",
   invalidPromptSecret: "Invalid or missing X-Grim-Prompt-Secret header",

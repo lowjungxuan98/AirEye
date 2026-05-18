@@ -6,7 +6,7 @@ Practices aligned with the **current** Grim backend structure. Prefer these when
 
 - **New HTTP surface** — Add route factory in `api/v1/routes/`, thin controller in `api/v1/controllers/`, orchestration in `api/v1/services/`, then register the router from `app.ts` (mirror existing import/export/health pattern).
 - **Shared types and ports** — Add to `api/v1/model/` (either extend an existing `*.model.ts` or add a new model file if the domain is distinct). Keep `import.model.ts` for upload row / import request shapes; `export.model.ts` for list DTOs and mapping helpers; `services.model.ts` for cross-cutting ports (`UploadRepository`, `ImportService`, etc.).
-- **Third-party adapters** — Put Firebase, OpenAI-compatible LLM, and S3/MinIO integration under `libs/firebase/`, `libs/llm/`, `libs/s3/` respectively. LLM calls should use the official `openai` SDK and provider selection should happen through env-driven `baseURL` / API key config instead of provider-specific service branches.
+- **Third-party adapters** — Put Firebase, OpenAI-compatible LLM, and S3/MinIO integration under `libs/firebase/`, `libs/llm/`, `libs/s3/` respectively. LLM calls should use the official `openai` SDK against the configured LiteLLM proxy, with provider availability discovered from LiteLLM routes instead of provider-specific service branches.
 - **Environment and limits** — Use `libs/configs/env.config.ts` for env loading and types; use `libs/constants/limits.contant.ts` for numeric limits consumed by routes/services.
 - **Small shared helpers** — Prefer `libs/utils/` with the `*.util.ts` suffix for cross-cutting helpers (`http.util.ts`, `api-error.util.ts`, `sort-by-created-at.util.ts`).
 

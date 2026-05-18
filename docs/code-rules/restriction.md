@@ -34,7 +34,7 @@ Rules derived from **decisions already reflected** in the Grim backend repo. The
 ## Tests
 
 - **Do not** treat **`backend/test/unit-test/libs/**`** as optional when you add or change **`backend/src/libs/**`**; keep the mirror paths and **`.test.ts`** naming described in **`docs/code-rules/unit-test-rules.md`**.
-- **Do not** make **`test/app.test.ts`** (or other **`createApp`** suites) depend on real **`LLM_API_KEY`** (or legacy provider aliases), Firebase, or S3/MinIO unless that is an explicit, documented exception—**`unit-test-rules.md`** splits app doubles vs lib integration.
+- **Do not** make **`test/app.test.ts`** (or other **`createApp`** suites) depend on real **`LITELLM_API_KEY`** (or legacy provider aliases), Firebase, or S3/MinIO unless that is an explicit, documented exception—**`unit-test-rules.md`** splits app doubles vs lib integration.
 - **Do not mock** S3/MinIO, Firebase Realtime Database, or other **storage / DB** clients in **`test/unit-test/libs/**`** when testing those adapters—use **real** services with **`backend/.env`**.
 - **Do not** leave integration test data in S3/MinIO or RTDB (or any paid store): **always delete or destroy** what the test created, including in **`finally`** so teardown runs if an assertion fails mid-test. See **`docs/code-rules/unit-test-rules.md`** → **Storage and database**.
 

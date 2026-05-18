@@ -1,6 +1,4 @@
-export type LlmProvider = "openrouter" | "openai" | "nvidia" | "deepseek";
-
-export const ALL_LLM_PROVIDERS: LlmProvider[] = ["openrouter", "openai", "nvidia", "deepseek"];
+export type LlmProvider = string;
 
 export type ServerEnv = {
   PORT: number;
@@ -18,7 +16,8 @@ export type ServerEnv = {
   FIREBASE_DATABASE_URL: string;
   LLM_BASE_URL: string;
   LLM_API_KEY: string;
-  LLM_PROVIDERS: LlmProvider[];
+  /** Compatibility fallback used only when LiteLLM model discovery is unavailable. */
+  LLM_PROVIDERS?: LlmProvider[];
   LLM_DEFAULT_PROVIDER: LlmProvider;
   /** Optional URL of a Scalar-hosted API Reference; local spec is always `GET /openapi.yaml`. */
   SCALAR_DOCS_URL?: string;
@@ -54,7 +53,7 @@ export function loadServerEnv(): ServerEnv {
     FIREBASE_DATABASE_URL: readRequiredEnv("FIREBASE_DATABASE_URL"),
     LLM_BASE_URL: readRequiredEnv("LITELLM_BASE_URL"),
     LLM_API_KEY: readRequiredEnv("LITELLM_API_KEY"),
-    LLM_PROVIDERS: parseLlmProviders(readOptionalEnv("LLM_PROVIDERS")),
+    LLM_PROVIDERS: parseOptionalLlmProviders(readOptionalEnv("LLM_PROVIDERS")),
     LLM_DEFAULT_PROVIDER: parseLlmProvider(readOptionalEnv("LLM_DEFAULT_PROVIDER") ?? "nvidia"),
     SCALAR_DOCS_URL: readOptionalEnv("SCALAR_DOCS_URL"),
     GRIM_FCM_TOPIC: readOptionalEnv("GRIM_FCM_TOPIC"),
@@ -72,18 +71,25 @@ export function resolveS3Bucket(env: Pick<ServerEnv, "S3_BUCKET_DEVELOPMENT" | "
 
 export function parseLlmProvider(value: string): LlmProvider {
   const normalized = value.trim().toLowerCase();
-  if (normalized === "openrouter" || normalized === "openai" || normalized === "deepseek") {
-    return normalized;
+  if (!normalized) {
+    throw new Error("Invalid LLM provider: empty");
   }
   if (normalized === "nvidia" || normalized === "nvidia_nim" || normalized === "nim") {
     return "nvidia";
   }
-  throw new Error(`Invalid LLM provider: ${value}`);
+  if (normalized === "zai" || normalized === "zhipu" || normalized === "zhipuai") {
+    return "glm";
+  }
+  return normalized;
 }
 
-export function parseLlmProviders(csv: string | undefined): LlmProvider[] {
-  if (!csv) return [...ALL_LLM_PROVIDERS];
-  return csv.split(",").map((s) => parseLlmProvider(s.trim()));
+function parseOptionalLlmProviders(csv: string | undefined): LlmProvider[] | undefined {
+  if (!csv) return undefined;
+  const providers = csv
+    .split(",")
+    .map((value) => parseLlmProvider(value))
+    .filter((value, index, all) => all.indexOf(value) === index);
+  return providers.length ? providers : undefined;
 }
 
 function readOptionalEnv(name: string): string | undefined {

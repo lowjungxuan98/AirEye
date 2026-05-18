@@ -18,7 +18,7 @@ type OpenAICompatibleChatResponse = {
   choices?: Array<{ message?: { content?: unknown } }>;
 };
 
-type OpenAICompatibleChatClient = {
+export type OpenAICompatibleChatClient = {
   chat: {
     completions: {
       create(input: {
@@ -31,15 +31,26 @@ type OpenAICompatibleChatClient = {
   };
 };
 
-export type OpenAICompatibleTextProcessorOptions = {
-  apiKey: string;
+type OpenAICompatibleTextProcessorBaseOptions = {
   model: string;
-  baseURL?: string;
   getExtractPromptText: () => string;
   getAnalyzingSystemPrompt: () => string;
   getFormatGuardSystemPrompt: () => string;
-  client?: OpenAICompatibleChatClient;
 };
+
+export type OpenAICompatibleTextProcessorOptions = OpenAICompatibleTextProcessorBaseOptions &
+  (
+    | {
+        apiKey: string;
+        baseURL?: string;
+        client?: OpenAICompatibleChatClient;
+      }
+    | {
+        apiKey?: string;
+        baseURL?: string;
+        client: OpenAICompatibleChatClient;
+      }
+  );
 
 export class OpenAICompatibleTextProcessor implements ImageTextExtractor, FinalTextBuilder, FinalTextFormatGuard {
   private readonly client: OpenAICompatibleChatClient;
@@ -53,12 +64,15 @@ export class OpenAICompatibleTextProcessor implements ImageTextExtractor, FinalT
     this.getExtractPromptText = options.getExtractPromptText;
     this.getAnalyzingSystemPrompt = options.getAnalyzingSystemPrompt;
     this.getFormatGuardSystemPrompt = options.getFormatGuardSystemPrompt;
-    this.client =
-      options.client ??
-      new OpenAI({
-        apiKey: options.apiKey,
-        ...(options.baseURL ? { baseURL: options.baseURL } : {})
-      });
+    if (options.client) {
+      this.client = options.client;
+      return;
+    }
+
+    this.client = new OpenAI({
+      apiKey: options.apiKey,
+      ...(options.baseURL ? { baseURL: options.baseURL } : {})
+    });
   }
 
   async extractTextFromImage(imageBuffer: Buffer, imageMimeType: string): Promise<string> {

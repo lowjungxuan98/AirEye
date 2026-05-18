@@ -1,16 +1,21 @@
-enum LlmProvider {
-  openrouter('openrouter'),
-  openai('openai'),
-  nvidia('nvidia'),
-  deepseek('deepseek');
-
+class LlmProvider {
   const LlmProvider(this.value);
+
   final String value;
 
   static LlmProvider fromValue(String value) {
-    return LlmProvider.values.firstWhere(
-      (e) => e.value == value,
-      orElse: () => throw ArgumentError('Unknown LlmProvider: $value'),
-    );
+    final normalized = value.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      throw ArgumentError('LlmProvider cannot be empty');
+    }
+    return LlmProvider(normalized);
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LlmProvider && other.value == value;
+
+  @override
+  int get hashCode => value.hashCode;
 }

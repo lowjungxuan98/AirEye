@@ -12,12 +12,15 @@ class ProviderSelectorWidget extends StatelessWidget {
   final void Function(LlmProvider) onSelect;
   final bool isLoading;
 
-  String _label(LlmProvider p) => switch (p) {
-    LlmProvider.openrouter => 'OpenRouter',
-    LlmProvider.openai => 'OpenAI',
-    LlmProvider.nvidia => 'NVIDIA',
-    LlmProvider.deepseek => 'DeepSeek',
-  };
+  String _label(LlmProvider p) {
+    return p.value
+        .split(RegExp(r'[-_]+'))
+        .where((part) => part.isNotEmpty)
+        .map((part) => part.length <= 4
+            ? part.toUpperCase()
+            : part[0].toUpperCase() + part.substring(1))
+        .join(' ');
+  }
 
   @override
   Widget build(BuildContext context) {

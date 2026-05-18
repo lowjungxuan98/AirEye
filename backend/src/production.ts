@@ -18,6 +18,7 @@ import {
 import { GrimPromptSettings } from "./libs/utils/prompt.util";
 import { resolveS3Bucket } from "./libs/configs/env.config";
 import { ProviderOrchestrator } from "./libs/utils/provider_orchestrator.util";
+import { LiteLlmModelDiscovery } from "./libs/llm/model-discovery";
 
 export function createProductionDependencies(env: ServerEnv): AppDependencies {
   const promptsDir = env.GRIM_PROMPTS_DIR ?? path.resolve(__dirname, "..", "prompts");
@@ -45,9 +46,23 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
     presignTtlSeconds: env.S3_PRESIGN_TTL_SECONDS
   };
   const llmClient = new OpenAI({ apiKey: env.LLM_API_KEY, baseURL: env.LLM_BASE_URL });
+  const modelDiscovery = new LiteLlmModelDiscovery({
+    baseUrl: env.LLM_BASE_URL,
+    apiKey: env.LLM_API_KEY
+  });
   const providerOrchestrator = new ProviderOrchestrator({
     client: llmClient,
-    availableProviders: env.LLM_PROVIDERS,
+    getAvailableProviders: async () => {
+      try {
+        return await modelDiscovery.getAvailableProviders();
+      } catch (error) {
+        if (env.LLM_PROVIDERS?.length) {
+          console.warn("LiteLLM model discovery failed; using LLM_PROVIDERS fallback");
+          return env.LLM_PROVIDERS;
+        }
+        throw error;
+      }
+    },
     defaultProvider: env.LLM_DEFAULT_PROVIDER,
     stateRepository: providerStateRepository,
     getExtractPromptText: () => promptSettings.getExtractTextPrompt(),

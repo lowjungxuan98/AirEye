@@ -91,18 +91,6 @@ describe("loadServerEnv", () => {
     expect(env.LLM_API_KEY).toBe("sk-test");
   });
 
-  it("defaults LLM_PROVIDERS to all four providers when unset", () => {
-    Reflect.deleteProperty(process.env, "LLM_PROVIDERS");
-    const env = loadServerEnv();
-    expect(env.LLM_PROVIDERS).toEqual(["openrouter", "openai", "nvidia", "deepseek"]);
-  });
-
-  it("parses LLM_PROVIDERS from a comma-separated list", () => {
-    vi.stubEnv("LLM_PROVIDERS", "openai,nvidia");
-    const env = loadServerEnv();
-    expect(env.LLM_PROVIDERS).toEqual(["openai", "nvidia"]);
-  });
-
   it("defaults LLM_DEFAULT_PROVIDER to nvidia when unset", () => {
     Reflect.deleteProperty(process.env, "LLM_DEFAULT_PROVIDER");
     const env = loadServerEnv();
@@ -113,6 +101,12 @@ describe("loadServerEnv", () => {
     vi.stubEnv("LLM_DEFAULT_PROVIDER", "openai");
     const env = loadServerEnv();
     expect(env.LLM_DEFAULT_PROVIDER).toBe("openai");
+  });
+
+  it("reads optional LLM_PROVIDERS fallback from env", () => {
+    vi.stubEnv("LLM_PROVIDERS", "openai,nvidia_nim,openai,future-provider");
+    const env = loadServerEnv();
+    expect(env.LLM_PROVIDERS).toEqual(["openai", "nvidia", "future-provider"]);
   });
 
   it("returns optional vars when set and undefined when blank", () => {
@@ -138,13 +132,21 @@ describe("parseLlmProvider", () => {
     expect(parseLlmProvider("nvidia")).toBe("nvidia");
   });
 
-  it("accepts known providers", () => {
+  it("normalizes provider values", () => {
     expect(parseLlmProvider("openai")).toBe("openai");
     expect(parseLlmProvider("openrouter")).toBe("openrouter");
     expect(parseLlmProvider("deepseek")).toBe("deepseek");
+    expect(parseLlmProvider("glm")).toBe("glm");
+    expect(parseLlmProvider("  Future_Provider  ")).toBe("future_provider");
   });
 
-  it("throws for unknown providers", () => {
-    expect(() => parseLlmProvider("other")).toThrow(/Invalid LLM provider/);
+  it("maps Z.ai aliases to glm", () => {
+    expect(parseLlmProvider("zai")).toBe("glm");
+    expect(parseLlmProvider("zhipu")).toBe("glm");
+    expect(parseLlmProvider("zhipuai")).toBe("glm");
+  });
+
+  it("throws for empty providers", () => {
+    expect(() => parseLlmProvider(" ")).toThrow(/Invalid LLM provider/);
   });
 });

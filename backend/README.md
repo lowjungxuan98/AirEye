@@ -34,11 +34,13 @@ Required environment variables:
 - Firebase Admin credentials: set either `GOOGLE_APPLICATION_CREDENTIALS` or `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64`
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_DATABASE_URL`
-- At least one provider key/model group: `OPENAI_*`, `OPENROUTER_*`, or `NVIDIA_*`
+- `LITELLM_BASE_URL`
+- `LITELLM_API_KEY`
 
 Optional:
 
-- Provider config: `OPENROUTER_API_KEY` / `OPENROUTER_EXTRACT_MODEL` / `OPENROUTER_FINAL_MODEL` / `OPENROUTER_BASE_URL`, `OPENAI_API_KEY` / `OPENAI_EXTRACT_MODEL` / `OPENAI_FINAL_MODEL` / `OPENAI_BASE_URL`, and `NVIDIA_API_KEY` / `NVIDIA_EXTRACT_MODEL` / `NVIDIA_FINAL_MODEL` / `NVIDIA_BASE_URL`. OpenRouter defaults to `https://openrouter.ai/api/v1`, OpenAI uses the SDK default when `OPENAI_BASE_URL` is blank, and NVIDIA defaults to `https://integrate.api.nvidia.com/v1`.
+- `LLM_DEFAULT_PROVIDER` — preferred base provider when no Firebase provider state exists; it must have both `<provider>-image` and `<provider>-reasoning` routes in LiteLLM, otherwise the first discovered complete provider is used
+- `LLM_PROVIDERS` — comma-separated compatibility fallback used only when LiteLLM model discovery is unavailable; prefer fixing `LITELLM_API_KEY` / LiteLLM `/models` access instead
 - `GRIM_FCM_TOPIC` — FCM topic for capture/import signals (default `grim_new_result`)
 - `GRIM_PROMPTS_DIR` — directory for `extract_text_prompt.txt`, `analyzing_text_prompt.txt`, and `format_guard_prompt.txt`
 - `GRIM_PROMPT_ADMIN_SECRET` — requires `X-Grim-Prompt-Secret` on prompt reads/writes when set
@@ -65,7 +67,7 @@ Optional:
   - optional `page` (default 1), optional `limit` (default 20, max 50)
   - returns `200` paginated JSON (`data`, `page`, `limit`, `is_next`); newest first by `createdAt`; pending rows can include `imageUrl`, completed rows add `finalText`, and failed rows add `errorMessage`
 - `GET /api/v1/prompts`, `PUT /api/v1/prompts` — read or overwrite extract, analyzing, and format guard prompt templates (`backend/prompts/*.txt` by default; optional `GRIM_PROMPTS_DIR`, `GRIM_PROMPT_ADMIN_SECRET`). **PUT** accepts **`multipart/form-data`** with file or text fields **`extract_text`**, **`analyzing_text`**, and **`format_guard`**, or **`application/json`** with **`extractTextPrompt`**, **`analyzingTextPrompt`**, and **`formatGuardPrompt`**.
-- `GET /api/v1/provider`, `PUT /api/v1/provider` — read or switch the active LLM provider. State is stored in Realtime Database at `provider_state/current_provide`; accepted values are `openrouter`, `openai`, `nvidia`, and `deepseek`.
+- `GET /api/v1/provider`, `PUT /api/v1/provider` — read or switch the active LLM provider. State is stored in Realtime Database at `provider_state/current_provide`; available values are discovered from LiteLLM routes that expose both `<provider>-image` and `<provider>-reasoning`.
 
 ### Docs
 
@@ -74,7 +76,7 @@ Reference docs used to design the current implementation and future follow-up wo
 - **`docs/dependencies/`** — vendor integration notes (S3/MinIO, OpenAI-compatible LLM providers via the OpenAI SDK, Scalar, Firebase); start at [`docs/dependencies/README.md`](../docs/dependencies/README.md).
 - Repository **`docs/`** (top level): `workflow.md` (target end-to-end backend flow), `specification.md`, `testing-plan.md`, plus `code-rules/`, `instructions/`, `design/`.
 
-The v1 backend wires S3 (MinIO-compatible), Firebase Admin / Realtime Database / FCM, and one OpenAI-compatible adapter class into **`backend/src/`**. The extract and final-text stages can use separate per-provider model env vars such as `OPENAI_EXTRACT_MODEL` and `OPENAI_FINAL_MODEL`; shared `LLM_*` vars are still supported as defaults, and legacy OpenRouter env aliases remain accepted for compatibility. Current supported providers are OpenRouter, OpenAI, NVIDIA, and DeepSeek. Optional **`SCALAR_DOCS_URL`** only logs a link if you publish docs elsewhere; local Scalar UI is always **`/docs`** when the server runs.
+The v1 backend wires S3 (MinIO-compatible), Firebase Admin / Realtime Database / FCM, and one OpenAI-compatible adapter class into **`backend/src/`**. LLM calls go through LiteLLM using `<provider>-image` for extraction and `<provider>-reasoning` for final/guard stages. Optional **`SCALAR_DOCS_URL`** only logs a link if you publish docs elsewhere; local Scalar UI is always **`/docs`** when the server runs.
 
 ### GitHub Actions / GHCR
 
@@ -103,5 +105,5 @@ docker run --rm -p 3001:3001 --env-file .env grim-backend:local
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim backend (`backend/package.json` -> version `0.2.4`)
+**Applies to:** grim backend (`backend/package.json` -> version `0.2.6`)
 **Doc version:** 8

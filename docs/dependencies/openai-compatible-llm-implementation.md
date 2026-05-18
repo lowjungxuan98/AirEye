@@ -1,4 +1,4 @@
-# OpenAI-compatible LLM providers via OpenAI SDK - implementation notes
+# LiteLLM-backed OpenAI-compatible LLM - implementation notes
 
 Grim uses one adapter implementation for all import LLM stages:
 
@@ -6,38 +6,38 @@ Grim uses one adapter implementation for all import LLM stages:
 - final text generation from the extracted text
 - format guard pass over the final text
 
-The backend uses the official `openai` Node SDK and selects an OpenAI-compatible provider at runtime.
+The backend uses the official `openai` Node SDK against a LiteLLM proxy. Provider selection is dynamic: the backend discovers LiteLLM routes and treats a base provider as available only when both `<provider>-image` and `<provider>-reasoning` routes exist.
 
 ## Current repo status
 
-Implementation lives in `backend/src/libs/llm/text-processor.ts`, with runtime selection handled by `backend/src/libs/utils/provider_orchestrator.util.ts`.
+Implementation lives in `backend/src/libs/llm/text-processor.ts`, route discovery lives in `backend/src/libs/llm/model-discovery.ts`, and runtime selection is handled by `backend/src/libs/utils/provider_orchestrator.util.ts`.
 
 Runtime composition happens in `backend/src/production.ts`.
 
-Runtime provider switching uses provider-specific vars:
+Runtime provider switching uses the LiteLLM proxy configuration:
 
-- `OPENAI_API_KEY` / `OPENAI_EXTRACT_MODEL` / `OPENAI_FINAL_MODEL` / `OPENAI_BASE_URL`
-- `OPENROUTER_API_KEY` / `OPENROUTER_EXTRACT_MODEL` / `OPENROUTER_FINAL_MODEL` / `OPENROUTER_BASE_URL`
-- `NVIDIA_API_KEY` / `NVIDIA_EXTRACT_MODEL` / `NVIDIA_FINAL_MODEL` / `NVIDIA_BASE_URL`
+- `LITELLM_BASE_URL`
+- `LITELLM_API_KEY`
+- optional `LLM_DEFAULT_PROVIDER`
+- optional `LLM_PROVIDERS` compatibility fallback when the LiteLLM `/models` endpoint is unavailable
 
-The active provider is stored in Realtime Database at `provider_state/current_provide` and is changed through `GET`/`PUT /api/v1/provider`.
+There are no backend env vars for individual provider API keys or stage models. LiteLLM owns those routes. The active provider is stored in Realtime Database at `provider_state/current_provide` and is changed through `GET`/`PUT /api/v1/provider`.
 
-The adapter uses the same SDK class for every provider:
+The adapter uses one SDK client for every stage:
 
 ```ts
 new OpenAI({
-  apiKey,
-  ...(baseURL ? { baseURL } : {})
+  apiKey: env.LLM_API_KEY,
+  baseURL: env.LLM_BASE_URL
 });
 ```
 
-Current defaults:
+Model names are derived from the selected provider:
 
-- OpenRouter defaults to `https://openrouter.ai/api/v1` when a stage does not set `*_LLM_BASE_URL`
-- OpenRouter defaults to `openrouter/free` when a stage does not set `*_LLM_MODEL`
-- OpenAI uses the SDK default base URL when a stage does not set `*_LLM_BASE_URL`
-- NVIDIA defaults to `https://integrate.api.nvidia.com/v1` for runtime provider switching; self-hosted NIM deployments can override this with `NVIDIA_BASE_URL`
-- When both stages share a provider, shared `LLM_*` vars can provide defaults that each stage inherits
+- image extraction: `<provider>-image`
+- final generation and format guard: `<provider>-reasoning`
+
+If no provider state exists yet, `LLM_DEFAULT_PROVIDER` is used when LiteLLM exposes both required routes for it. Otherwise the first complete provider discovered from LiteLLM becomes the initial provider. If LiteLLM model discovery is unavailable and `LLM_PROVIDERS` is set, the backend uses that comma-separated list as a compatibility fallback.
 
 ## Import pipeline fit
 
@@ -47,36 +47,36 @@ Current defaults:
 - `finalTextBuilder.buildFinalText(...)`
 - `finalTextFormatGuard.guardFinalText(...)`
 
-The extract and final stages can be backed by different provider configs, but both use the same adapter class. The adapter returns opaque strings. The current prompts ask for structured JSON, but the HTTP API stores and returns `extractedText` and `finalText` as strings because model output format is prompt-controlled.
+The extract and reasoning stages use different LiteLLM model routes for the selected provider. The adapter returns opaque strings. The current prompts ask for structured JSON, but the HTTP API stores and returns `extractedText` and `finalText` as strings because model output format is prompt-controlled.
 
 Pipeline order stays:
 
 1. S3/MinIO image upload.
-2. LLM image text extraction.
-3. LLM final text generation.
-4. LLM format guard pass.
-5. Realtime Database write under `uploads/{id}`.
-6. FCM success signals.
+2. Realtime Database pending write under `uploads/{id}`.
+3. FCM receiver refresh signal.
+4. LLM image text extraction.
+5. LLM final text generation.
+6. LLM format guard pass.
+7. Realtime Database final update under `uploads/{id}`.
+8. FCM receiver refresh signal on success.
 
 ## Health check
 
-`backend/src/api/v1/services/health.service.ts` checks both stage configs by building SDK clients from resolved env and calling `models.list()`.
+`backend/src/api/v1/services/health.service.ts` checks the LiteLLM proxy by building the SDK client from `LITELLM_BASE_URL` / `LITELLM_API_KEY` and calling `models.list()`.
 
-The public health JSON reports this dependency under `llm`; that field is an aggregate over the extract and final stage configs.
+The public health JSON reports this dependency under `llm`.
 
 ## Notes
 
-- `chat.completions.create(...)` remains the shared request path because it is supported across the current providers used by this repo.
+- `chat.completions.create(...)` remains the shared request path for all stages.
 - Keep API keys server-side only.
-- Prefer changing provider config over adding provider-specific orchestration paths unless behavior genuinely diverges.
+- Prefer changing LiteLLM route config over adding provider-specific backend branches unless behavior genuinely diverges.
 
 ---
 
-**Updated:** 2026-04-25
-**Applies to:** grim backend (`backend/src/libs/llm/`, `backend/package.json` -> version `0.2.4`)
-**Doc version:** 2
+**Updated:** 2026-05-18
+**Applies to:** grim backend (`backend/src/libs/llm/`, `backend/package.json` -> version `0.2.6`)
+**Doc version:** 3
 **Upstream refs:**
 - https://platform.openai.com/docs/libraries/javascript
-- https://openrouter.ai/docs/guides/community/openai-sdk
-- https://docs.nvidia.com/nim/large-language-models/latest/reference/api-reference.html
-- https://docs.nvidia.com/nim/vision-language-models/latest/api-reference.html
+- https://docs.litellm.ai/

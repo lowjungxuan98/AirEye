@@ -6,10 +6,10 @@ import type {
 import type { LlmProvider } from "../configs/env.config";
 import { parseLlmProvider } from "../configs/env.config";
 import { invalidProvider, providerNotConfigured } from "./api-error.util";
-import { OpenAICompatibleTextProcessor } from "../llm/text-processor";
-import type OpenAI from "openai";
-
-export const LLM_PROVIDERS = ["openrouter", "openai", "nvidia", "deepseek"] as const;
+import {
+  OpenAICompatibleTextProcessor,
+  type OpenAICompatibleChatClient
+} from "../llm/text-processor";
 
 export type ProviderState = {
   current_provide: LlmProvider;
@@ -21,8 +21,8 @@ export interface ProviderStateRepository {
 }
 
 export type ProviderOrchestratorOptions = {
-  client: OpenAI;
-  availableProviders: LlmProvider[];
+  client: OpenAICompatibleChatClient;
+  getAvailableProviders: () => Promise<LlmProvider[]>;
   defaultProvider: LlmProvider;
   stateRepository: ProviderStateRepository;
   getExtractPromptText: () => string;
@@ -31,8 +31,8 @@ export type ProviderOrchestratorOptions = {
 };
 
 export class ProviderOrchestrator implements ImageTextExtractor, FinalTextBuilder, FinalTextFormatGuard {
-  private readonly client: OpenAI;
-  private readonly availableProviders: LlmProvider[];
+  private readonly client: OpenAICompatibleChatClient;
+  private readonly loadAvailableProviders: () => Promise<LlmProvider[]>;
   private readonly defaultProvider: LlmProvider;
   private readonly stateRepository: ProviderStateRepository;
   private readonly getExtractPromptText: () => string;
@@ -41,7 +41,7 @@ export class ProviderOrchestrator implements ImageTextExtractor, FinalTextBuilde
 
   constructor(options: ProviderOrchestratorOptions) {
     this.client = options.client;
-    this.availableProviders = options.availableProviders;
+    this.loadAvailableProviders = options.getAvailableProviders;
     this.defaultProvider = options.defaultProvider;
     this.stateRepository = options.stateRepository;
     this.getExtractPromptText = options.getExtractPromptText;
@@ -49,46 +49,64 @@ export class ProviderOrchestrator implements ImageTextExtractor, FinalTextBuilde
     this.getFormatGuardSystemPrompt = options.getFormatGuardSystemPrompt;
   }
 
-  getAvailableProviders(): LlmProvider[] {
-    return this.availableProviders;
+  async getAvailableProviders(): Promise<LlmProvider[]> {
+    return this.loadAvailableProviders();
   }
 
   async getCurrentProvider(): Promise<LlmProvider> {
     const state = await this.stateRepository.getProviderState();
+    if (state) {
+      return parseLlmProvider(state.current_provide);
+    }
+    return this.resolveCurrentProvider(await this.getAvailableProviders());
+  }
+
+  private async resolveCurrentProvider(availableProviders: LlmProvider[]): Promise<LlmProvider> {
+    const state = await this.stateRepository.getProviderState();
     if (!state) {
-      await this.setCurrentProvider(this.defaultProvider);
-      return this.defaultProvider;
+      const provider = availableProviders.includes(this.defaultProvider)
+        ? this.defaultProvider
+        : availableProviders[0];
+      if (!provider) {
+        throw providerNotConfigured(this.defaultProvider);
+      }
+      await this.stateRepository.setProviderState({ current_provide: provider });
+      return provider;
     }
-    if (!this.availableProviders.includes(state.current_provide)) {
-      throw providerNotConfigured(state.current_provide);
+    const currentProvider = parseLlmProvider(state.current_provide);
+    if (!availableProviders.includes(currentProvider)) {
+      throw providerNotConfigured(currentProvider);
     }
-    return state.current_provide;
+    return currentProvider;
   }
 
   async setCurrentProvider(provider: LlmProvider): Promise<ProviderState> {
-    if (!this.availableProviders.includes(provider)) {
+    const normalizedProvider = parseLlmProvider(provider);
+    const availableProviders = await this.getAvailableProviders();
+    if (!availableProviders.includes(normalizedProvider)) {
       throw invalidProvider(`Provider is not configured: ${provider}`);
     }
-    const state = { current_provide: provider };
+    const state = { current_provide: normalizedProvider };
     await this.stateRepository.setProviderState(state);
     return state;
   }
 
   async getSnapshot(): Promise<ProviderState & { available_providers: LlmProvider[] }> {
+    const availableProviders = await this.getAvailableProviders();
     return {
-      current_provide: await this.getCurrentProvider(),
-      available_providers: this.getAvailableProviders()
+      current_provide: await this.resolveCurrentProvider(availableProviders),
+      available_providers: availableProviders
     };
   }
 
   async extractTextFromImage(imageBuffer: Buffer, imageMimeType: string): Promise<string> {
     const provider = await this.getCurrentProvider();
-    return this.processor(this.imageProvider(provider), "image").extractTextFromImage(imageBuffer, imageMimeType);
+    return this.processor(provider, "image").extractTextFromImage(imageBuffer, imageMimeType);
   }
 
   async extractTextFromImageUrl(imageUrl: string): Promise<string> {
     const provider = await this.getCurrentProvider();
-    return this.processor(this.imageProvider(provider), "image").extractTextFromImageUrl(imageUrl);
+    return this.processor(provider, "image").extractTextFromImageUrl(imageUrl);
   }
 
   async buildFinalText(extractedText: string): Promise<string> {
@@ -101,17 +119,10 @@ export class ProviderOrchestrator implements ImageTextExtractor, FinalTextBuilde
     return this.processor(provider, "reasoning").guardFinalText(finalText);
   }
 
-  /** DeepSeek has no vision API — fall back to OpenAI for image extraction. */
-  private imageProvider(provider: LlmProvider): LlmProvider {
-    return provider === "deepseek" ? "openai" : provider;
-  }
-
   private processor(provider: LlmProvider, stage: "image" | "reasoning"): OpenAICompatibleTextProcessor {
     return new OpenAICompatibleTextProcessor({
-      apiKey: "",
       model: `${provider}-${stage}`,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      client: this.client as any,
+      client: this.client,
       getExtractPromptText: this.getExtractPromptText,
       getAnalyzingSystemPrompt: this.getAnalyzingSystemPrompt,
       getFormatGuardSystemPrompt: this.getFormatGuardSystemPrompt

@@ -13,6 +13,7 @@ import type { ImportService } from "../src/api/v1/model/services.model";
 import { ExportService } from "../src/api/v1/services/export.service";
 import { ImportService as ImportServiceImpl } from "../src/api/v1/services/import.service";
 import { GrimPromptSettings } from "../src/libs/utils/prompt.util";
+import { invalidProvider } from "../src/libs/utils/api-error.util";
 import { InMemoryUploadRepository } from "./in-memory-upload-repository";
 import type { LlmProvider } from "../src/libs/configs/env.config";
 
@@ -45,6 +46,8 @@ export type BuildTestAppInput = {
   exportService?: ExportService;
   captureService?: CaptureService;
   providerService?: ProviderService;
+  providerCurrent?: LlmProvider;
+  providerAvailable?: LlmProvider[];
   runHealthChecks?: () => Promise<HealthReport>;
   logger?: Logger;
   /** When set, `GET`/`PUT /api/v1/prompts` require this secret via `X-Grim-Prompt-Secret`. */
@@ -70,14 +73,21 @@ const noopCaptureService: CaptureService = {
   sendCaptureNotification: async () => {}
 };
 
-const inMemoryProviderService = (): ProviderService => {
-  let current_provide: LlmProvider = "openrouter";
+const inMemoryProviderService = (
+  currentProvider: LlmProvider,
+  availableProviders: LlmProvider[]
+): ProviderService => {
+  let current_provide = currentProvider;
+  const available_providers = [...availableProviders];
   return {
     getSnapshot: async () => ({
       current_provide,
-      available_providers: ["openrouter", "openai", "nvidia", "deepseek"]
+      available_providers
     }),
     setCurrentProvider: async (provider) => {
+      if (!available_providers.includes(provider)) {
+        throw invalidProvider(`Provider is not configured: ${provider}`);
+      }
       current_provide = provider;
       return { current_provide };
     }
@@ -108,7 +118,10 @@ export function buildTestApp(input: BuildTestAppInput = {}) {
   const importService = input.importService ?? noopImportService;
   const exportService = input.exportService ?? new ExportService(new InMemoryUploadRepository());
   const captureService = input.captureService ?? noopCaptureService;
-  const providerService = input.providerService ?? inMemoryProviderService();
+  const providerCurrent = input.providerCurrent ?? input.providerAvailable?.[0] ?? "test-provider";
+  const providerService =
+    input.providerService ??
+    inMemoryProviderService(providerCurrent, input.providerAvailable ?? [providerCurrent]);
   const runHealthChecks = input.runHealthChecks ?? (async () => stableOkHealth());
   const promptSettings = createIsolatedPromptSettings(input);
   return createApp({

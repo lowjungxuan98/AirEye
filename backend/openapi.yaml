@@ -19,7 +19,7 @@ info:
     **Prompts:** text loaded from `extract_text_prompt.txt`, `analyzing_text_prompt.txt`, and `format_guard_prompt.txt` under **`GRIM_PROMPTS_DIR`** (default `./prompts` relative to the server process). **`PUT /api/v1/prompts`** overwrites those strings on disk and updates the in-memory copy used by the next import. Optional **`GRIM_PROMPT_ADMIN_SECRET`** forces clients to send **`X-Grim-Prompt-Secret`**.
 
     **Interactive docs:** with the backend running, open **`/docs`** on the same origin for embedded [Scalar API Reference](https://scalar.com/products/api-references), or import this file’s URL elsewhere.
-  version: 0.2.5
+  version: 0.2.6
 
 servers:
   - url: /
@@ -72,7 +72,7 @@ paths:
                 allOk:
                   summary: All integrations healthy
                   value:
-                    version: 0.2.4
+                    version: 0.2.6
                     ok: true
                     firebase:
                       ok: true
@@ -93,7 +93,7 @@ paths:
                 llmUnauthorized:
                   summary: LLM provider key rejected (API reachable)
                   value:
-                    version: 0.2.4
+                    version: 0.2.6
                     ok: false
                     firebase:
                       ok: true
@@ -330,7 +330,7 @@ paths:
       tags: [provider]
       summary: Get active LLM provider
       description: |
-        Returns the active LLM provider stored in Firebase Realtime Database at **`provider_state/current_provide`** plus the providers configured in this server process.
+        Returns the active LLM provider stored in Firebase Realtime Database at **`provider_state/current_provide`** plus providers dynamically discovered from LiteLLM model routes. A provider is available only when both **`<provider>-image`** and **`<provider>-reasoning`** exist. If LiteLLM model discovery is unavailable, the backend may use the configured **`LLM_PROVIDERS`** fallback.
       operationId: getProvider
       responses:
         "200":
@@ -339,9 +339,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProviderState"
-              example:
-                current_provide: openrouter
-                available_providers: [openrouter, openai, nvidia, deepseek]
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
@@ -350,7 +347,7 @@ paths:
       tags: [provider]
       summary: Switch active LLM provider
       description: |
-        Stores the selected provider in Firebase Realtime Database at **`provider_state/current_provide`**. Subsequent import pipeline LLM calls use that provider.
+        Stores the selected base provider in Firebase Realtime Database at **`provider_state/current_provide`**. Subsequent import pipeline LLM calls use **`<provider>-image`** for image extraction and **`<provider>-reasoning`** for reasoning/format guard.
       operationId: putProvider
       requestBody:
         required: true
@@ -358,19 +355,6 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/ProviderUpdateRequest"
-            examples:
-              openrouter:
-                value:
-                  current_provide: openrouter
-              openai:
-                value:
-                  current_provide: openai
-              nvidia:
-                value:
-                  current_provide: nvidia
-              deepseek:
-                value:
-                  current_provide: deepseek
       responses:
         "200":
           description: Provider state after the update
@@ -684,7 +668,7 @@ components:
         version:
           type: string
           description: Backend application version from `backend/package.json`
-          example: 0.2.4
+          example: 0.2.6
         ok:
           type: boolean
           description: True only when **firebase**, **llm**, and **s3** are all `ok`
@@ -784,7 +768,7 @@ components:
 
     LlmProvider:
       type: string
-      enum: [openrouter, openai, nvidia, deepseek]
+      description: Base provider name discovered from LiteLLM routes that have both `<provider>-image` and `<provider>-reasoning`, or from the configured fallback when LiteLLM model discovery is unavailable.
 
     ProviderState:
       type: object
@@ -796,7 +780,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LlmProvider"
-          example: [openrouter, openai, nvidia, deepseek]
 
     ProviderUpdateRequest:
       type: object
