@@ -32,7 +32,7 @@ class GrimClient {
     final dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        headers: <String, dynamic>{'accept': 'application/json', if (defaultHeaders != null) ...defaultHeaders},
+        headers: <String, dynamic>{'accept': 'application/json', ...?defaultHeaders},
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 30),
         sendTimeout: const Duration(seconds: 30),
