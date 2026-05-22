@@ -177,7 +177,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: grim-ios-ipa
-          path: mobile/build/ios/ipa/mobile.ipa
+          path: mobile/build/ios/ipa/GRIM.ipa
           if-no-files-found: error
           retention-days: 1
 
@@ -199,7 +199,7 @@ jobs:
     uses: ./.github/workflows/mobile-firebase-app-distribution.yml
     with:
       artifact-name: grim-ios-ipa
-      file-name: mobile.ipa
+      file-name: GRIM.ipa
       release-notes: "GRIM mobile ${{ github.ref_name }}"
     secrets:
       firebase_app_id: ${{ secrets.FIREBASE_IOS_APP_ID }}
