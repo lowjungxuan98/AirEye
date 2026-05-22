@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart';
 
 import '../theme/grim_colors.dart';
 
@@ -21,6 +22,7 @@ class _GrimTextSheetState extends State<GrimTextSheet> {
     color: Color(0xE6000000),
     borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
   );
+  static const _blockedHtmlTags = {'script', 'style', 'iframe', 'object', 'embed'};
 
   final _controller = DraggableScrollableController();
   var _expanded = false;
@@ -35,6 +37,19 @@ class _GrimTextSheetState extends State<GrimTextSheet> {
     final target = _expanded ? widget.minSize : widget.maxSize;
     setState(() => _expanded = !_expanded);
     await _controller.animateTo(target, duration: const Duration(milliseconds: 220), curve: Curves.easeOut);
+  }
+
+  Map<String, Style> _htmlStyles(ThemeData theme) {
+    return {
+      '*': Style(color: GrimColors.onSurface, lineHeight: const LineHeight(1.35)),
+      'html': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
+      'body': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
+      'p': Style(margin: Margins.only(bottom: 8)),
+      'ul': Style(margin: Margins.only(bottom: 8), padding: HtmlPaddings.only(left: 18)),
+      'ol': Style(margin: Margins.only(bottom: 8), padding: HtmlPaddings.only(left: 18)),
+      'li': Style(margin: Margins.only(bottom: 4)),
+      'a': Style(color: theme.colorScheme.primary),
+    };
   }
 
   @override
@@ -80,7 +95,7 @@ class _GrimTextSheetState extends State<GrimTextSheet> {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                   children: [
                     if (widget.error case final err?) ...[Text(err, style: TextStyle(color: theme.colorScheme.error, height: 1.35)), const SizedBox(height: 12)],
-                    Text(widget.text, style: TextStyle(color: GrimColors.onSurface, height: 1.35)),
+                    Html(data: widget.text, shrinkWrap: true, doNotRenderTheseTags: _blockedHtmlTags, style: _htmlStyles(theme)),
                   ],
                 ),
               ),

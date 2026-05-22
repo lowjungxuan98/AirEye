@@ -1,4 +1,6 @@
 import 'package:core/core.dart';
+import 'package:zai/zai.dart';
+
 import 'image_detail_controller.dart';
 import 'image_detail_state.dart';
 
@@ -28,7 +30,12 @@ class ImageDetailView extends BasePage {
       body: Stack(
         children: [
           Positioned.fill(
-            child: GrimCachedZoomableImage(imageUrl: imageUrl, zoom: true, fit: BoxFit.contain),
+            child: GrimImageContextMenu(
+              imageUrl: imageUrl,
+              text: text?.isNotEmpty == true ? text! : '',
+              error: err?.isNotEmpty == true ? err : null,
+              child: GrimCachedZoomableImage(imageUrl: imageUrl, zoom: true, fit: BoxFit.contain),
+            ),
           ),
           const GrimBackButton(),
           SafeArea(
@@ -39,6 +46,8 @@ class ImageDetailView extends BasePage {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const _ZaiButton(),
+                    const SizedBox(height: 8),
                     GrimDownloadImageButton(imageUrl: imageUrl),
                     const SizedBox(height: 8),
                     GrimCopyTextButton(text: text?.isNotEmpty == true ? text! : ''),
@@ -49,6 +58,32 @@ class ImageDetailView extends BasePage {
           ),
           GrimTextSheet(text: text?.isNotEmpty == true ? text! : 'No text', error: err?.isNotEmpty == true ? err : null),
         ],
+      ),
+    );
+  }
+}
+
+class _ZaiButton extends StatelessWidget {
+  const _ZaiButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ZaiView())),
+      child: const DecoratedBox(
+        decoration: BoxDecoration(color: GrimColors.overlayDark, shape: BoxShape.circle),
+        child: Padding(
+          padding: EdgeInsets.all(10),
+          child: SizedBox.square(
+            dimension: 22,
+            child: Center(
+              child: Text(
+                'Z',
+                style: TextStyle(color: GrimColors.onSurface, fontSize: 16, fontWeight: FontWeight.w800, height: 1),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

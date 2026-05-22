@@ -5,6 +5,7 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private static let cameraSoundChannelName = "grim/camera_sound"
+  private static let imageClipboardChannelName = "grim/image_clipboard"
 
   override func application(
     _ application: UIApplication,
@@ -19,16 +20,36 @@ import UIKit
     let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "GrimCameraSoundPlugin")
     guard let messenger = registrar?.messenger() else { return }
 
-    let channel = FlutterMethodChannel(
+    let cameraSoundChannel = FlutterMethodChannel(
       name: AppDelegate.cameraSoundChannelName,
       binaryMessenger: messenger
     )
-    channel.setMethodCallHandler { call, result in
+    cameraSoundChannel.setMethodCallHandler { call, result in
       switch call.method {
       case "disposeShutterSound":
         // System sound 1108 is the camera shutter on iOS. Disposing it stops
         // it from being played by AVCapturePhotoOutput.
         AudioServicesDisposeSystemSoundID(1108)
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+
+    let imageClipboardChannel = FlutterMethodChannel(
+      name: AppDelegate.imageClipboardChannelName,
+      binaryMessenger: messenger
+    )
+    imageClipboardChannel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "copyImage":
+        guard let bytes = call.arguments as? FlutterStandardTypedData,
+              let image = UIImage(data: bytes.data) else {
+          result(FlutterError(code: "invalid_image", message: "Unable to decode image bytes.", details: nil))
+          return
+        }
+
+        UIPasteboard.general.image = image
         result(nil)
       default:
         result(FlutterMethodNotImplemented)

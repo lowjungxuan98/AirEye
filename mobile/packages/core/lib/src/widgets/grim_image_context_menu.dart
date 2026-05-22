@@ -1,8 +1,9 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:flutter/services.dart' show Clipboard, ClipboardData, MethodChannel;
 import 'package:gal/gal.dart';
 
 import '../theme/grim_colors.dart';
@@ -10,6 +11,8 @@ import 'grim_text_sheet.dart';
 
 class GrimImageContextMenu extends StatelessWidget {
   const GrimImageContextMenu({super.key, required this.imageUrl, required this.text, required this.child, this.error, this.onDownload, this.onRegenerate});
+
+  static const _imageClipboardChannel = MethodChannel('grim/image_clipboard');
 
   final String imageUrl;
   final String text;
@@ -37,6 +40,11 @@ class GrimImageContextMenu extends StatelessWidget {
           value: _Action.download,
           child: Text('Download image', style: TextStyle(color: GrimColors.onSurface)),
         ),
+        if (Platform.isIOS)
+          PopupMenuItem(
+            value: _Action.copyImage,
+            child: Text('Copy image', style: TextStyle(color: GrimColors.onSurface)),
+          ),
         PopupMenuItem(
           value: _Action.showText,
           child: Text('Show text', style: TextStyle(color: GrimColors.onSurface)),
@@ -58,6 +66,8 @@ class GrimImageContextMenu extends StatelessWidget {
           } else {
             _download(context);
           }
+        case _Action.copyImage:
+          _copyImage(context);
         case _Action.showText:
           _showText(context);
         case _Action.regenerate:
@@ -70,6 +80,20 @@ class GrimImageContextMenu extends StatelessWidget {
     await Clipboard.setData(ClipboardData(text: text));
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Text copied')));
+    }
+  }
+
+  Future<void> _copyImage(BuildContext context) async {
+    try {
+      final response = await Dio().get<List<int>>(imageUrl, options: Options(responseType: ResponseType.bytes));
+      await _imageClipboardChannel.invokeMethod<void>('copyImage', Uint8List.fromList(response.data!));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image copied')));
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to copy image')));
+      }
     }
   }
 
@@ -102,4 +126,4 @@ class GrimImageContextMenu extends StatelessWidget {
   }
 }
 
-enum _Action { copy, download, showText, regenerate }
+enum _Action { copy, download, copyImage, showText, regenerate }
