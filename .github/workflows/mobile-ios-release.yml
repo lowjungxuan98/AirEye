@@ -120,8 +120,8 @@ jobs:
             echo "Apple Distribution signing identity was not imported into the temporary keychain."
             exit 1
           fi
-          security set-key-partition-list -S apple-tool:,apple: -k "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"' | xargs)
+          security set-key-partition-list -S apple-tool:,apple: -k "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" || true
 
           PROFILE_UUID=$(security cms -D -i "$PROFILE_PATH" | /usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin)
           PROFILE_DEST="$HOME/Library/MobileDevice/Provisioning Profiles"
