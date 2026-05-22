@@ -181,6 +181,23 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      - name: Show iOS build folder on failure
+        if: failure() && github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
+        working-directory: mobile
+        shell: bash
+        run: |
+          set +e
+          if [[ ! -d build ]]; then
+            echo "No build directory found in $(pwd)."
+            ls -la
+            exit 0
+          fi
+
+          if ! command -v tree >/dev/null 2>&1; then
+            brew install tree
+          fi
+          tree -a build
+
       - name: Cleanup keychain
         if: always() && github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
         shell: bash
