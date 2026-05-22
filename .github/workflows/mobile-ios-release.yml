@@ -107,10 +107,15 @@ jobs:
           set -euo pipefail
           CERT_PATH="$RUNNER_TEMP/distribution.p12"
           PROFILE_PATH="$RUNNER_TEMP/GRIM_AdHoc.mobileprovision"
+          PROFILE_PLIST="$RUNNER_TEMP/GRIM_AdHoc.plist"
           KEYCHAIN_PATH="$RUNNER_TEMP/grim-build.keychain-db"
 
           printf '%s' "$IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_PATH"
           printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+          if [[ ! -s "$CERT_PATH" || ! -s "$PROFILE_PATH" ]]; then
+            echo "Decoded iOS signing assets are empty."
+            exit 1
+          fi
 
           security create-keychain -p "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
@@ -123,7 +128,11 @@ jobs:
           security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"' | xargs)
           security set-key-partition-list -S apple-tool:,apple: -k "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" || true
 
-          PROFILE_UUID=$(security cms -D -i "$PROFILE_PATH" | /usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin)
+          security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" "$PROFILE_PLIST")
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$PROFILE_PLIST")
+          PROFILE_APP_ID=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" "$PROFILE_PLIST")
+          echo "Installing provisioning profile '$PROFILE_NAME' ($PROFILE_UUID) for $PROFILE_APP_ID"
           PROFILE_DEST="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILE_DEST"
           cp "$PROFILE_PATH" "$PROFILE_DEST/$PROFILE_UUID.mobileprovision"
