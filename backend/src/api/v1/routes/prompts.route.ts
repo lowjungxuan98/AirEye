@@ -23,8 +23,11 @@ function mapPromptMulterError(err: unknown): ApiError {
 }
 
 const promptMultipartUpload = createPromptFilesMulter().fields([
+  { name: "analyze_question", maxCount: 1 },
   { name: "extract_text", maxCount: 1 },
   { name: "analyzing_text", maxCount: 1 },
+  { name: "task_extract_text", maxCount: 1 },
+  { name: "task_final_text", maxCount: 1 },
   { name: "format_guard", maxCount: 1 }
 ]);
 

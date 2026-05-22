@@ -1,9 +1,4 @@
 import OpenAI from "openai";
-import type {
-  FinalTextBuilder,
-  FinalTextFormatGuard,
-  ImageTextExtractor
-} from "../../api/v1/model/services.model";
 
 type OpenAICompatibleMessage =
   | { role: "system"; content: string }
@@ -15,7 +10,17 @@ type OpenAICompatibleMessage =
     };
 
 type OpenAICompatibleChatResponse = {
-  choices?: Array<{ message?: { content?: unknown } }>;
+  choices?: Array<{
+    message?: { content?: unknown; reasoning_content?: unknown; reasoning?: unknown };
+    finish_reason?: unknown;
+  }>;
+};
+
+export type ClassifierReply = {
+  raw: string;
+  finishReason: string | null;
+  /** Reasoning trace if the provider exposes it (DeepSeek-R1, GLM-5 thinking, Qwen-QwQ). */
+  reasoning: string | null;
 };
 
 export type OpenAICompatibleChatClient = {
@@ -26,6 +31,13 @@ export type OpenAICompatibleChatClient = {
         messages: OpenAICompatibleMessage[];
         max_tokens: number;
         temperature: number;
+        /**
+         * LiteLLM passthrough for provider-specific parameters. Anything inside
+         * `extra_body` is forwarded verbatim to the underlying provider (e.g.
+         * `{ thinking: { type: "disabled" } }` for ZhipuAI GLM models). LiteLLM's
+         * `openai` provider validator otherwise rejects unknown top-level fields.
+         */
+        extra_body?: Record<string, unknown>;
       }): Promise<OpenAICompatibleChatResponse>;
     };
   };
@@ -33,9 +45,6 @@ export type OpenAICompatibleChatClient = {
 
 type OpenAICompatibleTextProcessorBaseOptions = {
   model: string;
-  getExtractPromptText: () => string;
-  getAnalyzingSystemPrompt: () => string;
-  getFormatGuardSystemPrompt: () => string;
 };
 
 export type OpenAICompatibleTextProcessorOptions = OpenAICompatibleTextProcessorBaseOptions &
@@ -52,18 +61,12 @@ export type OpenAICompatibleTextProcessorOptions = OpenAICompatibleTextProcessor
       }
   );
 
-export class OpenAICompatibleTextProcessor implements ImageTextExtractor, FinalTextBuilder, FinalTextFormatGuard {
+export class OpenAICompatibleTextProcessor {
   private readonly client: OpenAICompatibleChatClient;
   readonly model: string;
-  private readonly getExtractPromptText: () => string;
-  private readonly getAnalyzingSystemPrompt: () => string;
-  private readonly getFormatGuardSystemPrompt: () => string;
 
   constructor(options: OpenAICompatibleTextProcessorOptions) {
     this.model = options.model;
-    this.getExtractPromptText = options.getExtractPromptText;
-    this.getAnalyzingSystemPrompt = options.getAnalyzingSystemPrompt;
-    this.getFormatGuardSystemPrompt = options.getFormatGuardSystemPrompt;
     if (options.client) {
       this.client = options.client;
       return;
@@ -75,20 +78,62 @@ export class OpenAICompatibleTextProcessor implements ImageTextExtractor, FinalT
     });
   }
 
-  async extractTextFromImage(imageBuffer: Buffer, imageMimeType: string): Promise<string> {
-    const imageBase64 = imageBuffer.toString("base64");
-    const dataUrl = `data:${normalizeImageMimeType(imageMimeType)};base64,${imageBase64}`;
-    return this.extractTextFromImageUrl(dataUrl);
-  }
-
-  async extractTextFromImageUrl(imageUrl: string): Promise<string> {
+  async analyzeQuestionTypeFromImageUrl(imageUrl: string, prompt: string): Promise<ClassifierReply> {
     const response = await this.client.chat.completions.create({
       model: this.model,
       messages: [
         {
           role: "user",
           content: [
-            { type: "text", text: this.getExtractPromptText().trimEnd() },
+            { type: "text", text: prompt.trimEnd() },
+            { type: "image_url", image_url: { url: imageUrl } }
+          ]
+        }
+      ],
+      // The classifier needs a single-label answer, not chain-of-thought. We disable
+      // thinking mode for providers that support it (GLM-5V-Turbo defaults to thinking,
+      // which causes finish_reason=length with raw="" no matter how high max_tokens is).
+      // The param is sent under `extra_body` so LiteLLM forwards it to the underlying
+      // provider instead of rejecting it as a non-OpenAI top-level field. Providers
+      // that don't recognize `thinking` ignore it.
+      extra_body: { thinking: { type: "disabled" } },
+      // Generous fallback budget: if a provider DOES still do reasoning (or ignores the
+      // thinking toggle), make sure visible content has room. Single-label output is
+      // tiny so the actual cost stays trivial.
+      max_tokens: 8192,
+      temperature: 0
+    });
+
+    const choice = response.choices?.[0];
+    const reasoning =
+      pickReasoning(choice?.message?.reasoning_content) ??
+      pickReasoning(choice?.message?.reasoning) ??
+      null;
+    return {
+      raw: normalizeAssistantContent(choice?.message?.content),
+      finishReason: typeof choice?.finish_reason === "string" ? choice.finish_reason : null,
+      reasoning
+    };
+  }
+
+  async extractTextFromImageWithPrompt(
+    imageBuffer: Buffer,
+    imageMimeType: string,
+    prompt: string
+  ): Promise<string> {
+    const imageBase64 = imageBuffer.toString("base64");
+    const dataUrl = `data:${normalizeImageMimeType(imageMimeType)};base64,${imageBase64}`;
+    return this.extractTextFromImageUrlWithPrompt(dataUrl, prompt);
+  }
+
+  async extractTextFromImageUrlWithPrompt(imageUrl: string, prompt: string): Promise<string> {
+    const response = await this.client.chat.completions.create({
+      model: this.model,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt.trimEnd() },
             { type: "image_url", image_url: { url: imageUrl } }
           ]
         }
@@ -100,11 +145,11 @@ export class OpenAICompatibleTextProcessor implements ImageTextExtractor, FinalT
     return normalizeAssistantContent(response.choices?.[0]?.message?.content);
   }
 
-  async buildFinalText(extractedText: string): Promise<string> {
+  async buildFinalTextWithPrompt(extractedText: string, systemPrompt: string): Promise<string> {
     const response = await this.client.chat.completions.create({
       model: this.model,
       messages: [
-        { role: "system", content: this.getAnalyzingSystemPrompt().trimEnd() },
+        { role: "system", content: systemPrompt.trimEnd() },
         {
           role: "user",
           content: extractedText
@@ -117,11 +162,11 @@ export class OpenAICompatibleTextProcessor implements ImageTextExtractor, FinalT
     return normalizeAssistantContent(response.choices?.[0]?.message?.content);
   }
 
-  async guardFinalText(finalText: string): Promise<string> {
+  async guardFinalText(finalText: string, systemPrompt: string): Promise<string> {
     const response = await this.client.chat.completions.create({
       model: this.model,
       messages: [
-        { role: "system", content: this.getFormatGuardSystemPrompt().trimEnd() },
+        { role: "system", content: systemPrompt.trimEnd() },
         {
           role: "user",
           content: finalText
@@ -133,6 +178,14 @@ export class OpenAICompatibleTextProcessor implements ImageTextExtractor, FinalT
 
     return normalizeAssistantContent(response.choices?.[0]?.message?.content);
   }
+}
+
+function pickReasoning(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function normalizeImageMimeType(imageMimeType: string): string {

@@ -16,13 +16,14 @@ export const API_ERROR_MESSAGES = {
   uploadFailed: "upload failed",
   invalidProvider:
     "Expected provider to be one of the LiteLLM providers with both -image and -reasoning routes",
+  unrecognizedQuestionType: "Unrecognized question type from model",
   unsupportedImageUpload: "Only image uploads are supported",
   unsupportedPromptUpload: "Prompt files must be text/plain, text/*, or .txt",
   invalidPromptSecret: "Invalid or missing X-Grim-Prompt-Secret header",
   invalidPage: "page must be a positive integer",
   invalidLimit: "limit must be a positive integer",
   missingPromptUpdate:
-    "Provide at least one prompt: JSON keys extractTextPrompt / analyzingTextPrompt / formatGuardPrompt, or multipart fields extract_text / analyzing_text / format_guard (file or text)"
+    "Provide at least one prompt: JSON keys analyzeQuestionPrompt / mcqExtractTextPrompt / mcqFinalTextPrompt / taskExtractTextPrompt / taskFinalTextPrompt / formatGuardPrompt, or multipart fields analyze_question / extract_text / analyzing_text / task_extract_text / task_final_text / format_guard (file or text)"
 } as const;
 
 export const API_ERROR_CODES = {
@@ -81,6 +82,38 @@ export function promptFileTooLarge(): ApiError {
 
 export function invalidProvider(message: string = API_ERROR_MESSAGES.invalidProvider): ApiError {
   return new ApiError(400, API_ERROR_CODES.invalidProvider, message);
+}
+
+export type UnrecognizedQuestionTypeContext = {
+  provider: string;
+  model: string;
+  raw: string;
+  stripped: string;
+  finishReason: string | null;
+  reasoning: string | null;
+};
+
+const REASONING_TAIL_PREVIEW_CHARS = 200;
+
+/**
+ * Question-type classifier returned a value outside the supported set
+ * (`Task` / `MCQ-Single` / `MCQ-Multiple`). Carries enough provider / model /
+ * finish-reason / reasoning context for the operator to diagnose without
+ * re-running the request.
+ */
+export function unrecognizedQuestionType(context: UnrecognizedQuestionTypeContext): ApiError {
+  const parts = [
+    `${API_ERROR_MESSAGES.unrecognizedQuestionType}.`,
+    `provider=${context.provider}`,
+    `model=${context.model}`,
+    `finish_reason=${context.finishReason ?? "null"}`,
+    `raw=${JSON.stringify(context.raw)}`,
+    `stripped=${JSON.stringify(context.stripped)}`
+  ];
+  if (context.reasoning) {
+    parts.push(`reasoning_tail=${JSON.stringify(context.reasoning.slice(-REASONING_TAIL_PREVIEW_CHARS))}`);
+  }
+  return new ApiError(400, API_ERROR_CODES.invalidProvider, parts.join(" "));
 }
 
 export function providerNotConfigured(provider: string): ApiError {

@@ -5,7 +5,11 @@ import type {
   ImportStreamEmitter,
   Logger
 } from "../model/services.model";
-import type { GrimUpload, GrimUploadRow, ImportRequest } from "../model/import.model";
+import type {
+  ImportRequest,
+  QuestionFlow,
+  QuestionTypeCode
+} from "../model/import.model";
 import type { RegenerateRequest } from "../model/regenerate.model";
 import {
   API_ERROR_MESSAGES,
@@ -26,20 +30,14 @@ export class ImportService implements ImportServiceContract {
   }
 
   /**
-   * Order: image storage → RTDB initial record + FCM export refresh → SSE extracting_text →
-   * image text extraction → SSE analyzing_text → final text → SSE format_guard → guarded final text →
+   * Order: image storage → RTDB initial record + FCM export refresh → SSE analyzing_question →
+   * question-type classification → SSE extracting_text (branch-aware) → image text extraction →
+   * SSE analyzing_text → final text → SSE format_guard → guarded final text →
    * Realtime Database (update) → FCM export refresh →
    * SSE final row (or SSE error after RTDB error write).
    */
   async streamImport(request: ImportRequest, emit: ImportStreamEmitter): Promise<void> {
-    const {
-      uploadRepository,
-      textExtractor,
-      finalTextBuilder,
-      finalTextFormatGuard,
-      imageStorage,
-      notifier
-    } = this.deps;
+    const { uploadRepository, imageStorage, notifier } = this.deps;
     const uploadId = this.newId();
     const createdAt = this.now();
 
@@ -70,21 +68,13 @@ export class ImportService implements ImportServiceContract {
         this.logger.error("failed to send initial FCM export refresh", error);
       }
 
-      emit({ status: "extracting_text" });
-      const extractedText = await textExtractor.extractTextFromImageUrl(image.imageUrl);
-      emit({ data: { extractedText } });
-      emit({ status: "analyzing_text" });
-      const finalText = await finalTextBuilder.buildFinalText(extractedText);
-      emit({ data: { finalText } });
-      emit({ status: "format_guard" });
-      const guardedFinalText = await finalTextFormatGuard.guardFinalText(finalText);
-      emit({ data: { guardedFinalText } });
+      const { extractedText, finalText } = await this.runLlmPipeline(image.imageUrl, emit);
       const updatedAt = this.now();
 
       await uploadRepository.updateUpload(uploadId, {
         updatedAt,
         extractedText,
-        finalText: guardedFinalText
+        finalText
       });
 
       try {
@@ -98,7 +88,7 @@ export class ImportService implements ImportServiceContract {
         createdAt,
         updatedAt,
         extractedText,
-        finalText: guardedFinalText,
+        finalText,
         imageUrl: image.imageUrl,
         bucket: image.bucket,
         objectKey: image.objectKey
@@ -124,13 +114,7 @@ export class ImportService implements ImportServiceContract {
   }
 
   async streamRegenerate(request: RegenerateRequest, emit: ImportStreamEmitter): Promise<void> {
-    const {
-      uploadRepository,
-      textExtractor,
-      finalTextBuilder,
-      finalTextFormatGuard,
-      notifier
-    } = this.deps;
+    const { uploadRepository, notifier } = this.deps;
     const startedAt = this.now();
     const uploadId = extractUploadIdFromImageUrl(request.imageUrl);
     const existing = await uploadRepository.getUpload(uploadId);
@@ -152,21 +136,13 @@ export class ImportService implements ImportServiceContract {
         this.logger.error("failed to send regenerate initial FCM export refresh", error);
       }
 
-      emit({ status: "extracting_text" });
-      const extractedText = await textExtractor.extractTextFromImageUrl(request.imageUrl);
-      emit({ data: { extractedText } });
-      emit({ status: "analyzing_text" });
-      const finalText = await finalTextBuilder.buildFinalText(extractedText);
-      emit({ data: { finalText } });
-      emit({ status: "format_guard" });
-      const guardedFinalText = await finalTextFormatGuard.guardFinalText(finalText);
-      emit({ data: { guardedFinalText } });
+      const { extractedText, finalText } = await this.runLlmPipeline(request.imageUrl, emit);
       const updatedAt = this.now();
 
       await uploadRepository.updateUpload(uploadId, {
         updatedAt,
         extractedText,
-        finalText: guardedFinalText,
+        finalText,
         errorMessage: ""
       });
 
@@ -181,7 +157,7 @@ export class ImportService implements ImportServiceContract {
         createdAt: existing.createdAt,
         updatedAt,
         extractedText,
-        finalText: guardedFinalText,
+        finalText,
         imageUrl: existing.imageUrl,
         bucket: existing.bucket,
         objectKey: existing.objectKey
@@ -211,10 +187,36 @@ export class ImportService implements ImportServiceContract {
     }
   }
 
+  private async runLlmPipeline(
+    imageUrl: string,
+    emit: ImportStreamEmitter
+  ): Promise<{ extractedText: string; finalText: string; questionType: QuestionTypeCode }> {
+    const { questionTypeAnalyzer, textExtractor, finalTextBuilder, finalTextFormatGuard } = this.deps;
+
+    emit({ status: "analyzing_question" });
+    const questionType = await questionTypeAnalyzer.analyzeQuestionTypeFromImageUrl(imageUrl);
+    emit({ data: { questionType } });
+
+    const flow: QuestionFlow = questionType === "Task" ? "Task" : "MCQ";
+
+    emit({ status: "extracting_text" });
+    const extractedText = await textExtractor.extractTextFromImageUrl(imageUrl, flow);
+    emit({ data: { extractedText } });
+
+    emit({ status: "analyzing_text" });
+    const finalText = await finalTextBuilder.buildFinalText(extractedText, flow);
+    emit({ data: { finalText } });
+
+    emit({ status: "format_guard" });
+    const guardedFinalText = await finalTextFormatGuard.guardFinalText(finalText);
+    emit({ data: { guardedFinalText } });
+
+    return { extractedText, finalText: guardedFinalText, questionType };
+  }
+
   private toStreamError(error: unknown): { code: string; message: string } {
     return toErrorPayload(error);
   }
-
 }
 
 

@@ -30,9 +30,11 @@ export function createGetPromptsHandler(settings: GrimPromptSettings): RequestHa
 }
 
 /**
- * Supports **`application/json`** (`extractTextPrompt` / `analyzingTextPrompt` / `formatGuardPrompt`) or
- * **`multipart/form-data`** with optional file parts **`extract_text`**, **`analyzing_text`**,
- * and **`format_guard`**
+ * Supports **`application/json`** (`analyzeQuestionPrompt` / `mcqExtractTextPrompt` /
+ * `mcqFinalTextPrompt` / `taskExtractTextPrompt` / `taskFinalTextPrompt` /
+ * `formatGuardPrompt`) or **`multipart/form-data`** with optional file parts
+ * **`analyze_question`**, **`extract_text`**, **`analyzing_text`**,
+ * **`task_extract_text`**, **`task_final_text`**, and **`format_guard`**
  * (and optional same-named text fields if no file for that slot).
  */
 export function createPutPromptsHandler(settings: GrimPromptSettings): RequestHandler {
@@ -44,17 +46,16 @@ export function createPutPromptsHandler(settings: GrimPromptSettings): RequestHa
 
     if (isMultipart) {
       const files = req.files as MulterFieldFiles | undefined;
-      const extractFromFile = readUtf8FromFile(firstFile(files, "extract_text"));
-      const analyzingFromFile = readUtf8FromFile(firstFile(files, "analyzing_text"));
-      const formatGuardFromFile = readUtf8FromFile(firstFile(files, "format_guard"));
-      const extractFromField = readStringField(req.body, "extract_text");
-      const analyzingFromField = readStringField(req.body, "analyzing_text");
-      const formatGuardFromField = readStringField(req.body, "format_guard");
+      const readSlot = (field: string): string | undefined =>
+        readUtf8FromFile(firstFile(files, field)) ?? readStringField(req.body, field);
 
       update = {
-        extractTextPrompt: extractFromFile ?? extractFromField,
-        analyzingTextPrompt: analyzingFromFile ?? analyzingFromField,
-        formatGuardPrompt: formatGuardFromFile ?? formatGuardFromField
+        analyzeQuestionPrompt: readSlot("analyze_question"),
+        mcqExtractTextPrompt: readSlot("extract_text"),
+        mcqFinalTextPrompt: readSlot("analyzing_text"),
+        taskExtractTextPrompt: readSlot("task_extract_text"),
+        taskFinalTextPrompt: readSlot("task_final_text"),
+        formatGuardPrompt: readSlot("format_guard")
       };
     } else {
       const body = req.body as unknown;
@@ -63,8 +64,11 @@ export function createPutPromptsHandler(settings: GrimPromptSettings): RequestHa
       }
       const json = body as PromptUpdateBody;
       update = {
-        extractTextPrompt: json.extractTextPrompt,
-        analyzingTextPrompt: json.analyzingTextPrompt,
+        analyzeQuestionPrompt: json.analyzeQuestionPrompt,
+        mcqExtractTextPrompt: json.mcqExtractTextPrompt,
+        mcqFinalTextPrompt: json.mcqFinalTextPrompt,
+        taskExtractTextPrompt: json.taskExtractTextPrompt,
+        taskFinalTextPrompt: json.taskFinalTextPrompt,
         formatGuardPrompt: json.formatGuardPrompt
       };
     }

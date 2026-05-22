@@ -2,14 +2,12 @@
 
 ## Backend
 
-1. Upload image and realtime firebase first, pipeline flow changes - done
+Need to let cluade to continue where he stopped
+update prompt
+1. code preview very worst
+2. every edit file may need to create .bak
 
 ## Mobile
 
-1. Image Caching - done
-2. New label for new image never open before - done
-
-## Further improvement (not urgent)
-
-1. Send able to know the pipeline steps
-
+embed the html string
+webview of Z.ai

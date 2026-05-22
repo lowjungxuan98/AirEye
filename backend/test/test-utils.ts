@@ -52,11 +52,17 @@ export type BuildTestAppInput = {
   logger?: Logger;
   /** When set, `GET`/`PUT /api/v1/prompts` require this secret via `X-Grim-Prompt-Secret`. */
   promptAdminSecret?: string;
-  /** Seed file `extract_text_prompt.txt` in an isolated temp prompts directory (default short test string). */
+  /** Seed file `analyze_question_prompt.txt` (default short test string). */
+  initialAnalyzeQuestionPrompt?: string;
+  /** Seed file `extract_text_prompt.txt` (MCQ extract; default short test string). */
   initialExtractPrompt?: string;
-  /** Seed file `analyzing_text_prompt.txt` in an isolated temp prompts directory (default short test string). */
+  /** Seed file `analyzing_text_prompt.txt` (MCQ final; default short test string). */
   initialAnalyzingPrompt?: string;
-  /** Seed file `format_guard_prompt.txt` in an isolated temp prompts directory (default short test string). */
+  /** Seed file `task_extract_text_prompt.txt` (Task extract; default short test string). */
+  initialTaskExtractPrompt?: string;
+  /** Seed file `task_final_text_prompt.txt` (Task final; default short test string). */
+  initialTaskFinalPrompt?: string;
+  /** Seed file `format_guard_prompt.txt` (default short test string). */
   initialFormatGuardPrompt?: string;
 };
 
@@ -97,6 +103,11 @@ const inMemoryProviderService = (
 function createIsolatedPromptSettings(input: BuildTestAppInput): GrimPromptSettings {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "grim-prompts-"));
   fs.writeFileSync(
+    path.join(dir, "analyze_question_prompt.txt"),
+    input.initialAnalyzeQuestionPrompt ?? "test analyze question prompt",
+    "utf8"
+  );
+  fs.writeFileSync(
     path.join(dir, "extract_text_prompt.txt"),
     input.initialExtractPrompt ?? "test extract prompt",
     "utf8"
@@ -104,6 +115,16 @@ function createIsolatedPromptSettings(input: BuildTestAppInput): GrimPromptSetti
   fs.writeFileSync(
     path.join(dir, "analyzing_text_prompt.txt"),
     input.initialAnalyzingPrompt ?? "test analyzing prompt",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(dir, "task_extract_text_prompt.txt"),
+    input.initialTaskExtractPrompt ?? "test task extract prompt",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(dir, "task_final_text_prompt.txt"),
+    input.initialTaskFinalPrompt ?? "test task final prompt",
     "utf8"
   );
   fs.writeFileSync(
@@ -150,10 +171,14 @@ export function createImportServiceWithStubbedPipeline(deps?: Partial<ImportServ
     };
   return new ImportServiceImpl({
     uploadRepository,
+    questionTypeAnalyzer:
+      deps?.questionTypeAnalyzer ??
+      {
+        analyzeQuestionTypeFromImageUrl: async () => "MCQ-Single"
+      },
     textExtractor:
       deps?.textExtractor ??
       {
-        extractTextFromImage: async () => "extracted",
         extractTextFromImageUrl: async () => "extracted"
       },
     finalTextBuilder: deps?.finalTextBuilder ?? { buildFinalText: async (t) => `final:${t}` },

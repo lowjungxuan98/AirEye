@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Grim API
   description: |
-    HTTP API for Grim’s backend: integration **health**, manual **capture** notification, image **import** (LLM pipeline over SSE), paginated **export**, runtime **provider** selection, and **prompt** templates for the extract + analyzing + format guard stages.
+    HTTP API for Grim’s backend: integration **health**, manual **capture** notification, image **import** (question-type-aware LLM pipeline over SSE), paginated **export**, runtime **provider** selection, and **prompt** templates for the six pipeline stages.
 
     | Area | Base path |
     |------|-----------|
@@ -12,14 +12,14 @@ info:
     | Capture | `POST /api/v1/capture` |
     | Export | `GET /api/v1/export` |
     | Provider | `GET /api/v1/provider`, `PUT /api/v1/provider` |
-    | Prompts | `GET /api/v1/prompts`, `PUT /api/v1/prompts` (JSON or **`multipart/form-data`** fields **`extract_text`** / **`analyzing_text`** / **`format_guard`**) |
+    | Prompts | `GET /api/v1/prompts`, `PUT /api/v1/prompts` (JSON or **`multipart/form-data`** fields **`analyze_question`** / **`extract_text`** / **`analyzing_text`** / **`task_extract_text`** / **`task_final_text`** / **`format_guard`**) |
 
-    **`POST /api/v1/import`** returns **Server-Sent Events** (`text/event-stream`): JSON on each `data:` line (progress, then a terminal success row or `error` object). See that operation for the exact sequence.
+    **`POST /api/v1/import`** returns **Server-Sent Events** (`text/event-stream`): JSON on each `data:` line (progress, then a terminal success row or `error` object). The pipeline first classifies the image as **`Task`**, **`MCQ-Single`**, or **`MCQ-Multiple`**, then branches into either the MCQ or Task extract/final prompt pair, and finally runs an HTML-aware format guard. The Firebase upload object shape is unchanged — `questionType` is emitted only on SSE and is never persisted. `finalText` is an HTML fragment string.
 
-    **Prompts:** text loaded from `extract_text_prompt.txt`, `analyzing_text_prompt.txt`, and `format_guard_prompt.txt` under **`GRIM_PROMPTS_DIR`** (default `./prompts` relative to the server process). **`PUT /api/v1/prompts`** overwrites those strings on disk and updates the in-memory copy used by the next import. Optional **`GRIM_PROMPT_ADMIN_SECRET`** forces clients to send **`X-Grim-Prompt-Secret`**.
+    **Prompts:** text loaded from `analyze_question_prompt.txt`, `extract_text_prompt.txt`, `analyzing_text_prompt.txt`, `task_extract_text_prompt.txt`, `task_final_text_prompt.txt`, and `format_guard_prompt.txt` under **`GRIM_PROMPTS_DIR`** (default `./prompts` relative to the server process). **`PUT /api/v1/prompts`** overwrites those strings on disk and updates the in-memory copy used by the next import. Optional **`GRIM_PROMPT_ADMIN_SECRET`** forces clients to send **`X-Grim-Prompt-Secret`**.
 
     **Interactive docs:** with the backend running, open **`/docs`** on the same origin for embedded [Scalar API Reference](https://scalar.com/products/api-references), or import this file’s URL elsewhere.
-  version: 0.2.7
+  version: 0.2.8
 
 servers:
   - url: /
@@ -32,7 +32,7 @@ tags:
     description: |
       Multipart image upload (`multipart/form-data`); the file part must be named **`image`**.
       Response is Server-Sent Events until the pipeline finishes.
-      Extract, analyzing, and format guard instructions come from the **prompts** templates (`extract_text_prompt.txt`, `analyzing_text_prompt.txt`, `format_guard_prompt.txt`) unless changed at runtime via **`PUT /api/v1/prompts`**.
+      The pipeline first classifies the image as `Task`, `MCQ-Single`, or `MCQ-Multiple`, then runs the matching extract/final prompt pair (MCQ or Task), and finishes with an HTML format-guard pass. Prompts come from the six **prompts** templates (`analyze_question_prompt.txt`, `extract_text_prompt.txt`, `analyzing_text_prompt.txt`, `task_extract_text_prompt.txt`, `task_final_text_prompt.txt`, `format_guard_prompt.txt`) unless changed at runtime via **`PUT /api/v1/prompts`**.
   - name: export
     description: Paginated newest-first list from Realtime Database (`page`, `limit`, `is_next`)
   - name: regenerate
@@ -41,8 +41,14 @@ tags:
     description: Receiver-triggered silent FCM topic request for sender devices to capture and import a photo
   - name: prompts
     description: |
-      Read or replace the full prompt strings used by **`POST /api/v1/import`**: extract stage (**`extractTextPrompt`**, instructions before the image), analyzing stage (**`analyzingTextPrompt`**, system message; extracted text is the user message), and format guard stage (**`formatGuardPrompt`**, system message; step-10 final text is the only user input).
-      Files on disk: **`extract_text_prompt.txt`**, **`analyzing_text_prompt.txt`**, **`format_guard_prompt.txt`** under **`GRIM_PROMPTS_DIR`**. Request body for **PUT** is JSON (server **`express.json` limit 2 MB**).
+      Read or replace the six prompt strings used by **`POST /api/v1/import`** and **`POST /api/v1/regenerate`**:
+      **`analyzeQuestionPrompt`** (image classifier returning `Task` / `MCQ-Single` / `MCQ-Multiple`),
+      **`mcqExtractTextPrompt`** (MCQ vision extractor),
+      **`mcqFinalTextPrompt`** (MCQ HTML answerer),
+      **`taskExtractTextPrompt`** (Task/CKA vision extractor),
+      **`taskFinalTextPrompt`** (Task/CKA HTML answerer),
+      **`formatGuardPrompt`** (HTML format guard).
+      Files on disk: **`analyze_question_prompt.txt`**, **`extract_text_prompt.txt`**, **`analyzing_text_prompt.txt`**, **`task_extract_text_prompt.txt`**, **`task_final_text_prompt.txt`**, **`format_guard_prompt.txt`** under **`GRIM_PROMPTS_DIR`**. Request body for **PUT** is JSON (server **`express.json` limit 2 MB**) or **`multipart/form-data`** with same-named file or text fields.
   - name: provider
     description: Runtime LLM provider state stored in Firebase Realtime Database under `provider_state/current_provide`
 
@@ -127,17 +133,19 @@ paths:
 
         After the initial pending upload row is written, the server sends a receiver-targeted FCM **topic** message on the configured topic: `kind: export_refresh`, `notificationType: silent`, `role: receiver`. When the pipeline **succeeds**, it sends the same refresh flag again after the final row update. The mobile app maps this flag to its existing export endpoint function. Topic defaults to **`grim_new_result`** (override with env `GRIM_FCM_TOPIC`).
 
-        **LLM prompts (configurable):** the extract stage uses current **`extractTextPrompt`** with the uploaded image. The analyzing stage receives **system** = current **`analyzingTextPrompt`** and **user** = the extract stage’s **`extractedText`** string. The format guard stage receives **system** = current **`formatGuardPrompt`** and **user** = only the final answer text. Defaults classify items as **`single`**, **`multiple`**, or **`task`**; answer single/multiple items with full option text; answer task items with complete ordered steps; and reject unsupported item types before the Firebase write. The extract and final stages may use different provider configs. Change prompts with **`GET/PUT /api/v1/prompts`**.
+        **LLM prompts (configurable):** the pipeline first sends the uploaded image plus the current **`analyzeQuestionPrompt`** to the image model and expects a plain-text reply matching one of `Task`, `MCQ-Single`, `MCQ-Multiple`. Based on the result it then runs either the **MCQ branch** (extract with **`mcqExtractTextPrompt`**, final-answer with **`mcqFinalTextPrompt`**) or the **Task branch** (extract with **`taskExtractTextPrompt`**, final-answer with **`taskFinalTextPrompt`**). The format guard stage always receives **system** = current **`formatGuardPrompt`** and **user** = only the final answer text, and produces a hardened **HTML fragment** (no JSON, no Markdown). The extract stages use the image model; the final and format-guard stages use the reasoning model. Change prompts with **`GET/PUT /api/v1/prompts`**.
 
-        **Response:** **200** with **`Content-Type: text/event-stream`** (Server-Sent Events). The HTTP connection stays open until the pipeline completes. After the multipart **image** is buffered, the server runs **S3** (image upload) → **extract LLM config** (image text extraction) → **final LLM config** (final text) → **format guard LLM pass** (hardens final text format) → **Realtime Database** write under `uploads/{id}` (no row before that), then receiver FCM topic messages on success.
+        **Response:** **200** with **`Content-Type: text/event-stream`** (Server-Sent Events). The HTTP connection stays open until the pipeline completes. After the multipart **image** is buffered, the server runs **S3** (image upload) → **Realtime Database** pending row write under `uploads/{id}` → initial **FCM** export-refresh broadcast → **analyze-question LLM** (classifier) → **extract LLM** (image text extraction for the chosen branch) → **final LLM** (HTML answer for the chosen branch) → **format guard LLM** (HTML hardening) → **Realtime Database** update of `extractedText` and `finalText` on the same row → final **FCM** export-refresh broadcast.
 
         Each SSE message is one `data:` line whose value is a single JSON object:
 
-        1. `{"status":"extracting_text"}` — after image storage upload, before image text extraction.
-        2. `{"status":"analyzing_text"}` — after extraction, before final text.
-        3. `{"status":"format_guard"}` — after final text generation, before format hardening and Firebase write.
-        4. On success: a JSON object with `id`, `createdAt`, `updatedAt`, `extractedText`, guarded `finalText`, `imageUrl`, `bucket`, and `objectKey` (same shape as stored under `uploads/{id}`).
-        5. On failure: `{"error":{"code":"…","message":"…"}}` (same `code` / `message` style as `ErrorBody` elsewhere). If **image storage** fails before any `status` event, the stream may contain **only** this terminal `data:` line. If the stream has already started, this appears as the last `data:` line instead of a separate HTTP error body.
+        1. `{"status":"analyzing_question"}` — after the pending RTDB row write and the initial FCM broadcast, before question-type classification.
+        2. `{"data":{"questionType":"Task" | "MCQ-Single" | "MCQ-Multiple"}}` — the classifier result. `questionType` is **never** persisted to Firebase.
+        3. `{"status":"extracting_text"}` — before vision text extraction (MCQ or Task branch).
+        4. `{"status":"analyzing_text"}` — after extraction, before final-answer generation.
+        5. `{"status":"format_guard"}` — after final-answer generation, before HTML hardening and the Firebase update.
+        6. On success: a JSON object with `id`, `createdAt`, `updatedAt`, `extractedText`, guarded `finalText` (HTML fragment string), `imageUrl`, `bucket`, and `objectKey` (same shape as stored under `uploads/{id}`).
+        7. On failure: `{"error":{"code":"…","message":"…"}}` (same `code` / `message` style as `ErrorBody` elsewhere). If **image storage** fails before any `status` event, the stream may contain **only** this terminal `data:` line. If the stream has already started, this appears as the last `data:` line instead of a separate HTTP error body. An unparseable classifier reply surfaces here as `{"code":"INVALID_PROVIDER",…}`.
 
         **HTTP 500** with a normal JSON `ErrorBody` is used only when the request fails **before** any SSE bytes are sent (for example an internal error in the handler). Once `text/event-stream` has started, failures use the terminal SSE `data:` object above.
       operationId: postImport
@@ -186,20 +194,31 @@ paths:
                 success:
                   summary: Typical success sequence (line breaks as in SSE)
                   value: |
+                    data: {"status":"analyzing_question"}
+
+                    data: {"data":{"questionType":"MCQ-Single"}}
+
                     data: {"status":"extracting_text"}
 
                     data: {"status":"analyzing_text"}
 
                     data: {"status":"format_guard"}
 
-                    data: {"id":"upl_abc","createdAt":1745000001000,"updatedAt":1745000001500,"extractedText":"…","finalText":"…","imageUrl":"https://minio.example.test/grim-development/uploads/upl_abc-a1b2c3d4.jpg","bucket":"grim-development","objectKey":"uploads/upl_abc-a1b2c3d4.jpg"}
+                    data: {"id":"upl_abc","createdAt":1745000001000,"updatedAt":1745000001500,"extractedText":"…","finalText":"<h2>Question</h2><p>…</p><h2>Answer</h2><ul><li>…</li></ul>","imageUrl":"https://minio.example.test/grim-development/uploads/upl_abc-a1b2c3d4.jpg","bucket":"grim-development","objectKey":"uploads/upl_abc-a1b2c3d4.jpg"}
 
                 pipelineError:
                   summary: Terminal error after stream started
                   value: |
-                    data: {"status":"extracting_text"}
+                    data: {"status":"analyzing_question"}
 
                     data: {"error":{"code":"INTERNAL_ERROR","message":"vision failed"}}
+
+                unrecognizedQuestionType:
+                  summary: Classifier returned a value outside the supported set
+                  value: |
+                    data: {"status":"analyzing_question"}
+
+                    data: {"error":{"code":"INVALID_PROVIDER","message":"Unrecognized question type from model: foo"}}
 
                 earlyFailure:
                   summary: Storage failed before any status line (optional)
@@ -236,9 +255,12 @@ paths:
                 defaultsShape:
                   summary: Typical response shape (content abbreviated)
                   value:
-                    extractTextPrompt: "You are analyzing an image of a screen…"
-                    analyzingTextPrompt: "You are given plain text that was extracted…"
-                    formatGuardPrompt: "You are a strict JSON format guard…"
+                    analyzeQuestionPrompt: "You are a question-type classifier…"
+                    mcqExtractTextPrompt: "You are Quizzer (MCQ extractor)…"
+                    mcqFinalTextPrompt: "You are Answerer (MCQ)…"
+                    taskExtractTextPrompt: "You are a vision OCR + task-extraction agent…"
+                    taskFinalTextPrompt: "You are a senior practical-exam engineer…"
+                    formatGuardPrompt: "You are an HTML format guard…"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "500":
@@ -247,19 +269,22 @@ paths:
       tags: [prompts]
       summary: Overwrite LLM prompt templates
       description: |
-        Updates one or more prompt files on the server (`extract_text_prompt.txt` / `analyzing_text_prompt.txt` / `format_guard_prompt.txt` under **`GRIM_PROMPTS_DIR`**, default `./prompts`).
+        Updates one or more of the six prompt files on the server (`analyze_question_prompt.txt` / `extract_text_prompt.txt` / `analyzing_text_prompt.txt` / `task_extract_text_prompt.txt` / `task_final_text_prompt.txt` / `format_guard_prompt.txt` under **`GRIM_PROMPTS_DIR`**, default `./prompts`).
 
         **`POST /api/v1/import`** uses the updated strings for **subsequent** runs (same process; in-memory and files stay aligned).
 
         **Two content types:**
 
         1. **`multipart/form-data`** (recommended for files) — optional parts:
-           - **`extract_text`** — UTF-8 text file (`.txt`, `text/*`, or `application/octet-stream`) **or** a plain text field with the same name if you are not uploading a file.
-           - **`analyzing_text`** — same rules as **`extract_text`**.
-           - **`format_guard`** — same rules as **`extract_text`**; controls the post-analysis format hardening pass.
-           At least one of these three names must be present (file or non-empty text field). Each file is limited to **2 MB**.
+           - **`analyze_question`** — UTF-8 text file (`.txt`, `text/*`, or `application/octet-stream`) **or** a plain text field with the same name. Image-only classifier prompt.
+           - **`extract_text`** — same rules as **`analyze_question`**. **MCQ** vision extractor.
+           - **`analyzing_text`** — same rules. **MCQ** final-answer (HTML) prompt.
+           - **`task_extract_text`** — same rules. **Task/CKA** vision extractor.
+           - **`task_final_text`** — same rules. **Task/CKA** final-answer (HTML) prompt.
+           - **`format_guard`** — same rules. HTML format hardening pass.
+           At least one of these six names must be present (file or non-empty text field). Each file is limited to **2 MB**.
 
-        2. **`application/json`** — optional keys **`extractTextPrompt`**, **`analyzingTextPrompt`**, and **`formatGuardPrompt`** (camelCase). At least one key must be present. Whole JSON body is limited by the server parser (**2 MB**).
+        2. **`application/json`** — optional keys **`analyzeQuestionPrompt`**, **`mcqExtractTextPrompt`**, **`mcqFinalTextPrompt`**, **`taskExtractTextPrompt`**, **`taskFinalTextPrompt`**, and **`formatGuardPrompt`** (camelCase). At least one key must be present. Whole JSON body is limited by the server parser (**2 MB**).
 
         Same **`X-Grim-Prompt-Secret`** rule as **GET** when **`GRIM_PROMPT_ADMIN_SECRET`** is set.
       operationId: putPrompts
@@ -271,34 +296,49 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              description: At least one of the three fields must be supplied (as a file part or a non-empty text field).
+              description: At least one of the six fields must be supplied (as a file part or a non-empty text field).
               properties:
+                analyze_question:
+                  type: string
+                  description: Question-type classifier prompt — UTF-8 `.txt` upload (`text/*` / `application/octet-stream`) or plain text field
+                  format: binary
                 extract_text:
                   type: string
-                  description: Extract prompt — UTF-8 `.txt` upload (`text/*` / `application/octet-stream`) or plain text field
+                  description: MCQ vision-extract prompt — same rules as **`analyze_question`**
                   format: binary
                 analyzing_text:
                   type: string
-                  description: Final-text system prompt — same as **`extract_text`**
+                  description: MCQ final-answer HTML prompt — same rules as **`analyze_question`**
+                  format: binary
+                task_extract_text:
+                  type: string
+                  description: Task/CKA vision-extract prompt — same rules as **`analyze_question`**
+                  format: binary
+                task_final_text:
+                  type: string
+                  description: Task/CKA final-answer HTML prompt — same rules as **`analyze_question`**
                   format: binary
                 format_guard:
                   type: string
-                  description: Format guard system prompt — same as **`extract_text`**
+                  description: HTML format guard prompt — same rules as **`analyze_question`**
                   format: binary
           application/json:
             schema:
               $ref: "#/components/schemas/PromptUpdateRequest"
             examples:
-              both:
-                summary: Replace both prompts (JSON)
+              all:
+                summary: Replace all six prompts (JSON)
                 value:
-                  extractTextPrompt: "…"
-                  analyzingTextPrompt: "…"
+                  analyzeQuestionPrompt: "…"
+                  mcqExtractTextPrompt: "…"
+                  mcqFinalTextPrompt: "…"
+                  taskExtractTextPrompt: "…"
+                  taskFinalTextPrompt: "…"
                   formatGuardPrompt: "…"
-              extractOnly:
-                summary: Replace extract instructions only (JSON)
+              analyzeOnly:
+                summary: Replace classifier prompt only (JSON)
                 value:
-                  extractTextPrompt: "…"
+                  analyzeQuestionPrompt: "…"
       responses:
         "200":
           description: Echo of the stored prompts after the update
@@ -457,7 +497,7 @@ paths:
         On success, the same upload row is updated in Realtime Database with new `extractedText`, guarded `finalText`, and `updatedAt`.
         `createdAt`, `imageUrl`, `bucket`, and `objectKey` are preserved.
 
-        The SSE events use the same payload shapes as `POST /api/v1/import`: `extracting_text`, optional intermediate `data`, `analyzing_text`, `format_guard`, and a terminal `ImportStreamResult` or `ImportStreamTerminalError`.
+        The SSE events use the same payload shapes as `POST /api/v1/import`: `analyzing_question` (with the intermediate `{"data":{"questionType":…}}` event), `extracting_text`, optional intermediate `data`, `analyzing_text`, `format_guard`, and a terminal `ImportStreamResult` or `ImportStreamTerminalError`. The Firebase row shape is unchanged.
       operationId: postRegenerate
       requestBody:
         required: true
@@ -480,13 +520,17 @@ paths:
               examples:
                 success:
                   value: |
+                    data: {"status":"analyzing_question"}
+
+                    data: {"data":{"questionType":"Task"}}
+
                     data: {"status":"extracting_text"}
 
                     data: {"status":"analyzing_text"}
 
                     data: {"status":"format_guard"}
 
-                    data: {"id":"upl_abc","createdAt":1745000001000,"updatedAt":1745000002500,"extractedText":"…","finalText":"…","imageUrl":"https://minio.example.test/grim-development/uploads/upl_abc-a1b2c3d4.jpg","bucket":"grim-development","objectKey":"uploads/upl_abc-a1b2c3d4.jpg"}
+                    data: {"id":"upl_abc","createdAt":1745000001000,"updatedAt":1745000002500,"extractedText":"…","finalText":"<h2>Task</h2><p>…</p><h2>Steps</h2><ol><li>…</li></ol><h2>Notes</h2><ul><li>…</li></ul>","imageUrl":"https://minio.example.test/grim-development/uploads/upl_abc-a1b2c3d4.jpg","bucket":"grim-development","objectKey":"uploads/upl_abc-a1b2c3d4.jpg"}
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
@@ -560,8 +604,10 @@ components:
                 error:
                   code: INVALID_REQUEST
                   message: >-
-                    Provide at least one prompt: JSON keys extractTextPrompt / analyzingTextPrompt / formatGuardPrompt,
-                    or multipart fields extract_text / analyzing_text / format_guard (file or text)
+                    Provide at least one prompt: JSON keys analyzeQuestionPrompt / mcqExtractTextPrompt /
+                    mcqFinalTextPrompt / taskExtractTextPrompt / taskFinalTextPrompt / formatGuardPrompt,
+                    or multipart fields analyze_question / extract_text / analyzing_text /
+                    task_extract_text / task_final_text / format_guard (file or text)
             promptsNotObject:
               summary: Prompts — body must be a JSON object
               value:
@@ -686,15 +732,16 @@ components:
       properties:
         status:
           type: string
-          enum: [extracting_text, analyzing_text, format_guard]
+          enum: [analyzing_question, extracting_text, analyzing_text, format_guard]
 
     ImportStreamResult:
       type: object
       required: [id, createdAt, updatedAt]
       description: |
         Success terminal event; mirrors the Realtime Database row under `uploads/{id}`.
-        **`extractedText`** is the vision model’s reply (prompt-controlled; default templates request JSON arrays of `single`, `multiple`, or `task` items).
-        **`finalText`** is the format-guarded analyzing model reply (default templates request JSON with **`answer`** arrays for single/multiple items and **`steps`** for task items).
+        **`extractedText`** is the vision model’s reply for the chosen branch (default templates emit a JSON array for the MCQ branch and a JSON object matching the CKA extraction schema for the Task branch — this is an internal hand-off to the final-answer stage and is not user-rendered).
+        **`finalText`** is the format-guarded analyzing model reply as an **HTML fragment** (MCQ uses `<h2>Question</h2>` / `<h2>Options</h2>` / `<h2>Answer</h2>` / `<h2>Explanation</h2>`; Task uses `<h2>Task</h2>` / `<h2>Steps</h2>` / `<h2>Notes</h2>`).
+        Note: the classifier output (`questionType`) is sent only via the intermediate SSE `{"data":{"questionType":…}}` event and is **not** persisted to the Firebase row.
       properties:
         id:
           type: string
@@ -707,12 +754,12 @@ components:
           format: int64
         extractedText:
           type: string
-          description: Raw model output from the vision extract stage (string; often JSON when using default prompts).
-          example: '[{"type":"single","question":"Q1?","instructions":"","requiredAnswerCount":1,"options":["A","B"]}]'
+          description: Raw model output from the vision extract stage for the chosen branch (string; default templates emit JSON used internally as input to the final-answer prompt).
+          example: '[{"type":"single","question":"Q1?","instructions":"","requiredAnswerCount":1,"options":["A. Alpha","B. Beta"]}]'
         finalText:
           type: string
-          description: Guarded model output after the format guard stage (string; expected to be JSON when using default prompts).
-          example: '{"questions":[{"type":"single","question":"Q1?","options":["A","B"],"answer":["A"]}]}'
+          description: HTML fragment after the format guard stage. MCQ branch returns `<h2>Question</h2>` / `<h2>Options</h2>` / `<h2>Answer</h2>` / `<h2>Explanation</h2>`; Task branch returns `<h2>Task</h2>` / `<h2>Steps</h2>` / `<h2>Notes</h2>`.
+          example: "<h2>Question</h2><p>What does kubectl get pods do?</p><h2>Options</h2><ul><li>A. Alpha</li><li>B. Beta</li></ul><h2>Answer</h2><ul><li>A. Alpha</li></ul><h2>Explanation</h2><p>It lists pods.</p>"
         imageUrl:
           type: string
           format: uri
@@ -843,25 +890,46 @@ components:
 
     PromptBundle:
       type: object
-      required: [extractTextPrompt, analyzingTextPrompt, formatGuardPrompt]
+      required:
+        - analyzeQuestionPrompt
+        - mcqExtractTextPrompt
+        - mcqFinalTextPrompt
+        - taskExtractTextPrompt
+        - taskFinalTextPrompt
+        - formatGuardPrompt
       properties:
-        extractTextPrompt:
+        analyzeQuestionPrompt:
           type: string
-          description: Full instructions for the image text extraction stage (JSON extraction rules + how to read the monitor).
-        analyzingTextPrompt:
+          description: Image-only classifier instructions. Must elicit exactly one of `Task`, `MCQ-Single`, or `MCQ-Multiple` as plain text.
+        mcqExtractTextPrompt:
           type: string
-          description: Full system instructions for final text (answer derivation for `single`/`multiple` items and ordered step generation for `task` items).
+          description: MCQ vision-extract instructions. Produces the JSON used as input to the MCQ final-answer prompt.
+        mcqFinalTextPrompt:
+          type: string
+          description: MCQ final-answer system instructions. Produces an HTML fragment (`<h2>Question</h2>` / `<h2>Options</h2>` / `<h2>Answer</h2>` / `<h2>Explanation</h2>`).
+        taskExtractTextPrompt:
+          type: string
+          description: Task/CKA vision-extract instructions. Produces the JSON used as input to the Task final-answer prompt.
+        taskFinalTextPrompt:
+          type: string
+          description: Task/CKA final-answer system instructions. Produces an HTML fragment (`<h2>Task</h2>` / `<h2>Steps</h2>` / `<h2>Notes</h2>`).
         formatGuardPrompt:
           type: string
-          description: Full system instructions for the post-analysis format guard stage.
+          description: HTML format guard system instructions for the post-analysis hardening pass.
 
     PromptUpdateRequest:
       type: object
       description: At least one property must be present.
       properties:
-        extractTextPrompt:
+        analyzeQuestionPrompt:
           type: string
-        analyzingTextPrompt:
+        mcqExtractTextPrompt:
+          type: string
+        mcqFinalTextPrompt:
+          type: string
+        taskExtractTextPrompt:
+          type: string
+        taskFinalTextPrompt:
           type: string
         formatGuardPrompt:
           type: string

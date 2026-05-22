@@ -54,12 +54,16 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
     client: llmClient,
     getAvailableProviders: () => modelDiscovery.getAvailableProviders(),
     stateRepository: providerStateRepository,
-    getExtractPromptText: () => promptSettings.getExtractTextPrompt(),
-    getAnalyzingSystemPrompt: () => promptSettings.getAnalyzingTextPrompt(),
-    getFormatGuardSystemPrompt: () => promptSettings.getFormatGuardPrompt()
+    getAnalyzeQuestionPrompt: () => promptSettings.getAnalyzeQuestionPrompt(),
+    getMcqExtractTextPrompt: () => promptSettings.getMcqExtractTextPrompt(),
+    getMcqFinalTextPrompt: () => promptSettings.getMcqFinalTextPrompt(),
+    getTaskExtractTextPrompt: () => promptSettings.getTaskExtractTextPrompt(),
+    getTaskFinalTextPrompt: () => promptSettings.getTaskFinalTextPrompt(),
+    getFormatGuardPrompt: () => promptSettings.getFormatGuardPrompt()
   });
   const importService = new ImportService({
     uploadRepository,
+    questionTypeAnalyzer: providerOrchestrator,
     textExtractor: providerOrchestrator,
     finalTextBuilder: providerOrchestrator,
     finalTextFormatGuard: providerOrchestrator,

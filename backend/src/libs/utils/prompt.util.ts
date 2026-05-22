@@ -7,46 +7,58 @@ import {
 } from "./api-error.util";
 
 export type PromptBundle = {
-  extractTextPrompt: string;
-  analyzingTextPrompt: string;
+  analyzeQuestionPrompt: string;
+  mcqExtractTextPrompt: string;
+  mcqFinalTextPrompt: string;
+  taskExtractTextPrompt: string;
+  taskFinalTextPrompt: string;
   formatGuardPrompt: string;
 };
 
-export type PromptUpdateBody = Partial<{
-  extractTextPrompt: string;
-  analyzingTextPrompt: string;
-  formatGuardPrompt: string;
-}>;
+export type PromptUpdateBody = Partial<PromptBundle>;
+
+type PromptKey = keyof PromptBundle;
+
+const PROMPT_FILENAMES: Record<PromptKey, string> = {
+  analyzeQuestionPrompt: "analyze_question_prompt.txt",
+  mcqExtractTextPrompt: "extract_text_prompt.txt",
+  mcqFinalTextPrompt: "analyzing_text_prompt.txt",
+  taskExtractTextPrompt: "task_extract_text_prompt.txt",
+  taskFinalTextPrompt: "task_final_text_prompt.txt",
+  formatGuardPrompt: "format_guard_prompt.txt"
+};
+
+const PROMPT_KEYS: readonly PromptKey[] = Object.keys(PROMPT_FILENAMES) as PromptKey[];
 
 export class GrimPromptSettings {
-  private extractTextPrompt = "";
-  private analyzingTextPrompt = "";
-  private formatGuardPrompt = "";
+  private readonly paths: Record<PromptKey, string>;
+  private readonly values: Record<PromptKey, string> = {
+    analyzeQuestionPrompt: "",
+    mcqExtractTextPrompt: "",
+    mcqFinalTextPrompt: "",
+    taskExtractTextPrompt: "",
+    taskFinalTextPrompt: "",
+    formatGuardPrompt: ""
+  };
 
-  private constructor(
-    private readonly extractPath: string,
-    private readonly analyzingPath: string,
-    private readonly formatGuardPath: string
-  ) {
+  private constructor(paths: Record<PromptKey, string>) {
+    this.paths = paths;
     this.reloadFromDisk();
   }
 
-  /**
-   * Loads `extract_text_prompt.txt`, `analyzing_text_prompt.txt`, and
-   * `format_guard_prompt.txt` from `promptsDir`.
-   */
   static loadFromDirectory(promptsDir: string): GrimPromptSettings {
-    const extractPath = path.join(promptsDir, "extract_text_prompt.txt");
-    const analyzingPath = path.join(promptsDir, "analyzing_text_prompt.txt");
-    const formatGuardPath = path.join(promptsDir, "format_guard_prompt.txt");
-    return new GrimPromptSettings(extractPath, analyzingPath, formatGuardPath);
+    const paths = {} as Record<PromptKey, string>;
+    for (const key of PROMPT_KEYS) {
+      paths[key] = path.join(promptsDir, PROMPT_FILENAMES[key]);
+    }
+    return new GrimPromptSettings(paths);
   }
 
   reloadFromDisk(): void {
     try {
-      this.extractTextPrompt = fs.readFileSync(this.extractPath, "utf8");
-      this.analyzingTextPrompt = fs.readFileSync(this.analyzingPath, "utf8");
-      this.formatGuardPrompt = fs.readFileSync(this.formatGuardPath, "utf8");
+      for (const key of PROMPT_KEYS) {
+        this.values[key] = fs.readFileSync(this.paths[key], "utf8");
+      }
     } catch (error) {
       const hint = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to read prompt files: ${hint}`);
@@ -55,58 +67,52 @@ export class GrimPromptSettings {
 
   getSnapshot(): PromptBundle {
     return {
-      extractTextPrompt: this.extractTextPrompt,
-      analyzingTextPrompt: this.analyzingTextPrompt,
-      formatGuardPrompt: this.formatGuardPrompt
+      analyzeQuestionPrompt: this.values.analyzeQuestionPrompt,
+      mcqExtractTextPrompt: this.values.mcqExtractTextPrompt,
+      mcqFinalTextPrompt: this.values.mcqFinalTextPrompt,
+      taskExtractTextPrompt: this.values.taskExtractTextPrompt,
+      taskFinalTextPrompt: this.values.taskFinalTextPrompt,
+      formatGuardPrompt: this.values.formatGuardPrompt
     };
   }
 
-  getExtractTextPrompt(): string {
-    return this.extractTextPrompt;
+  getAnalyzeQuestionPrompt(): string {
+    return this.values.analyzeQuestionPrompt;
   }
 
-  getAnalyzingTextPrompt(): string {
-    return this.analyzingTextPrompt;
+  getMcqExtractTextPrompt(): string {
+    return this.values.mcqExtractTextPrompt;
+  }
+
+  getMcqFinalTextPrompt(): string {
+    return this.values.mcqFinalTextPrompt;
+  }
+
+  getTaskExtractTextPrompt(): string {
+    return this.values.taskExtractTextPrompt;
+  }
+
+  getTaskFinalTextPrompt(): string {
+    return this.values.taskFinalTextPrompt;
   }
 
   getFormatGuardPrompt(): string {
-    return this.formatGuardPrompt;
+    return this.values.formatGuardPrompt;
   }
 
-  /**
-   * Overwrites one or both prompts on disk and refreshes the in-memory copy.
-   */
   updatePrompts(body: PromptUpdateBody): void {
-    if (
-      body.extractTextPrompt === undefined &&
-      body.analyzingTextPrompt === undefined &&
-      body.formatGuardPrompt === undefined
-    ) {
+    const provided = PROMPT_KEYS.filter((key) => body[key] !== undefined);
+    if (provided.length === 0) {
       throw invalidRequest(API_ERROR_MESSAGES.missingPromptUpdate);
     }
 
-    if (body.extractTextPrompt !== undefined) {
-      if (typeof body.extractTextPrompt !== "string") {
-        throw promptFieldMustBeString("extractTextPrompt");
+    for (const key of provided) {
+      const value = body[key];
+      if (typeof value !== "string") {
+        throw promptFieldMustBeString(key);
       }
-      fs.writeFileSync(this.extractPath, body.extractTextPrompt, "utf8");
-      this.extractTextPrompt = body.extractTextPrompt;
-    }
-
-    if (body.analyzingTextPrompt !== undefined) {
-      if (typeof body.analyzingTextPrompt !== "string") {
-        throw promptFieldMustBeString("analyzingTextPrompt");
-      }
-      fs.writeFileSync(this.analyzingPath, body.analyzingTextPrompt, "utf8");
-      this.analyzingTextPrompt = body.analyzingTextPrompt;
-    }
-
-    if (body.formatGuardPrompt !== undefined) {
-      if (typeof body.formatGuardPrompt !== "string") {
-        throw promptFieldMustBeString("formatGuardPrompt");
-      }
-      fs.writeFileSync(this.formatGuardPath, body.formatGuardPrompt, "utf8");
-      this.formatGuardPrompt = body.formatGuardPrompt;
+      fs.writeFileSync(this.paths[key], value, "utf8");
+      this.values[key] = value;
     }
   }
 }

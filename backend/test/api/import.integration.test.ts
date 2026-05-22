@@ -81,13 +81,15 @@ describe("POST /api/v1/import (HTTP integration)", () => {
       .expect(200);
 
     const events = parseSseDataLines(res.text);
-    expect(events[0]).toEqual({ status: "extracting_text" });
-    expect(events[1]).toEqual({ data: { extractedText: "extracted" } });
-    expect(events[2]).toEqual({ status: "analyzing_text" });
-    expect(events[3]).toEqual({ data: { finalText: "final:extracted" } });
-    expect(events[4]).toEqual({ status: "format_guard" });
-    expect(events[5]).toEqual({ data: { guardedFinalText: "guarded:final:extracted" } });
-    expect(events[6]).toMatchObject({
+    expect(events[0]).toEqual({ status: "analyzing_question" });
+    expect(events[1]).toEqual({ data: { questionType: "MCQ-Single" } });
+    expect(events[2]).toEqual({ status: "extracting_text" });
+    expect(events[3]).toEqual({ data: { extractedText: "extracted" } });
+    expect(events[4]).toEqual({ status: "analyzing_text" });
+    expect(events[5]).toEqual({ data: { finalText: "final:extracted" } });
+    expect(events[6]).toEqual({ status: "format_guard" });
+    expect(events[7]).toEqual({ data: { guardedFinalText: "guarded:final:extracted" } });
+    expect(events[8]).toMatchObject({
       id: "integration_upload_id",
       createdAt: 4242,
       updatedAt: 4242,

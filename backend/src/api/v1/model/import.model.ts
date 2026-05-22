@@ -11,9 +11,13 @@ export type GrimUpload = {
 
 export type GrimUploadRow = GrimUpload & { id: string };
 
-/** SSE `data:` JSON for progress (after storage upload, before / between model calls). */
+export type QuestionTypeCode = "Task" | "MCQ-Single" | "MCQ-Multiple";
+
+export type QuestionFlow = "MCQ" | "Task";
+
+/** SSE `data:` JSON for progress (after storage upload, between model calls). */
 export type ImportStreamStatusBody = {
-  status: "extracting_text" | "analyzing_text" | "format_guard";
+  status: "analyzing_question" | "extracting_text" | "analyzing_text" | "format_guard";
 };
 
 export type ImportStreamErrorBody = {

@@ -1,4 +1,11 @@
-import type { GrimUpload, GrimUploadRow, ImportRequest, ImportStreamSseData } from "./import.model";
+import type {
+  GrimUpload,
+  GrimUploadRow,
+  ImportRequest,
+  ImportStreamSseData,
+  QuestionFlow,
+  QuestionTypeCode
+} from "./import.model";
 import type { RegenerateRequest } from "./regenerate.model";
 import type { LlmProvider } from "../../../libs/configs/env.config";
 
@@ -15,13 +22,16 @@ export interface UploadRepository {
   listUploads(limit: number): Promise<GrimUploadRow[]>;
 }
 
+export interface QuestionTypeAnalyzer {
+  analyzeQuestionTypeFromImageUrl(imageUrl: string): Promise<QuestionTypeCode>;
+}
+
 export interface ImageTextExtractor {
-  extractTextFromImage(imageBuffer: Buffer, imageMimeType: string): Promise<string>;
-  extractTextFromImageUrl(imageUrl: string): Promise<string>;
+  extractTextFromImageUrl(imageUrl: string, flow: QuestionFlow): Promise<string>;
 }
 
 export interface FinalTextBuilder {
-  buildFinalText(extractedText: string): Promise<string>;
+  buildFinalText(extractedText: string, flow: QuestionFlow): Promise<string>;
 }
 
 export interface FinalTextFormatGuard {
@@ -45,6 +55,7 @@ export type Logger = Pick<Console, "error" | "warn" | "info">;
 
 export type ImportServiceDependencies = {
   uploadRepository: UploadRepository;
+  questionTypeAnalyzer: QuestionTypeAnalyzer;
   textExtractor: ImageTextExtractor;
   finalTextBuilder: FinalTextBuilder;
   finalTextFormatGuard: FinalTextFormatGuard;
