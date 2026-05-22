@@ -78,6 +78,7 @@ class GrimFcmManager {
     await _localNotifications.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('@drawable/ic_notification'),
+        iOS: DarwinInitializationSettings(),
       ),
     );
 

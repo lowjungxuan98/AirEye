@@ -22,7 +22,7 @@
       "name": "Flutter Release (local)",
       "request": "launch",
       "type": "dart",
-      "flutterMode": "release",
+      // "flutterMode": "release",
       "program": "lib/main.dart",
       "cwd": "${workspaceFolder}/mobile",
       "args": ["--dart-define-from-file=.env.local"]
