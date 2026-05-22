@@ -1,0 +1,43 @@
+name: Mobile Firebase App Distribution
+
+on:
+  workflow_call:
+    inputs:
+      artifact-name:
+        required: true
+        type: string
+      file-name:
+        required: true
+        type: string
+      release-notes:
+        required: true
+        type: string
+      groups:
+        required: false
+        type: string
+        default: internal
+    secrets:
+      firebase_app_id:
+        required: true
+      firebase_service_account:
+        required: true
+
+jobs:
+  distribute:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download mobile artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: dist/mobile
+
+      - name: Distribute to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1.7.1
+        with:
+          appId: ${{ secrets.firebase_app_id }}
+          serviceCredentialsFileContent: ${{ secrets.firebase_service_account }}
+          groups: ${{ inputs.groups }}
+          file: dist/mobile/${{ inputs.file-name }}
+          releaseNotes: ${{ inputs.release-notes }}

@@ -6,6 +6,7 @@ on:
       - "mobile/**"
       - "docs/mobile/**"
       - ".github/workflows/mobile-ios-release.yml"
+      - ".github/workflows/mobile-firebase-app-distribution.yml"
   push:
     tags:
       - "mobile-v*"
@@ -13,11 +14,14 @@ on:
       - "mobile/**"
       - "docs/mobile/**"
       - ".github/workflows/mobile-ios-release.yml"
+      - ".github/workflows/mobile-firebase-app-distribution.yml"
   workflow_dispatch:
 
 jobs:
   ios:
     runs-on: macos-26
+    outputs:
+      mobile_changed: ${{ steps.mobile_changes.outputs.changed }}
 
     steps:
       - name: Checkout
@@ -41,7 +45,7 @@ jobs:
             exit 0
           fi
 
-          if git diff --quiet "$previous_tag" HEAD -- mobile docs/mobile .github/workflows/mobile-ios-release.yml; then
+          if git diff --quiet "$previous_tag" HEAD -- mobile docs/mobile .github/workflows/mobile-ios-release.yml .github/workflows/mobile-firebase-app-distribution.yml; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -168,15 +172,14 @@ jobs:
             --dart-define=FIREBASE_DATABASE_URL="$FIREBASE_DATABASE_URL" \
             --dart-define=FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET"
 
-      - name: Distribute to Firebase App Distribution
+      - name: Upload IPA artifact
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
-        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        uses: actions/upload-artifact@v7
         with:
-          appId: ${{ secrets.FIREBASE_IOS_APP_ID }}
-          serviceCredentialsFileContent: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT }}
-          groups: internal
-          file: mobile/build/ios/ipa/mobile.ipa
-          releaseNotes: "GRIM mobile ${{ github.ref_name }}"
+          name: grim-ios-ipa
+          path: mobile/build/ios/ipa/mobile.ipa
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Cleanup keychain
         if: always() && github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
@@ -189,3 +192,15 @@ jobs:
       - name: Skip release
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'false'
         run: echo "No mobile changes detected since the previous mobile-v* tag; iOS release skipped."
+
+  ios-distribute:
+    needs: ios
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && needs.ios.outputs.mobile_changed == 'true'
+    uses: ./.github/workflows/mobile-firebase-app-distribution.yml
+    with:
+      artifact-name: grim-ios-ipa
+      file-name: mobile.ipa
+      release-notes: "GRIM mobile ${{ github.ref_name }}"
+    secrets:
+      firebase_app_id: ${{ secrets.FIREBASE_IOS_APP_ID }}
+      firebase_service_account: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT }}

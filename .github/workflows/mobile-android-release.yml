@@ -6,6 +6,7 @@ on:
       - "mobile/**"
       - "docs/mobile/**"
       - ".github/workflows/mobile-android-release.yml"
+      - ".github/workflows/mobile-firebase-app-distribution.yml"
   push:
     tags:
       - "mobile-v*"
@@ -13,11 +14,14 @@ on:
       - "mobile/**"
       - "docs/mobile/**"
       - ".github/workflows/mobile-android-release.yml"
+      - ".github/workflows/mobile-firebase-app-distribution.yml"
   workflow_dispatch:
 
 jobs:
   android:
     runs-on: ubuntu-latest
+    outputs:
+      mobile_changed: ${{ steps.mobile_changes.outputs.changed }}
 
     steps:
       - name: Checkout
@@ -41,7 +45,7 @@ jobs:
             exit 0
           fi
 
-          if git diff --quiet "$previous_tag" HEAD -- mobile docs/mobile .github/workflows/mobile-android-release.yml; then
+          if git diff --quiet "$previous_tag" HEAD -- mobile docs/mobile .github/workflows/mobile-android-release.yml .github/workflows/mobile-firebase-app-distribution.yml; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -143,16 +147,27 @@ jobs:
             --dart-define=FIREBASE_DATABASE_URL="$FIREBASE_DATABASE_URL" \
             --dart-define=FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET"
 
-      - name: Distribute to Firebase App Distribution
+      - name: Upload APK artifact
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
-        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        uses: actions/upload-artifact@v7
         with:
-          appId: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
-          serviceCredentialsFileContent: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT }}
-          groups: internal
-          file: mobile/build/app/outputs/flutter-apk/app-release.apk
-          releaseNotes: "GRIM mobile ${{ github.ref_name }}"
+          name: grim-android-apk
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Skip release
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'false'
         run: echo "No mobile changes detected since the previous mobile-v* tag; Android release skipped."
+
+  android-distribute:
+    needs: android
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && needs.android.outputs.mobile_changed == 'true'
+    uses: ./.github/workflows/mobile-firebase-app-distribution.yml
+    with:
+      artifact-name: grim-android-apk
+      file-name: app-release.apk
+      release-notes: "GRIM mobile ${{ github.ref_name }}"
+    secrets:
+      firebase_app_id: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+      firebase_service_account: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT }}
