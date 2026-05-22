@@ -14,7 +14,7 @@ Vendor docs reviewed: 2026-04-19.
 
 - Firebase Flutter plugins are owned by `mobile/packages/grim_core`.
 - `mobile/lib/main.dart` initializes Firebase once before `runApp(...)`.
-- `mobile/lib/firebase_options.dart` exists and reads client API keys from Dart defines.
+- `mobile/packages/core/lib/src/firebase/init.dart` builds `FirebaseOptions` from Dart defines instead of committing generated client config files.
 - The repo currently has Android and iOS targets; there is no `mobile/web/` target to configure yet.
 
 ## What FlutterFire setup should own
@@ -46,7 +46,7 @@ cd mobile
 flutterfire configure
 ```
 
-This flow creates or matches Firebase apps for the platforms you select and writes `mobile/lib/firebase_options.dart`.
+This flow creates or matches Firebase apps for the platforms you select and writes `mobile/lib/firebase_options.dart`. That generated Dart file is ignored in this repo; keep the app on the env-based initializer unless you intentionally change the Firebase bootstrap.
 
 Firebase's docs explicitly say to re-run `flutterfire configure` whenever you:
 
@@ -61,34 +61,21 @@ flutter pub add firebase_core
 flutterfire configure
 ```
 
-`firebase_options.dart` contains project identifiers, not secrets, so it is normally committed with the app code.
+In this repo, keep generated Firebase config files out of version control and provide Firebase values through Dart defines.
 
 ## Initialize in Grim
 
 Initialize Firebase once in `mobile/lib/main.dart` before `runApp(...)`.
 
-Recommended shape for this repo:
+Current shape for this repo:
 
 ```dart
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'core/grim_core_page.dart';
-import 'firebase_options.dart';
-import 'theme/grim_app_theme.dart';
+import 'package:core/core.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  runApp(
-    const ProviderScope(
-      child: MainApp(),
-    ),
-  );
+  await initializeFirebase();
+  runApp(AppScope(child: MaterialApp(theme: GrimAppTheme.dark, home: const SplashScreen())));
 }
 ```
 
@@ -98,7 +85,7 @@ Do not call `Firebase.initializeApp(...)` again from feature packages unless you
 
 ### Client API keys
 
-`mobile/lib/firebase_options.dart` uses:
+`mobile/packages/core/lib/src/firebase/init.dart` uses:
 
 - `FIREBASE_ANDROID_API_KEY`
 - `FIREBASE_IOS_API_KEY`
@@ -109,7 +96,7 @@ Local developers should create `mobile/.env.local` through `scripts/mobile_setup
 flutter run --dart-define-from-file=.env.local
 ```
 
-Firebase client API keys are not Firebase Admin credentials. Keep Admin service account JSON, private keys, and FCM server keys out of the mobile app and in backend/server-side configuration only.
+Do not commit generated FlutterFire config files such as `mobile/lib/firebase_options.dart`, `mobile/android/app/google-services.json`, or `mobile/ios/Runner/GoogleService-Info.plist`; recreate them locally or supply values through CI secrets. Firebase client API keys are not Firebase Admin credentials, but leaked keys should still be rotated or restricted in Google Cloud before resolving GitHub alerts. Keep Admin service account JSON, private keys, and FCM server keys out of the mobile app and in backend/server-side configuration only.
 
 ### Android debug suffix
 

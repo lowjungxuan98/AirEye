@@ -46,6 +46,7 @@ app.*.map.json
 
 # Firebase config — keep out of version control
 # Download from Firebase Console or use CI secrets
+lib/firebase_options.dart
 google-services.json
 GoogleService-Info.plist
 

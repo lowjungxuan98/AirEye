@@ -85,14 +85,29 @@ EOF
 
 mac_ip="$(ipconfig getifaddr en0 2>/dev/null || true)"
 mac_ip="${mac_ip:-192.168.68.57}"
+grim_api_base_url="$(prompt_value "Release API base URL" "https://lowjungxuan.dpdns.org/backend/api")"
+firebase_project_id="$(prompt_value "Firebase project ID")"
+firebase_messaging_sender_id="$(prompt_value "Firebase messaging sender ID")"
+firebase_database_url="$(prompt_value "Firebase database URL")"
+firebase_storage_bucket="$(prompt_value "Firebase storage bucket")"
 firebase_android_api_key="$(prompt_secret "Firebase Android API key")"
+firebase_android_app_id="$(prompt_value "Firebase Android app ID")"
 firebase_ios_api_key="$(prompt_secret "Firebase iOS API key")"
+firebase_ios_app_id="$(prompt_value "Firebase iOS app ID")"
+firebase_ios_bundle_id="$(prompt_value "Firebase iOS bundle ID")"
 
 cat > "$LOCAL_ENV_PATH" <<EOF
+GRIM_API_BASE_URL=$grim_api_base_url
+GRIM_API_IP_ADDRESS=http://$mac_ip:3001
+FIREBASE_PROJECT_ID=$firebase_project_id
+FIREBASE_MESSAGING_SENDER_ID=$firebase_messaging_sender_id
+FIREBASE_DATABASE_URL=$firebase_database_url
+FIREBASE_STORAGE_BUCKET=$firebase_storage_bucket
 FIREBASE_ANDROID_API_KEY=$firebase_android_api_key
+FIREBASE_ANDROID_APP_ID=$firebase_android_app_id
 FIREBASE_IOS_API_KEY=$firebase_ios_api_key
-GRIM_DEBUG_PHYSICAL_DEVICE_ORIGIN=http://$mac_ip:3001
-GRIM_RELEASE_API_PREFIX=https://lowjungxuan.dpdns.org/backend/api
+FIREBASE_IOS_APP_ID=$firebase_ios_app_id
+FIREBASE_IOS_BUNDLE_ID=$firebase_ios_bundle_id
 EOF
 
 echo
@@ -101,8 +116,16 @@ secret_set MOBILE_ANDROID_KEYSTORE_BASE64 "$(encode_base64_one_line "$KEYSTORE_P
 secret_set MOBILE_ANDROID_KEYSTORE_PASSWORD "$store_password"
 secret_set MOBILE_ANDROID_KEY_ALIAS "$key_alias"
 secret_set MOBILE_ANDROID_KEY_PASSWORD "$key_password"
+secret_set GRIM_API_BASE_URL "$grim_api_base_url"
+secret_set FIREBASE_PROJECT_ID "$firebase_project_id"
+secret_set FIREBASE_MESSAGING_SENDER_ID "$firebase_messaging_sender_id"
+secret_set FIREBASE_DATABASE_URL "$firebase_database_url"
+secret_set FIREBASE_STORAGE_BUCKET "$firebase_storage_bucket"
 secret_set FIREBASE_ANDROID_API_KEY "$firebase_android_api_key"
+secret_set FIREBASE_ANDROID_APP_ID "$firebase_android_app_id"
 secret_set FIREBASE_IOS_API_KEY "$firebase_ios_api_key"
+secret_set FIREBASE_IOS_APP_ID "$firebase_ios_app_id"
+secret_set FIREBASE_IOS_BUNDLE_ID "$firebase_ios_bundle_id"
 
 echo
 echo "Local setup files written:"

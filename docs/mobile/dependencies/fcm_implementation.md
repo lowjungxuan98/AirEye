@@ -21,8 +21,8 @@ Implemented in this repo:
 - `mobile/pubspec.yaml` includes `firebase_core`.
 - `mobile/packages/grim_core/pubspec.yaml` owns `firebase_core`, `firebase_analytics`, `firebase_messaging`, and `flutter_riverpod` exports for feature packages; feature packages should keep using core rather than adding parallel Firebase/Riverpod dependencies.
 - `mobile/packages/grim_core/pubspec.yaml` owns `flutter_local_notifications` for foreground Android notification display.
-- `flutterfire configure` has generated `mobile/lib/firebase_options.dart`, `mobile/android/app/google-services.json`, `mobile/ios/Runner/GoogleService-Info.plist`, and `mobile/firebase.json`.
-- `mobile/lib/main.dart` initializes Firebase with `DefaultFirebaseOptions.currentPlatform` and calls `GrimFcmManager().initialize()` before `runApp(...)`.
+- Firebase config values are supplied through Dart defines; generated files such as `mobile/lib/firebase_options.dart`, `mobile/android/app/google-services.json`, and `mobile/ios/Runner/GoogleService-Info.plist` are intentionally ignored.
+- `mobile/lib/main.dart` initializes Firebase through `initializeFirebase()` and calls `GrimFcmManager().initialize()` before `runApp(...)`.
 - `mobile/packages/grim_core/lib/src/fcm/grim_fcm_manager.dart` registers a top-level background handler, requests notification permission, subscribes to topic `grim_new_result`, returns the FCM token, suppresses local notifications for `notificationType: silent`, and exposes `onMessage`, `onMessageOpenedApp`, `getInitialMessage()`, and `onTokenRefresh`.
 - Android has the Google Services Gradle plugin applied, declares `android.permission.POST_NOTIFICATIONS`, and declares `grim_results` as Firebase Messaging's default notification channel.
 - The backend sends high-priority Android topic messages through `FirebaseNotifier` on topic `grim_new_result` unless `GRIM_FCM_TOPIC` overrides it.
@@ -104,7 +104,7 @@ Keep app bootstrap in `mobile/lib/main.dart` and Firebase Messaging usage behind
 ```dart
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await initializeFirebase();
   await GrimFcmManager().initialize();
   runApp(const ProviderScope(child: MainApp()));
 }
