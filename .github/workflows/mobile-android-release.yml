@@ -1,25 +1,23 @@
-name: Mobile Release
+name: Mobile Android Release
 
 on:
   pull_request:
     paths:
       - "mobile/**"
       - "docs/mobile/**"
-      - ".github/workflows/mobile-release.yml"
+      - ".github/workflows/mobile-android-release.yml"
   push:
     tags:
       - "mobile-v*"
     paths:
       - "mobile/**"
       - "docs/mobile/**"
-      - ".github/workflows/mobile-release.yml"
+      - ".github/workflows/mobile-android-release.yml"
   workflow_dispatch:
 
 jobs:
   android:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout
@@ -43,29 +41,33 @@ jobs:
             exit 0
           fi
 
-          if git diff --quiet "$previous_tag" HEAD -- mobile docs/mobile .github/workflows/mobile-release.yml; then
+          if git diff --quiet "$previous_tag" HEAD -- mobile docs/mobile .github/workflows/mobile-android-release.yml; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Setup Java
+        if: steps.mobile_changes.outputs.changed == 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Setup Flutter
+        if: steps.mobile_changes.outputs.changed == 'true'
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
       - name: Install dependencies
+        if: steps.mobile_changes.outputs.changed == 'true'
         working-directory: mobile
         run: flutter pub get
 
       - name: Analyze
+        if: steps.mobile_changes.outputs.changed == 'true'
         working-directory: mobile
         run: flutter analyze
 
@@ -83,11 +85,12 @@ jobs:
           FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
           FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT }}
         shell: bash
         run: |
           set -euo pipefail
           missing=()
-          for name in MOBILE_ANDROID_KEYSTORE_BASE64 MOBILE_ANDROID_KEYSTORE_PASSWORD MOBILE_ANDROID_KEY_ALIAS MOBILE_ANDROID_KEY_PASSWORD GRIM_API_BASE_URL FIREBASE_ANDROID_API_KEY FIREBASE_ANDROID_APP_ID FIREBASE_PROJECT_ID FIREBASE_MESSAGING_SENDER_ID FIREBASE_DATABASE_URL FIREBASE_STORAGE_BUCKET; do
+          for name in MOBILE_ANDROID_KEYSTORE_BASE64 MOBILE_ANDROID_KEYSTORE_PASSWORD MOBILE_ANDROID_KEY_ALIAS MOBILE_ANDROID_KEY_PASSWORD GRIM_API_BASE_URL FIREBASE_ANDROID_API_KEY FIREBASE_ANDROID_APP_ID FIREBASE_PROJECT_ID FIREBASE_MESSAGING_SENDER_ID FIREBASE_DATABASE_URL FIREBASE_STORAGE_BUCKET FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT; do
             if [[ -z "${!name}" ]]; then
               missing+=("$name")
             fi
@@ -140,56 +143,16 @@ jobs:
             --dart-define=FIREBASE_DATABASE_URL="$FIREBASE_DATABASE_URL" \
             --dart-define=FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET"
 
-      - name: Publish GitHub Release
+      - name: Distribute to Firebase App Distribution
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
-        id: publish_release
-        working-directory: mobile
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          apk="build/app/outputs/flutter-apk/app-release.apk"
-          tag="${GITHUB_REF_NAME}"
-          asset="app-release.apk"
-          download_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/${asset}"
-          encoded=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$download_url")
-          qr_url="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encoded}"
-
-          notes="GRIM mobile release ${tag}
-
-          ## Download
-
-          **[Download APK](${download_url})**
-
-          ## Scan to Install
-
-          ![QR Code](${qr_url})"
-
-          if ! gh release view "$tag" >/dev/null 2>&1; then
-            gh release create "$tag" --title "$tag" --notes "$notes"
-          else
-            gh release edit "$tag" --notes "$notes"
-          fi
-          gh release upload "$tag" "$apk#${asset}" --clobber
-
-          echo "download_url=${download_url}" >> "$GITHUB_OUTPUT"
-          echo "qr_url=${qr_url}" >> "$GITHUB_OUTPUT"
-
-      - name: Write QR code to job summary
-        if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
-        shell: bash
-        run: |
-          {
-            echo "## APK Download"
-            echo ""
-            echo "**[Download APK](${{ steps.publish_release.outputs.download_url }})**"
-            echo ""
-            echo "### Scan to Install"
-            echo ""
-            echo "![](${{ steps.publish_release.outputs.qr_url }})"
-          } >> "$GITHUB_STEP_SUMMARY"
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT }}
+          groups: internal
+          file: mobile/build/app/outputs/flutter-apk/app-release.apk
+          releaseNotes: "GRIM mobile ${{ github.ref_name }}"
 
       - name: Skip release
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'false'
-        run: echo "No mobile changes detected since the previous mobile-v* tag; release artifact skipped."
+        run: echo "No mobile changes detected since the previous mobile-v* tag; Android release skipped."
