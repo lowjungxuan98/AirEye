@@ -1,14 +1,7 @@
 import 'dart:convert';
 
 class ClaudeSession {
-  const ClaudeSession({
-    required this.sessionId,
-    required this.title,
-    required this.lastModified,
-    required this.fileSizeBytes,
-    required this.cwd,
-    this.gitBranch,
-  });
+  const ClaudeSession({required this.sessionId, required this.title, required this.lastModified, required this.fileSizeBytes, required this.cwd, this.gitBranch});
 
   final String sessionId;
   final String title;
@@ -50,59 +43,37 @@ List<ClaudeSession> parseSessionsOutput(String output) {
     Map<String, dynamic>? userMsg;
     var lineIdx = 1;
 
-    if (lines.length > lineIdx &&
-        lines[lineIdx].trim().startsWith('{"type":"ai-title"')) {
+    if (lines.length > lineIdx && lines[lineIdx].trim().startsWith('{"type":"ai-title"')) {
       try {
         aiTitle = jsonDecode(lines[lineIdx]) as Map<String, dynamic>;
       } catch (_) {}
       lineIdx++;
     }
 
-    if (lines.length > lineIdx &&
-        lines[lineIdx].trim().startsWith('{"type":"last-prompt"')) {
+    if (lines.length > lineIdx && lines[lineIdx].trim().startsWith('{"type":"last-prompt"')) {
       try {
         lastPrompt = jsonDecode(lines[lineIdx]) as Map<String, dynamic>;
       } catch (_) {}
       lineIdx++;
     }
 
-    if (lines.length > lineIdx &&
-        lines[lineIdx].trim().startsWith('{"type":"user"')) {
+    if (lines.length > lineIdx && lines[lineIdx].trim().startsWith('{"type":"user"')) {
       try {
         userMsg = jsonDecode(lines[lineIdx]) as Map<String, dynamic>;
       } catch (_) {}
     }
 
-    final title = _sessionTitle(
-      sessionId: sessionId,
-      aiTitle: aiTitle,
-      lastPrompt: lastPrompt,
-      userMsg: userMsg,
-    );
+    final title = _sessionTitle(sessionId: sessionId, aiTitle: aiTitle, lastPrompt: lastPrompt, userMsg: userMsg);
     final cwd = _sessionCwd(path: path, userMsg: userMsg);
     final gitBranch = userMsg?['gitBranch'] as String?;
 
-    sessions.add(
-      ClaudeSession(
-        sessionId: sessionId,
-        title: title,
-        lastModified: DateTime.fromMillisecondsSinceEpoch((ts * 1000).round()),
-        fileSizeBytes: bytes,
-        cwd: cwd,
-        gitBranch: gitBranch,
-      ),
-    );
+    sessions.add(ClaudeSession(sessionId: sessionId, title: title, lastModified: DateTime.fromMillisecondsSinceEpoch((ts * 1000).round()), fileSizeBytes: bytes, cwd: cwd, gitBranch: gitBranch));
   }
 
   return sessions;
 }
 
-String _sessionTitle({
-  required String sessionId,
-  required Map<String, dynamic>? aiTitle,
-  required Map<String, dynamic>? lastPrompt,
-  required Map<String, dynamic>? userMsg,
-}) {
+String _sessionTitle({required String sessionId, required Map<String, dynamic>? aiTitle, required Map<String, dynamic>? lastPrompt, required Map<String, dynamic>? userMsg}) {
   final aiTitleValue = aiTitle?['aiTitle'];
   if (aiTitleValue is String && aiTitleValue.isNotEmpty) {
     return _truncateTitle(aiTitleValue);
@@ -123,10 +94,7 @@ String _sessionTitle({
   return _fallbackTitle(sessionId);
 }
 
-String _sessionCwd({
-  required String path,
-  required Map<String, dynamic>? userMsg,
-}) {
+String _sessionCwd({required String path, required Map<String, dynamic>? userMsg}) {
   final cwd = userMsg?['cwd'];
   if (cwd is String && cwd.isNotEmpty) return cwd;
 

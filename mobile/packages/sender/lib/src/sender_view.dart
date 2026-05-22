@@ -15,10 +15,7 @@ class _SenderViewState extends BasePageState<SenderView> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations(const [
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    SystemChrome.setPreferredOrientations(const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
   }
 
   @override
@@ -37,15 +34,8 @@ class _SenderViewState extends BasePageState<SenderView> {
         children: [
           Positioned.fill(
             child: switch (state) {
-              SenderLoading() => const Center(
-                child: CircularProgressIndicator(),
-              ),
-              _ => HighQualityCameraWidget(
-                controller: senderController.cameraController,
-                previewFit: CameraPreviewFit.contain,
-                showCaptureButton: false,
-                onImageCaptured: (_) {},
-              ),
+              SenderLoading() => const Center(child: CircularProgressIndicator()),
+              _ => HighQualityCameraWidget(controller: senderController.cameraController, previewFit: CameraPreviewFit.contain, showCaptureButton: false, onImageCaptured: (_) {}),
             },
           ),
           const GrimBackButton(),
@@ -53,12 +43,7 @@ class _SenderViewState extends BasePageState<SenderView> {
             const Positioned(
               right: 16,
               bottom: 16,
-              child: SafeArea(
-                child: SizedBox.square(
-                  dimension: 28,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
+              child: SafeArea(child: SizedBox.square(dimension: 28, child: CircularProgressIndicator(strokeWidth: 2))),
             ),
           if (state case SenderError(:final message))
             Positioned(
@@ -67,19 +52,14 @@ class _SenderViewState extends BasePageState<SenderView> {
               bottom: 16,
               child: SafeArea(
                 child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.errorContainer, borderRadius: BorderRadius.circular(8)),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Text(
                       message,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onErrorContainer,
-                      ),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
                     ),
                   ),
                 ),

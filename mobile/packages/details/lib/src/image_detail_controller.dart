@@ -7,11 +7,7 @@ class ImageDetailController extends BaseController<ImageDetailState> {
 
   @override
   ImageDetailState build() {
-    GrimFcmManager.subscribeExportRefresh(
-      ref,
-      _refresh,
-      onDispose: () => _isDisposed = true,
-    );
+    GrimFcmManager.subscribeExportRefresh(ref, _refresh, onDispose: () => _isDisposed = true);
     return const ImageDetailInitial();
   }
 
@@ -37,16 +33,10 @@ class ImageDetailController extends BaseController<ImageDetailState> {
 
     try {
       final response = await GrimEndpoints.export(page: 1, limit: 50);
-      final updated = response.data.firstWhere(
-        (i) => i.createdAt == refItem.createdAt,
-        orElse: () => refItem,
-      );
+      final updated = response.data.firstWhere((i) => i.createdAt == refItem.createdAt, orElse: () => refItem);
       if (!_isDisposed) state = ImageDetailReady(updated);
     } catch (_) {}
   }
 }
 
-final imageDetailControllerProvider =
-    NotifierProvider.autoDispose<ImageDetailController, ImageDetailState>(
-      ImageDetailController.new,
-    );
+final imageDetailControllerProvider = NotifierProvider.autoDispose<ImageDetailController, ImageDetailState>(ImageDetailController.new);

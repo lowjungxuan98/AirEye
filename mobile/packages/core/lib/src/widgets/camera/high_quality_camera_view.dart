@@ -4,25 +4,25 @@ class _HighQualityCameraView extends StatelessWidget {
   const _HighQualityCameraView({
     required this.controller,
     required this.error,
-    required this.focusY,
+    required this.focusIndicator,
     required this.isTakingPicture,
     required this.previewFit,
     required this.showCaptureButton,
     required this.loadingWidget,
     required this.errorWidget,
-    required this.onFocusYChanged,
+    required this.onFocusTapped,
     required this.onTakePicture,
   });
 
   final CameraController? controller;
   final Object? error;
-  final double focusY;
+  final Offset? focusIndicator;
   final bool isTakingPicture;
   final CameraPreviewFit previewFit;
   final bool showCaptureButton;
   final Widget? loadingWidget;
   final Widget? errorWidget;
-  final ValueChanged<double> onFocusYChanged;
+  final ValueChanged<Offset> onFocusTapped;
   final VoidCallback onTakePicture;
 
   @override
@@ -43,19 +43,6 @@ class _HighQualityCameraView extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         _buildCameraPreview(controller),
-        Positioned(
-          right: 16,
-          top: 0,
-          bottom: 0,
-          child: SafeArea(
-            child: Center(
-              child: CameraFocusSlider(
-                value: 1 - focusY,
-                onChanged: onFocusYChanged,
-              ),
-            ),
-          ),
-        ),
         if (showCaptureButton)
           Positioned(
             left: 0,
@@ -65,12 +52,7 @@ class _HighQualityCameraView extends StatelessWidget {
               child: FloatingActionButton(
                 heroTag: null,
                 onPressed: isTakingPicture ? null : onTakePicture,
-                child: isTakingPicture
-                    ? const SizedBox.square(
-                        dimension: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.camera_alt),
+                child: isTakingPicture ? const SizedBox.square(dimension: 24, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.camera_alt),
               ),
             ),
           ),
@@ -88,9 +70,7 @@ class _HighQualityCameraView extends StatelessWidget {
         }
 
         final cameraAspectRatio = controller.value.aspectRatio;
-        final previewAspectRatio = viewSize.width >= viewSize.height
-            ? cameraAspectRatio
-            : 1 / cameraAspectRatio;
+        final previewAspectRatio = viewSize.width >= viewSize.height ? cameraAspectRatio : 1 / cameraAspectRatio;
         final viewAspectRatio = viewSize.width / viewSize.height;
 
         double previewWidth;
@@ -119,7 +99,26 @@ class _HighQualityCameraView extends StatelessWidget {
             child: SizedBox(
               width: previewWidth,
               height: previewHeight,
-              child: CameraPreview(controller),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapUp: (details) {
+                  final dx = (details.localPosition.dx / previewWidth).clamp(0.0, 1.0);
+                  final dy = (details.localPosition.dy / previewHeight).clamp(0.0, 1.0);
+                  onFocusTapped(Offset(dx, dy));
+                },
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CameraPreview(controller),
+                    if (focusIndicator != null)
+                      Positioned(
+                        left: focusIndicator!.dx * previewWidth - _FocusIndicator.size / 2,
+                        top: focusIndicator!.dy * previewHeight - _FocusIndicator.size / 2,
+                        child: const _FocusIndicator(),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         );

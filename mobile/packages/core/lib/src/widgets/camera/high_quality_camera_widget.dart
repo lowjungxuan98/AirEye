@@ -1,9 +1,14 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'camera_error_view.dart';
-import 'camera_focus_slider.dart';
 
+part 'camera_focus_indicator.dart';
+part 'camera_sound.dart';
 part 'high_quality_camera_controller.dart';
 part 'high_quality_camera_view.dart';
 
@@ -32,6 +37,5 @@ class HighQualityCameraWidget extends StatefulWidget {
   final Widget? errorWidget;
 
   @override
-  State<HighQualityCameraWidget> createState() =>
-      _HighQualityCameraWidgetState();
+  State<HighQualityCameraWidget> createState() => _HighQualityCameraWidgetState();
 }

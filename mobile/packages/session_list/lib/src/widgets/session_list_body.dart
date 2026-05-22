@@ -5,12 +5,7 @@ import '../session_list_state.dart';
 import 'session_tile.dart';
 
 class SessionListBody extends StatelessWidget {
-  const SessionListBody({
-    super.key,
-    required this.state,
-    required this.server,
-    required this.controller,
-  });
+  const SessionListBody({super.key, required this.state, required this.server, required this.controller});
 
   final SessionListState state;
   final ServerConfig server;
@@ -20,10 +15,7 @@ class SessionListBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (state) {
       SessionListLoading() => const Center(child: CircularProgressIndicator()),
-      SessionListError(:final message) => _SessionListErrorBody(
-        message: message,
-        onRetry: () => controller.load(server),
-      ),
+      SessionListError(:final message) => _SessionListErrorBody(message: message, onRetry: () => controller.load(server)),
       SessionListReady(:final sessions) =>
         sessions.isEmpty
             ? const Center(child: Text('No Claude Code sessions found'))

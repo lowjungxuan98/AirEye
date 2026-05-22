@@ -38,17 +38,10 @@ class _GrimCopyTextButtonState extends State<GrimCopyTextButton> {
     return GestureDetector(
       onTap: _copy,
       child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: GrimColors.overlayDark,
-          shape: BoxShape.circle,
-        ),
+        decoration: const BoxDecoration(color: GrimColors.overlayDark, shape: BoxShape.circle),
         child: Padding(
           padding: const EdgeInsets.all(10),
-          child: Icon(
-            _copied ? Icons.check : Icons.copy,
-            color: _copied ? GrimColors.accent : GrimColors.onSurface,
-            size: 22,
-          ),
+          child: Icon(_copied ? Icons.check : Icons.copy, color: _copied ? GrimColors.accent : GrimColors.onSurface, size: 22),
         ),
       ),
     );

@@ -2,12 +2,7 @@ import 'package:core/core.dart';
 import '../select_role_controller.dart';
 
 class ProviderSection extends StatelessWidget {
-  const ProviderSection({
-    super.key,
-    required this.provider,
-    required this.isLoading,
-    required this.controller,
-  });
+  const ProviderSection({super.key, required this.provider, required this.isLoading, required this.controller});
 
   final ProviderResponse provider;
   final bool isLoading;
@@ -21,20 +16,9 @@ class ProviderSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          'AI PROVIDER',
-          style: textTheme.labelLarge?.copyWith(
-            color: GrimColors.sectionLabel,
-            fontSize: 10,
-            letterSpacing: 1.2,
-          ),
-        ),
+        Text('AI PROVIDER', style: textTheme.labelLarge?.copyWith(color: GrimColors.sectionLabel, fontSize: 10, letterSpacing: 1.2)),
         const SizedBox(height: 2),
-        ProviderSelectorWidget(
-          provider: provider,
-          onSelect: controller.updateProvider,
-          isLoading: isLoading,
-        ),
+        ProviderSelectorWidget(provider: provider, onSelect: controller.updateProvider, isLoading: isLoading),
       ],
     );
   }

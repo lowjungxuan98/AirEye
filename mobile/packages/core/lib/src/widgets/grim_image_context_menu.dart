@@ -9,15 +9,7 @@ import '../theme/grim_colors.dart';
 import 'grim_text_sheet.dart';
 
 class GrimImageContextMenu extends StatelessWidget {
-  const GrimImageContextMenu({
-    super.key,
-    required this.imageUrl,
-    required this.text,
-    required this.child,
-    this.error,
-    this.onDownload,
-    this.onRegenerate,
-  });
+  const GrimImageContextMenu({super.key, required this.imageUrl, required this.text, required this.child, this.error, this.onDownload, this.onRegenerate});
 
   final String imageUrl;
   final String text;
@@ -30,12 +22,8 @@ class GrimImageContextMenu extends StatelessWidget {
   final Future<void> Function()? onRegenerate;
 
   void _show(BuildContext context, LongPressStartDetails details) {
-    final overlay =
-        Overlay.of(context).context.findRenderObject()! as RenderBox;
-    final position = RelativeRect.fromRect(
-      details.globalPosition & const Size(1, 1),
-      Offset.zero & overlay.size,
-    );
+    final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final position = RelativeRect.fromRect(details.globalPosition & const Size(1, 1), Offset.zero & overlay.size);
     showMenu<_Action>(
       context: context,
       position: position,
@@ -47,10 +35,7 @@ class GrimImageContextMenu extends StatelessWidget {
         ),
         PopupMenuItem(
           value: _Action.download,
-          child: Text(
-            'Download image',
-            style: TextStyle(color: GrimColors.onSurface),
-          ),
+          child: Text('Download image', style: TextStyle(color: GrimColors.onSurface)),
         ),
         PopupMenuItem(
           value: _Action.showText,
@@ -59,10 +44,7 @@ class GrimImageContextMenu extends StatelessWidget {
         if (onRegenerate != null)
           PopupMenuItem(
             value: _Action.regenerate,
-            child: Text(
-              'Regenerate',
-              style: TextStyle(color: GrimColors.onSurface),
-            ),
+            child: Text('Regenerate', style: TextStyle(color: GrimColors.onSurface)),
           ),
       ],
     ).then((action) {
@@ -87,29 +69,20 @@ class GrimImageContextMenu extends StatelessWidget {
   Future<void> _copy(BuildContext context) async {
     await Clipboard.setData(ClipboardData(text: text));
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Text copied')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Text copied')));
     }
   }
 
   Future<void> _download(BuildContext context) async {
     try {
-      final response = await Dio().get<List<int>>(
-        imageUrl,
-        options: Options(responseType: ResponseType.bytes),
-      );
+      final response = await Dio().get<List<int>>(imageUrl, options: Options(responseType: ResponseType.bytes));
       await Gal.putImageBytes(Uint8List.fromList(response.data!));
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Image saved to gallery')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image saved to gallery')));
       }
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to save image')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to save image')));
       }
     }
   }
@@ -119,20 +92,13 @@ class GrimImageContextMenu extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => GrimTextSheet(
-        text: text.isNotEmpty ? text : 'No text',
-        error: error?.isNotEmpty == true ? error : null,
-        onClose: () => Navigator.pop(context),
-      ),
+      builder: (_) => GrimTextSheet(text: text.isNotEmpty ? text : 'No text', error: error?.isNotEmpty == true ? error : null, onClose: () => Navigator.pop(context)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onLongPressStart: (details) => _show(context, details),
-      child: child,
-    );
+    return GestureDetector(onLongPressStart: (details) => _show(context, details), child: child);
   }
 }
 

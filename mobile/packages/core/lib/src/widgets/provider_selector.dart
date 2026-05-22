@@ -1,36 +1,21 @@
 import 'package:core/core.dart';
 
 class ProviderSelectorWidget extends StatelessWidget {
-  const ProviderSelectorWidget({
-    super.key,
-    required this.provider,
-    required this.onSelect,
-    this.isLoading = false,
-  });
+  const ProviderSelectorWidget({super.key, required this.provider, required this.onSelect, this.isLoading = false});
 
   final ProviderResponse provider;
   final void Function(LlmProvider) onSelect;
   final bool isLoading;
 
   String _label(LlmProvider p) {
-    return p.value
-        .split(RegExp(r'[-_]+'))
-        .where((part) => part.isNotEmpty)
-        .map((part) => part.length <= 4
-            ? part.toUpperCase()
-            : part[0].toUpperCase() + part.substring(1))
-        .join(' ');
+    return p.value.split(RegExp(r'[-_]+')).where((part) => part.isNotEmpty).map((part) => part.length <= 4 ? part.toUpperCase() : part[0].toUpperCase() + part.substring(1)).join(' ');
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final labelStyle = textTheme.labelLarge?.copyWith(
-      fontSize: 12.5,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 0.4,
-    );
+    final labelStyle = textTheme.labelLarge?.copyWith(fontSize: 12.5, fontWeight: FontWeight.w700, letterSpacing: 0.4);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -49,35 +34,18 @@ class ProviderSelectorWidget extends StatelessWidget {
           selectedItemBuilder: (_) => provider.availableProviders.map((p) {
             return Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                _label(p),
-                style: labelStyle?.copyWith(color: colorScheme.primary),
-              ),
+              child: Text(_label(p), style: labelStyle?.copyWith(color: colorScheme.primary)),
             );
           }).toList(),
           items: provider.availableProviders.map((p) {
             final isSelected = p == provider.currentProvider;
             return DropdownMenuItem<LlmProvider>(
               value: p,
-              child: Text(
-                _label(p),
-                style: labelStyle?.copyWith(
-                  color: isSelected
-                      ? colorScheme.primary
-                      : colorScheme.onSurface,
-                ),
-              ),
+              child: Text(_label(p), style: labelStyle?.copyWith(color: isSelected ? colorScheme.primary : colorScheme.onSurface)),
             );
           }).toList(),
         ),
-        if (isLoading) ...[
-          const SizedBox(width: 8),
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ],
+        if (isLoading) ...[const SizedBox(width: 8), const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))],
       ],
     );
   }

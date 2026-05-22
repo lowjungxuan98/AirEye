@@ -42,20 +42,11 @@ class ServerController extends BaseController<ServerState> {
   }
 
   Future<void> addServerFromForm(BuildContext context) async {
-    final result = await Navigator.of(context).push<ServerFormResult>(
-      MaterialPageRoute(builder: (_) => const ServerFormView()),
-    );
+    final result = await Navigator.of(context).push<ServerFormResult>(MaterialPageRoute(builder: (_) => const ServerFormView()));
     if (result == null) return;
 
     await addServer(
-      ServerConfig(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        host: result.host,
-        port: result.port,
-        username: result.username,
-        credential: result.credential,
-        useKey: result.useKey,
-      ),
+      ServerConfig(id: DateTime.now().millisecondsSinceEpoch.toString(), host: result.host, port: result.port, username: result.username, credential: result.credential, useKey: result.useKey),
     );
   }
 
@@ -69,11 +60,8 @@ class ServerController extends BaseController<ServerState> {
   }
 
   void connect(ServerConfig server, BuildContext context) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => SessionListView(server: server)));
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => SessionListView(server: server)));
   }
 }
 
-final serverControllerProvider =
-    BaseNotifierProvider<ServerController, ServerState>(ServerController.new);
+final serverControllerProvider = BaseNotifierProvider<ServerController, ServerState>(ServerController.new);

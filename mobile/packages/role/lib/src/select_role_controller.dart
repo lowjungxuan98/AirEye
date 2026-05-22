@@ -33,14 +33,9 @@ class SelectRoleController extends BaseController<SelectRoleState> {
     final current = state;
     if (current is! SelectRoleReady) return;
 
-    state = SelectRoleReady(
-      provider: current.provider,
-      isUpdatingProvider: true,
-    );
+    state = SelectRoleReady(provider: current.provider, isUpdatingProvider: true);
     try {
-      final response = await GrimEndpoints.updateProvider(
-        request: UpdateProviderRequest(provider: provider),
-      );
+      final response = await GrimEndpoints.updateProvider(request: UpdateProviderRequest(provider: provider));
       state = SelectRoleReady(provider: response);
     } catch (e) {
       setError(e.toString());
@@ -49,30 +44,21 @@ class SelectRoleController extends BaseController<SelectRoleState> {
 
   void navigateToSender(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const SenderView()));
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SenderView()));
     });
   }
 
   void navigateToReceiver(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const ReceiverView()));
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReceiverView()));
     });
   }
 
   void navigateToServer(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const ServerView()));
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ServerView()));
     });
   }
 }
 
-final selectRoleControllerProvider =
-    BaseNotifierProvider<SelectRoleController, SelectRoleState>(
-      SelectRoleController.new,
-    );
+final selectRoleControllerProvider = BaseNotifierProvider<SelectRoleController, SelectRoleState>(SelectRoleController.new);

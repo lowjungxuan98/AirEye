@@ -12,11 +12,7 @@ class SenderController extends BaseController<SenderState> {
 
   @override
   SenderState build() {
-    GrimFcmManager.subscribeForeground(
-      ref,
-      _handleForegroundMessage,
-      onDispose: () => _isDisposed = true,
-    );
+    GrimFcmManager.subscribeForeground(ref, _handleForegroundMessage, onDispose: () => _isDisposed = true);
 
     return const SenderInitial();
   }
@@ -50,10 +46,7 @@ class SenderController extends BaseController<SenderState> {
     if (_isHandlingCaptureRequest) return;
 
     if (!cameraController.isAttached) {
-      dev.log(
-        'capture_request ignored because no camera is attached',
-        name: _logTag,
-      );
+      dev.log('capture_request ignored because no camera is attached', name: _logTag);
       return;
     }
 
@@ -64,37 +57,21 @@ class SenderController extends BaseController<SenderState> {
       final image = await _takePictureWhenReady();
 
       if (image == null) {
-        dev.log(
-          'capture_request ignored because the camera is not ready',
-          name: _logTag,
-        );
+        dev.log('capture_request ignored because the camera is not ready', name: _logTag);
         _setState(const SenderReady());
         return;
       }
 
-      final response = await GrimEndpoints.import(
-        image: await MultipartFile.fromFile(
-          image.path,
-          filename: _imageFilename(image),
-        ),
-      );
+      final response = await GrimEndpoints.import(image: await MultipartFile.fromFile(image.path, filename: _imageFilename(image)));
 
       if (response case ImportStreamSseError(:final value)) {
         throw StateError(value.error.message);
       }
 
-      dev.log(
-        'capture_request image uploaded from ${image.path}',
-        name: _logTag,
-      );
+      dev.log('capture_request image uploaded from ${image.path}', name: _logTag);
       _setState(const SenderReady());
     } catch (error, stackTrace) {
-      dev.log(
-        'capture_request failed',
-        name: _logTag,
-        error: error,
-        stackTrace: stackTrace,
-      );
+      dev.log('capture_request failed', name: _logTag, error: error, stackTrace: stackTrace);
       _setState(SenderError(error.toString()));
     } finally {
       _isHandlingCaptureRequest = false;
@@ -133,5 +110,4 @@ class SenderController extends BaseController<SenderState> {
   }
 }
 
-final senderControllerProvider =
-    BaseNotifierProvider<SenderController, SenderState>(SenderController.new);
+final senderControllerProvider = BaseNotifierProvider<SenderController, SenderState>(SenderController.new);

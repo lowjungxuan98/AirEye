@@ -1,16 +1,7 @@
 import '../json_map.dart';
 
 class ImportStreamResult {
-  const ImportStreamResult({
-    required this.id,
-    required this.createdAt,
-    required this.updatedAt,
-    this.extractedText,
-    this.finalText,
-    this.imageUrl,
-    this.bucket,
-    this.objectKey,
-  });
+  const ImportStreamResult({required this.id, required this.createdAt, required this.updatedAt, this.extractedText, this.finalText, this.imageUrl, this.bucket, this.objectKey});
 
   final String id;
   final int createdAt;

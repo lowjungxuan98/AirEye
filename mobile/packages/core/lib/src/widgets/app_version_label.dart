@@ -16,17 +16,12 @@ class AppVersionLabel extends StatelessWidget {
 
         final info = snapshot.requireData;
         final buildNumber = info.buildNumber.trim();
-        final version = buildNumber.isEmpty
-            ? info.version
-            : '${info.version}+$buildNumber';
+        final version = buildNumber.isEmpty ? info.version : '${info.version}+$buildNumber';
 
         return Text(
           'v$version',
           textAlign: TextAlign.center,
-          style: textTheme.labelMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            letterSpacing: 0.4,
-          ),
+          style: textTheme.labelMedium?.copyWith(color: colorScheme.onSurfaceVariant, letterSpacing: 0.4),
         );
       },
     );

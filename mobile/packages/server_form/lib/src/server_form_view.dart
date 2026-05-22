@@ -31,15 +31,7 @@ class _ServerFormViewState extends BasePageState<ServerFormView> {
   void _save() {
     if (!_formKey.currentState!.validate()) return;
 
-    Navigator.of(context).pop(
-      ServerFormResult(
-        host: _hostCtrl.text.trim(),
-        port: int.parse(_portCtrl.text.trim()),
-        username: _userCtrl.text.trim(),
-        credential: _credCtrl.text,
-        useKey: _useKey,
-      ),
-    );
+    Navigator.of(context).pop(ServerFormResult(host: _hostCtrl.text.trim(), port: int.parse(_portCtrl.text.trim()), username: _userCtrl.text.trim(), credential: _credCtrl.text, useKey: _useKey));
   }
 
   @override
@@ -55,35 +47,19 @@ class _ServerFormViewState extends BasePageState<ServerFormView> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            ServerFormField(
-              controller: _hostCtrl,
-              label: 'Host',
-              hint: '192.168.1.100',
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
-            ),
+            ServerFormField(controller: _hostCtrl, label: 'Host', hint: '192.168.1.100', validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
             const SizedBox(height: 12),
             ServerFormField(
               controller: _portCtrl,
               label: 'Port',
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 12),
-            ServerFormField(
-              controller: _userCtrl,
-              label: 'Username',
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
-            ),
+            ServerFormField(controller: _userCtrl, label: 'Username', validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
             const SizedBox(height: 12),
-            SwitchListTile(
-              title: const Text('Use SSH key'),
-              value: _useKey,
-              onChanged: (v) => setState(() => _useKey = v),
-            ),
+            SwitchListTile(title: const Text('Use SSH key'), value: _useKey, onChanged: (v) => setState(() => _useKey = v)),
             const SizedBox(height: 4),
             ServerFormField(
               controller: _credCtrl,

@@ -3,15 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/grim_colors.dart';
 
 class GrimTextSheet extends StatefulWidget {
-  const GrimTextSheet({
-    super.key,
-    required this.text,
-    this.error,
-    this.minSize = 0.12,
-    this.initialSize = 0.18,
-    this.maxSize = 0.7,
-    this.onClose,
-  });
+  const GrimTextSheet({super.key, required this.text, this.error, this.minSize = 0.12, this.initialSize = 0.18, this.maxSize = 0.7, this.onClose});
 
   final String text;
   final String? error;
@@ -42,11 +34,7 @@ class _GrimTextSheetState extends State<GrimTextSheet> {
   Future<void> _toggle() async {
     final target = _expanded ? widget.minSize : widget.maxSize;
     setState(() => _expanded = !_expanded);
-    await _controller.animateTo(
-      target,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-    );
+    await _controller.animateTo(target, duration: const Duration(milliseconds: 220), curve: Curves.easeOut);
   }
 
   @override
@@ -70,11 +58,7 @@ class _GrimTextSheetState extends State<GrimTextSheet> {
                     child: Center(
                       child: IconButton(
                         onPressed: _toggle,
-                        icon: Icon(
-                          _expanded ? Icons.expand_more : Icons.expand_less,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.7),
-                        ),
+                        icon: Icon(_expanded ? Icons.expand_more : Icons.expand_less, color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
                         tooltip: _expanded ? 'Collapse' : 'Expand',
                       ),
                     ),
@@ -82,12 +66,7 @@ class _GrimTextSheetState extends State<GrimTextSheet> {
                   if (widget.onClose != null)
                     IconButton(
                       onPressed: widget.onClose,
-                      icon: Icon(
-                        Icons.close,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.7,
-                        ),
-                      ),
+                      icon: Icon(Icons.close, color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
                       tooltip: 'Close',
                     )
                   else
@@ -100,23 +79,8 @@ class _GrimTextSheetState extends State<GrimTextSheet> {
                   controller: scrollController,
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                   children: [
-                    if (widget.error case final err?) ...[
-                      Text(
-                        err,
-                        style: TextStyle(
-                          color: theme.colorScheme.error,
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    Text(
-                      widget.text,
-                      style: TextStyle(
-                        color: GrimColors.onSurface,
-                        height: 1.35,
-                      ),
-                    ),
+                    if (widget.error case final err?) ...[Text(err, style: TextStyle(color: theme.colorScheme.error, height: 1.35)), const SizedBox(height: 12)],
+                    Text(widget.text, style: TextStyle(color: GrimColors.onSurface, height: 1.35)),
                   ],
                 ),
               ),

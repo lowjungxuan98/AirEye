@@ -9,8 +9,7 @@ class HighQualityCameraController {
 
   bool get isTakingPicture => _state?._isTakingPicture ?? false;
 
-  Future<XFile?> takePicture() =>
-      _state?._takePicture() ?? Future<XFile?>.value();
+  Future<XFile?> takePicture() => _state?._takePicture() ?? Future<XFile?>.value();
 
   void _attach(_HighQualityCameraWidgetState state) {
     _state = state;
@@ -23,15 +22,19 @@ class HighQualityCameraController {
   }
 }
 
-class _HighQualityCameraWidgetState extends State<HighQualityCameraWidget>
-    with WidgetsBindingObserver {
+class _HighQualityCameraWidgetState extends State<HighQualityCameraWidget> with WidgetsBindingObserver {
+  static const _focusIndicatorDuration = Duration(milliseconds: 1200);
+  static const _defaultFocusPoint = Offset(0.5, 0.5);
+
   CameraController? _controller;
   Object? _error;
   var _isTakingPicture = false;
   var _isInitializing = false;
   var _isSettingFocusPoint = false;
-  var _focusY = 0.5;
-  double? _pendingFocusY;
+  Offset _focusPoint = _defaultFocusPoint;
+  Offset? _pendingFocusPoint;
+  Offset? _focusIndicator;
+  Timer? _focusIndicatorTimer;
   var _initializationId = 0;
 
   @override
@@ -51,8 +54,7 @@ class _HighQualityCameraWidgetState extends State<HighQualityCameraWidget>
       widget.controller?._attach(this);
     }
 
-    if (oldWidget.lensDirection != widget.lensDirection ||
-        oldWidget.resolutionPreset != widget.resolutionPreset) {
+    if (oldWidget.lensDirection != widget.lensDirection || oldWidget.resolutionPreset != widget.resolutionPreset) {
       _initCamera();
     }
   }
@@ -93,22 +95,16 @@ class _HighQualityCameraWidgetState extends State<HighQualityCameraWidget>
         throw StateError('No cameras found on this device.');
       }
 
-      final selectedCamera = cameras.firstWhere(
-        (camera) => camera.lensDirection == widget.lensDirection,
-        orElse: () => cameras.first,
-      );
+      final selectedCamera = cameras.firstWhere((camera) => camera.lensDirection == widget.lensDirection, orElse: () => cameras.first);
 
-      final controller = CameraController(
-        selectedCamera,
-        widget.resolutionPreset,
-        enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
-      );
+      final controller = CameraController(selectedCamera, widget.resolutionPreset, enableAudio: false, imageFormatGroup: ImageFormatGroup.jpeg);
 
       await controller.initialize();
+      await controller.lockCaptureOrientation(DeviceOrientation.landscapeLeft);
+      await _CameraSound.prepare();
       await controller.setFlashMode(FlashMode.off);
-      await controller.setFocusMode(FocusMode.locked);
-      await controller.setFocusPoint(Offset(0.5, _focusY));
+      await controller.setFocusMode(FocusMode.auto);
+      await controller.setFocusPoint(_focusPoint);
       await controller.setExposureMode(ExposureMode.auto);
 
       if (!mounted || initializationId != _initializationId) {
@@ -149,7 +145,13 @@ class _HighQualityCameraWidgetState extends State<HighQualityCameraWidget>
         _isTakingPicture = true;
       });
 
-      final image = await controller.takePicture();
+      await _CameraSound.mute();
+      final XFile image;
+      try {
+        image = await controller.takePicture();
+      } finally {
+        await _CameraSound.unmute();
+      }
 
       if (!mounted) return null;
 
@@ -171,31 +173,38 @@ class _HighQualityCameraWidgetState extends State<HighQualityCameraWidget>
     }
   }
 
-  void _onFocusYChanged(double value) {
-    final focusY = 1 - value;
-
+  void _onFocusTapped(Offset normalizedPoint) {
     setState(() {
-      _focusY = focusY;
+      _focusPoint = normalizedPoint;
+      _focusIndicator = normalizedPoint;
     });
 
-    _setFocusY(focusY);
+    _focusIndicatorTimer?.cancel();
+    _focusIndicatorTimer = Timer(_focusIndicatorDuration, () {
+      if (!mounted) return;
+      setState(() {
+        _focusIndicator = null;
+      });
+    });
+
+    _setFocusPoint(normalizedPoint);
   }
 
-  Future<void> _setFocusY(double value) async {
+  Future<void> _setFocusPoint(Offset point) async {
     final controller = _controller;
 
     if (controller == null || !controller.value.isInitialized) return;
 
     if (_isSettingFocusPoint) {
-      _pendingFocusY = value;
+      _pendingFocusPoint = point;
       return;
     }
 
     _isSettingFocusPoint = true;
 
     try {
-      await controller.setFocusMode(FocusMode.locked);
-      await controller.setFocusPoint(Offset(0.5, value));
+      await controller.setFocusMode(FocusMode.auto);
+      await controller.setFocusPoint(point);
     } catch (error) {
       if (!mounted) return;
 
@@ -205,11 +214,11 @@ class _HighQualityCameraWidgetState extends State<HighQualityCameraWidget>
     } finally {
       _isSettingFocusPoint = false;
 
-      final pendingFocusY = _pendingFocusY;
-      _pendingFocusY = null;
+      final pendingFocusPoint = _pendingFocusPoint;
+      _pendingFocusPoint = null;
 
-      if (mounted && pendingFocusY != null && pendingFocusY != value) {
-        await _setFocusY(pendingFocusY);
+      if (mounted && pendingFocusPoint != null && pendingFocusPoint != point) {
+        await _setFocusPoint(pendingFocusPoint);
       }
     }
   }
@@ -217,6 +226,7 @@ class _HighQualityCameraWidgetState extends State<HighQualityCameraWidget>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _focusIndicatorTimer?.cancel();
     _initializationId++;
     widget.controller?._detach(this);
     _controller?.dispose();
@@ -228,13 +238,13 @@ class _HighQualityCameraWidgetState extends State<HighQualityCameraWidget>
     return _HighQualityCameraView(
       controller: _controller,
       error: _error,
-      focusY: _focusY,
+      focusIndicator: _focusIndicator,
       isTakingPicture: _isTakingPicture,
       previewFit: widget.previewFit,
       showCaptureButton: widget.showCaptureButton,
       loadingWidget: widget.loadingWidget,
       errorWidget: widget.errorWidget,
-      onFocusYChanged: _onFocusYChanged,
+      onFocusTapped: _onFocusTapped,
       onTakePicture: _takePicture,
     );
   }

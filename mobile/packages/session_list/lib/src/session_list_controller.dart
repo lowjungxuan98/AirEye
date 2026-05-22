@@ -48,23 +48,14 @@ class SessionListController extends BaseController<SessionListState> {
   }
 
   void navigateToTerminal(BuildContext context, String serverId) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => TerminalView(serverId: serverId)));
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => TerminalView(serverId: serverId)));
   }
 
   Future<void> _connect(ServerConfig server) async {
     final ssh = ref.read(grimSshProvider.notifier);
     if (ssh.isConnected(server.id)) return;
 
-    await ssh.connect(
-      id: server.id,
-      host: server.host,
-      port: server.port,
-      username: server.username,
-      credential: server.credential,
-      useKey: server.useKey,
-    );
+    await ssh.connect(id: server.id, host: server.host, port: server.port, username: server.username, credential: server.credential, useKey: server.useKey);
   }
 
   Future<List<ClaudeSession>> _fetch(String serverId) async {
@@ -91,7 +82,4 @@ done
   }
 }
 
-final sessionListControllerProvider =
-    BaseNotifierProvider<SessionListController, SessionListState>(
-      SessionListController.new,
-    );
+final sessionListControllerProvider = BaseNotifierProvider<SessionListController, SessionListState>(SessionListController.new);

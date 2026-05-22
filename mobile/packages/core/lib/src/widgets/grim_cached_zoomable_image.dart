@@ -2,14 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 class GrimCachedZoomableImage extends StatefulWidget {
-  const GrimCachedZoomableImage({
-    super.key,
-    required this.imageUrl,
-    this.zoom = false,
-    this.isNew = false,
-    this.fit = BoxFit.cover,
-    this.backgroundColor = Colors.black,
-  });
+  const GrimCachedZoomableImage({super.key, required this.imageUrl, this.zoom = false, this.isNew = false, this.fit = BoxFit.cover, this.backgroundColor = Colors.black});
 
   final String imageUrl;
   final bool zoom;
@@ -21,8 +14,7 @@ class GrimCachedZoomableImage extends StatefulWidget {
   final Color backgroundColor;
 
   @override
-  State<GrimCachedZoomableImage> createState() =>
-      _GrimCachedZoomableImageState();
+  State<GrimCachedZoomableImage> createState() => _GrimCachedZoomableImageState();
 }
 
 class _GrimCachedZoomableImageState extends State<GrimCachedZoomableImage> {
@@ -46,24 +38,12 @@ class _GrimCachedZoomableImageState extends State<GrimCachedZoomableImage> {
 
   @override
   Widget build(BuildContext context) {
-    Widget child = CachedNetworkImage(
-      imageUrl: widget.imageUrl,
-      fit: widget.fit,
-      placeholder: (context, url) => _placeholder(),
-      errorWidget: (context, url, error) => _error(),
-    );
+    Widget child = CachedNetworkImage(imageUrl: widget.imageUrl, fit: widget.fit, placeholder: (context, url) => _placeholder(), errorWidget: (context, url, error) => _error());
 
     if (widget.zoom) {
       child = GestureDetector(
         onDoubleTap: () => _transformController.value = Matrix4.identity(),
-        child: InteractiveViewer(
-          transformationController: _transformController,
-          clipBehavior: Clip.none,
-          boundaryMargin: const EdgeInsets.all(80),
-          minScale: 1,
-          maxScale: 4,
-          child: child,
-        ),
+        child: InteractiveViewer(transformationController: _transformController, clipBehavior: Clip.none, boundaryMargin: const EdgeInsets.all(80), minScale: 1, maxScale: 4, child: child),
       );
     }
 
@@ -76,19 +56,12 @@ class _GrimCachedZoomableImageState extends State<GrimCachedZoomableImage> {
           top: 8,
           left: 8,
           child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.green,
-              borderRadius: BorderRadius.circular(6),
-            ),
+            decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(6)),
             child: const Padding(
               padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Text(
                 'NEW',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
               ),
             ),
           ),

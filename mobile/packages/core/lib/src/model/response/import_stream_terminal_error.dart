@@ -5,10 +5,7 @@ class ImportStreamTerminalError {
   const ImportStreamTerminalError({required this.error});
   final ErrorBodyError error;
 
-  factory ImportStreamTerminalError.fromJson(JsonMap json) =>
-      ImportStreamTerminalError(
-        error: ErrorBodyError.fromJson(json['error'] as JsonMap),
-      );
+  factory ImportStreamTerminalError.fromJson(JsonMap json) => ImportStreamTerminalError(error: ErrorBodyError.fromJson(json['error'] as JsonMap));
 
   JsonMap toJson() => {'error': error.toJson()};
 }

@@ -50,16 +50,9 @@ class _GrimTerminalState extends State<GrimTerminal> {
   void initState() {
     super.initState();
 
-    _terminal = Terminal(
-      onOutput: widget.client.write,
-      onResize: (width, height, _, _) => widget.client.resize(width, height),
-    );
+    _terminal = Terminal(onOutput: widget.client.write, onResize: (width, height, _, _) => widget.client.resize(width, height));
 
-    _stdoutSub = widget.client.stdout.listen(
-      (bytes) => _terminal.write(utf8.decode(bytes)),
-      onError: (_) {},
-      cancelOnError: false,
-    );
+    _stdoutSub = widget.client.stdout.listen((bytes) => _terminal.write(utf8.decode(bytes)), onError: (_) {}, cancelOnError: false);
   }
 
   @override

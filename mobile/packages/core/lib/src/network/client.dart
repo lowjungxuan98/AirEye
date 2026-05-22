@@ -26,18 +26,13 @@ class GrimClient {
     }
   }
 
-  static Future<GrimClient> create({
-    Map<String, dynamic>? defaultHeaders,
-  }) async {
+  static Future<GrimClient> create({Map<String, dynamic>? defaultHeaders}) async {
     final baseUrl = await GrimBaseUrl.resolve();
 
     final dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        headers: <String, dynamic>{
-          'accept': 'application/json',
-          if (defaultHeaders != null) ...defaultHeaders,
-        },
+        headers: <String, dynamic>{'accept': 'application/json', if (defaultHeaders != null) ...defaultHeaders},
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 30),
         sendTimeout: const Duration(seconds: 30),
@@ -45,17 +40,7 @@ class GrimClient {
       ),
     );
 
-    dio.interceptors.add(
-      PrettyDioLogger(
-        requestHeader: true,
-        requestBody: true,
-        responseHeader: false,
-        responseBody: true,
-        error: true,
-        compact: true,
-        maxWidth: 120,
-      ),
-    );
+    dio.interceptors.add(PrettyDioLogger(requestHeader: true, requestBody: true, responseHeader: false, responseBody: true, error: true, compact: true, maxWidth: 120));
 
     return GrimClient._(dio);
   }
@@ -71,13 +56,7 @@ class GrimClient {
     void Function()? onFinally,
   }) {
     return _request(
-      () => dio.get<T>(
-        path,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-        onReceiveProgress: onReceiveProgress,
-      ),
+      () => dio.get<T>(path, queryParameters: queryParameters, options: options, cancelToken: cancelToken, onReceiveProgress: onReceiveProgress),
       onSuccess: onSuccess,
       onError: onError,
       onFinally: onFinally,
@@ -97,15 +76,7 @@ class GrimClient {
     void Function()? onFinally,
   }) {
     return _request(
-      () => dio.post<T>(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-        onSendProgress: onSendProgress,
-        onReceiveProgress: onReceiveProgress,
-      ),
+      () => dio.post<T>(path, data: data, queryParameters: queryParameters, options: options, cancelToken: cancelToken, onSendProgress: onSendProgress, onReceiveProgress: onReceiveProgress),
       onSuccess: onSuccess,
       onError: onError,
       onFinally: onFinally,
@@ -125,15 +96,7 @@ class GrimClient {
     void Function()? onFinally,
   }) {
     return _request(
-      () => dio.put<T>(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-        onSendProgress: onSendProgress,
-        onReceiveProgress: onReceiveProgress,
-      ),
+      () => dio.put<T>(path, data: data, queryParameters: queryParameters, options: options, cancelToken: cancelToken, onSendProgress: onSendProgress, onReceiveProgress: onReceiveProgress),
       onSuccess: onSuccess,
       onError: onError,
       onFinally: onFinally,

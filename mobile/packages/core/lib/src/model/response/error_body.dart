@@ -5,8 +5,7 @@ class ErrorBody {
   const ErrorBody({required this.error});
   final ErrorBodyError error;
 
-  factory ErrorBody.fromJson(JsonMap json) =>
-      ErrorBody(error: ErrorBodyError.fromJson(json['error'] as JsonMap));
+  factory ErrorBody.fromJson(JsonMap json) => ErrorBody(error: ErrorBodyError.fromJson(json['error'] as JsonMap));
 
   JsonMap toJson() => {'error': error.toJson()};
 }

@@ -10,9 +10,7 @@ class ServerRepository {
     if (raw == null) return [];
 
     final list = jsonDecode(raw) as List;
-    return list
-        .map((e) => ServerConfig.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return list.map((e) => ServerConfig.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<void> saveAll(List<ServerConfig> servers) async {

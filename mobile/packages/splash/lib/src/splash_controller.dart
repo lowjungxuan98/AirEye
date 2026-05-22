@@ -26,12 +26,9 @@ class SplashController extends BaseController<SplashState> {
 
   void navigateToRole(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const SelectRoleView()),
-      );
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const SelectRoleView()));
     });
   }
 }
 
-final splashControllerProvider =
-    BaseNotifierProvider<SplashController, SplashState>(SplashController.new);
+final splashControllerProvider = BaseNotifierProvider<SplashController, SplashState>(SplashController.new);

@@ -2,17 +2,7 @@ import 'package:core/core.dart';
 import 'package:flutter/services.dart';
 
 class ServerFormField extends StatelessWidget {
-  const ServerFormField({
-    super.key,
-    required this.controller,
-    required this.label,
-    this.hint,
-    this.keyboardType,
-    this.inputFormatters,
-    this.maxLines = 1,
-    this.obscureText = false,
-    this.validator,
-  });
+  const ServerFormField({super.key, required this.controller, required this.label, this.hint, this.keyboardType, this.inputFormatters, this.maxLines = 1, this.obscureText = false, this.validator});
 
   final TextEditingController controller;
   final String label;

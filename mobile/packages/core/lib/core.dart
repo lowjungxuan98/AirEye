@@ -4,8 +4,7 @@ export 'package:camera/camera.dart' show CameraLensDirection, ResolutionPreset;
 export 'package:cross_file/cross_file.dart' show XFile;
 export 'package:dio/dio.dart' show MultipartFile;
 export 'src/env.dart';
-export 'package:firebase_messaging/firebase_messaging.dart'
-    show FirebaseMessaging, RemoteMessage;
+export 'package:firebase_messaging/firebase_messaging.dart' show FirebaseMessaging, RemoteMessage;
 export 'src/firebase/fcm_manager.dart';
 export 'src/firebase/init.dart';
 export 'src/base/base.dart';

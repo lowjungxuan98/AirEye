@@ -5,62 +5,30 @@ import 'dart:typed_data';
 import 'package:dartssh2/dartssh2.dart';
 
 class GrimSshClient {
-  GrimSshClient._({
-    required this.session,
-    required this.stdin,
-    required this.stdout,
-    required SSHClient client,
-  }) : _client = client;
+  GrimSshClient._({required this.session, required this.stdin, required this.stdout, required SSHClient client}) : _client = client;
 
   final SSHSession session;
   final StreamSink<Uint8List> stdin;
   final Stream<Uint8List> stdout;
   final SSHClient _client;
 
-  static Future<GrimSshClient> connect({
-    required String host,
-    required int port,
-    required String username,
-    required String credential,
-    bool useKey = false,
-  }) async {
-    final socket = await SSHSocket.connect(
-      host,
-      port,
-      timeout: const Duration(seconds: 10),
-    );
+  static Future<GrimSshClient> connect({required String host, required int port, required String username, required String credential, bool useKey = false}) async {
+    final socket = await SSHSocket.connect(host, port, timeout: const Duration(seconds: 10));
 
     SSHClient client;
 
     if (useKey) {
       final keys = SSHKeyPair.fromPem(credential);
-      client = SSHClient(
-        socket,
-        username: username,
-        identities: keys,
-        disableHostkeyVerification: true,
-      );
+      client = SSHClient(socket, username: username, identities: keys, disableHostkeyVerification: true);
     } else {
-      client = SSHClient(
-        socket,
-        username: username,
-        onPasswordRequest: () => credential,
-        disableHostkeyVerification: true,
-      );
+      client = SSHClient(socket, username: username, onPasswordRequest: () => credential, disableHostkeyVerification: true);
     }
 
     await client.authenticated;
 
-    final session = await client.shell(
-      pty: const SSHPtyConfig(type: 'xterm-256color', width: 80, height: 24),
-    );
+    final session = await client.shell(pty: const SSHPtyConfig(type: 'xterm-256color', width: 80, height: 24));
 
-    return GrimSshClient._(
-      session: session,
-      stdin: session.stdin,
-      stdout: session.stdout,
-      client: client,
-    );
+    return GrimSshClient._(session: session, stdin: session.stdin, stdout: session.stdout, client: client);
   }
 
   Future<String> execute(String command) async {

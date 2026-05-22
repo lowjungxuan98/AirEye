@@ -28,11 +28,7 @@ class ImageDetailView extends BasePage {
       body: Stack(
         children: [
           Positioned.fill(
-            child: GrimCachedZoomableImage(
-              imageUrl: imageUrl,
-              zoom: true,
-              fit: BoxFit.contain,
-            ),
+            child: GrimCachedZoomableImage(imageUrl: imageUrl, zoom: true, fit: BoxFit.contain),
           ),
           const GrimBackButton(),
           SafeArea(
@@ -45,18 +41,13 @@ class ImageDetailView extends BasePage {
                   children: [
                     GrimDownloadImageButton(imageUrl: imageUrl),
                     const SizedBox(height: 8),
-                    GrimCopyTextButton(
-                      text: text?.isNotEmpty == true ? text! : '',
-                    ),
+                    GrimCopyTextButton(text: text?.isNotEmpty == true ? text! : ''),
                   ],
                 ),
               ),
             ),
           ),
-          GrimTextSheet(
-            text: text?.isNotEmpty == true ? text! : 'No text',
-            error: err?.isNotEmpty == true ? err : null,
-          ),
+          GrimTextSheet(text: text?.isNotEmpty == true ? text! : 'No text', error: err?.isNotEmpty == true ? err : null),
         ],
       ),
     );

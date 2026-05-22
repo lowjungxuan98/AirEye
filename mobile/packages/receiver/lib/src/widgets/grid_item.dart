@@ -8,13 +8,7 @@ import 'text_ready_badge.dart';
 import 'processing_pulse.dart';
 
 class GridItem extends StatefulWidget {
-  const GridItem({
-    required this.item,
-    required this.imageUrl,
-    this.isRegenerating = false,
-    this.onRegenerate,
-    super.key,
-  });
+  const GridItem({required this.item, required this.imageUrl, this.isRegenerating = false, this.onRegenerate, super.key});
 
   final ExportListItem item;
   final String imageUrl;
@@ -42,15 +36,11 @@ class _GridItemState extends State<GridItem> {
       );
       await Gal.putImageBytes(Uint8List.fromList(response.data!));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Image saved to gallery')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image saved to gallery')));
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save image')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to save image')));
       }
     } finally {
       if (mounted) setState(() => _progress = null);
@@ -59,19 +49,13 @@ class _GridItemState extends State<GridItem> {
 
   @override
   Widget build(BuildContext context) {
-    final hasText =
-        widget.item.finalText?.trim().isNotEmpty == true &&
-        !widget.isRegenerating;
+    final hasText = widget.item.finalText?.trim().isNotEmpty == true && !widget.isRegenerating;
     final progress = _progress;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ImageDetailView(item: widget.item),
-          ),
-        ),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ImageDetailView(item: widget.item))),
         onLongPress: () {},
         child: Stack(
           children: [
@@ -81,9 +65,7 @@ class _GridItemState extends State<GridItem> {
                 text: widget.item.finalText?.trim() ?? '',
                 error: widget.item.errorMessage?.trim(),
                 onDownload: _download,
-                onRegenerate: widget.isRegenerating
-                    ? null
-                    : widget.onRegenerate,
+                onRegenerate: widget.isRegenerating ? null : widget.onRegenerate,
                 child: GrimCachedZoomableImage(imageUrl: widget.imageUrl),
               ),
             ),
@@ -98,21 +80,13 @@ class _GridItemState extends State<GridItem> {
                         SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(
-                            value: progress > 0 ? progress : null,
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
+                          child: CircularProgressIndicator(value: progress > 0 ? progress : null, strokeWidth: 2, color: Colors.white),
                         ),
                         if (progress > 0) ...[
                           const SizedBox(height: 4),
                           Text(
                             '${(progress * 100).round()}%',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ],
@@ -120,23 +94,13 @@ class _GridItemState extends State<GridItem> {
                   ),
                 ),
               ),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: hasText ? const TextReadyBadge() : const ProcessingPulse(),
-            ),
+            Positioned(top: 4, right: 4, child: hasText ? const TextReadyBadge() : const ProcessingPulse()),
             if (widget.isRegenerating)
               const Positioned.fill(
                 child: ColoredBox(
                   color: Color(0x66000000),
                   child: Center(
-                    child: SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
                   ),
                 ),
               ),

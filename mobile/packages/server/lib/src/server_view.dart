@@ -15,12 +15,7 @@ class ServerView extends BasePage {
       appBar: AppBar(
         title: const Text('Servers'),
         leading: const GrimBackButton(),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => controller.addServerFromForm(context),
-          ),
-        ],
+        actions: [IconButton(icon: const Icon(Icons.add), onPressed: () => controller.addServerFromForm(context))],
       ),
       body: ServerBody(state: state, controller: controller),
     );

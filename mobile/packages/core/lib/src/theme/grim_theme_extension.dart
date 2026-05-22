@@ -3,14 +3,7 @@ import 'package:flutter/material.dart';
 /// GRIM-specific colors not covered by [ColorScheme] alone.
 @immutable
 class GrimThemeExtension extends ThemeExtension<GrimThemeExtension> {
-  const GrimThemeExtension({
-    required this.subtitle,
-    required this.navTile,
-    required this.navTileBorder,
-    required this.sectionLabel,
-    required this.mutedText,
-    required this.chevron,
-  });
+  const GrimThemeExtension({required this.subtitle, required this.navTile, required this.navTileBorder, required this.sectionLabel, required this.mutedText, required this.chevron});
 
   /// Muted olive under the wordmark (e.g. "Secure visual relay").
   final Color subtitle;
@@ -33,14 +26,7 @@ class GrimThemeExtension extends ThemeExtension<GrimThemeExtension> {
   );
 
   @override
-  GrimThemeExtension copyWith({
-    Color? subtitle,
-    Color? navTile,
-    Color? navTileBorder,
-    Color? sectionLabel,
-    Color? mutedText,
-    Color? chevron,
-  }) {
+  GrimThemeExtension copyWith({Color? subtitle, Color? navTile, Color? navTileBorder, Color? sectionLabel, Color? mutedText, Color? chevron}) {
     return GrimThemeExtension(
       subtitle: subtitle ?? this.subtitle,
       navTile: navTile ?? this.navTile,
@@ -67,7 +53,6 @@ class GrimThemeExtension extends ThemeExtension<GrimThemeExtension> {
 
 extension GrimThemeExtensionX on BuildContext {
   GrimThemeExtension get grimExtension {
-    return Theme.of(this).extension<GrimThemeExtension>() ??
-        GrimThemeExtension.dark;
+    return Theme.of(this).extension<GrimThemeExtension>() ?? GrimThemeExtension.dark;
   }
 }

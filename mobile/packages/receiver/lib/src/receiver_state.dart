@@ -33,16 +33,7 @@ class ReceiverReady extends ReceiverState {
   final bool isCapturing;
   final Set<String> regeneratingIds;
 
-  ReceiverReady copyWith({
-    List<ExportListItem>? items,
-    int? page,
-    int? limit,
-    bool? isNext,
-    bool? isRefreshing,
-    bool? isLoadingMore,
-    bool? isCapturing,
-    Set<String>? regeneratingIds,
-  }) {
+  ReceiverReady copyWith({List<ExportListItem>? items, int? page, int? limit, bool? isNext, bool? isRefreshing, bool? isLoadingMore, bool? isCapturing, Set<String>? regeneratingIds}) {
     return ReceiverReady(
       items: items ?? this.items,
       page: page ?? this.page,

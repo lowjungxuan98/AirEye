@@ -6,23 +6,10 @@ class GrimSshNotifier extends Notifier<Map<String, GrimSshClient>> {
   @override
   Map<String, GrimSshClient> build() => {};
 
-  Future<GrimSshClient> connect({
-    required String id,
-    required String host,
-    required int port,
-    required String username,
-    required String credential,
-    bool useKey = false,
-  }) async {
+  Future<GrimSshClient> connect({required String id, required String host, required int port, required String username, required String credential, bool useKey = false}) async {
     state[id]?.close();
 
-    final client = await GrimSshClient.connect(
-      host: host,
-      port: port,
-      username: username,
-      credential: credential,
-      useKey: useKey,
-    );
+    final client = await GrimSshClient.connect(host: host, port: port, username: username, credential: credential, useKey: useKey);
 
     state = {...state, id: client};
     return client;
@@ -37,7 +24,4 @@ class GrimSshNotifier extends Notifier<Map<String, GrimSshClient>> {
   bool isConnected(String id) => state.containsKey(id);
 }
 
-final grimSshProvider =
-    NotifierProvider<GrimSshNotifier, Map<String, GrimSshClient>>(
-      GrimSshNotifier.new,
-    );
+final grimSshProvider = NotifierProvider<GrimSshNotifier, Map<String, GrimSshClient>>(GrimSshNotifier.new);

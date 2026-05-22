@@ -18,18 +18,9 @@ class SessionTile extends StatelessWidget {
         session.title,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: session.isFallbackTitle
-            ? TextStyle(
-                fontStyle: FontStyle.italic,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              )
-            : null,
+        style: session.isFallbackTitle ? TextStyle(fontStyle: FontStyle.italic, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)) : null,
       ),
-      subtitle: Text(
-        _formatSubtitle(session),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
+      subtitle: Text(_formatSubtitle(session), maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );
@@ -64,21 +55,7 @@ class SessionTile extends StatelessWidget {
   }
 
   String _monthAbbr(int month) {
-    const months = [
-      '',
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
+    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return months[month];
   }
 }

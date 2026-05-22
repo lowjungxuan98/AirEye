@@ -24,19 +24,9 @@ class SessionListView extends BasePage {
       appBar: AppBar(
         title: Text(server.host),
         leading: const GrimBackButton(),
-        actions: [
-          if (state is SessionListReady)
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () => controller.refresh(server),
-            ),
-        ],
+        actions: [if (state is SessionListReady) IconButton(icon: const Icon(Icons.refresh), onPressed: () => controller.refresh(server))],
       ),
-      body: SessionListBody(
-        state: state,
-        server: server,
-        controller: controller,
-      ),
+      body: SessionListBody(state: state, server: server, controller: controller),
     );
   }
 }

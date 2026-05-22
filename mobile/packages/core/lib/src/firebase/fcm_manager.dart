@@ -9,12 +9,7 @@ import 'init.dart';
 
 const _tag = 'GrimFcm';
 
-const _channel = AndroidNotificationChannel(
-  'grim_results',
-  'GRIM Results',
-  description: 'Notifications for new GRIM results',
-  importance: Importance.high,
-);
+const _channel = AndroidNotificationChannel('grim_results', 'GRIM Results', description: 'Notifications for new GRIM results', importance: Importance.high);
 
 final _localNotifications = FlutterLocalNotificationsPlugin();
 final _foregroundMessages = StreamController<RemoteMessage>.broadcast();
@@ -26,9 +21,7 @@ typedef GrimFcmTokenHandler = Future<void> Function(String? token);
 
 /// Must be called before [runApp] — registers the background isolate entry-point.
 @pragma('vm:entry-point')
-Future<void> grimFirebaseMessagingBackgroundHandler(
-  RemoteMessage message,
-) async {
+Future<void> grimFirebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await initializeFirebase();
   dev.log('background message: ${message.messageId}', name: _tag);
 }
@@ -38,19 +31,13 @@ class GrimFcmManager {
 
   static bool _initialized = false;
 
-  static Stream<RemoteMessage> get foregroundMessages =>
-      _foregroundMessages.stream;
+  static Stream<RemoteMessage> get foregroundMessages => _foregroundMessages.stream;
 
-  static Stream<RemoteMessage> get openedAppMessages =>
-      _openedAppMessages.stream;
+  static Stream<RemoteMessage> get openedAppMessages => _openedAppMessages.stream;
 
   /// Subscribes [handler] to foreground FCM messages for the lifetime of [ref].
   /// Pass [onDispose] for any extra cleanup (e.g. setting a disposed flag).
-  static void subscribeForeground(
-    Ref ref,
-    Future<void> Function(RemoteMessage) handler, {
-    void Function()? onDispose,
-  }) {
+  static void subscribeForeground(Ref ref, Future<void> Function(RemoteMessage) handler, {void Function()? onDispose}) {
     final subscription = foregroundMessages.listen(handler);
     ref.onDispose(() {
       subscription.cancel();
@@ -68,18 +55,11 @@ class GrimFcmManager {
     _initialized = true;
 
     // Create Android notification channel.
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(_channel);
+    await _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(_channel);
 
     // Initialize local notifications plugin.
     await _localNotifications.initialize(
-      settings: const InitializationSettings(
-        android: AndroidInitializationSettings('@drawable/ic_notification'),
-        iOS: DarwinInitializationSettings(),
-      ),
+      settings: const InitializationSettings(android: AndroidInitializationSettings('@drawable/ic_notification'), iOS: DarwinInitializationSettings()),
     );
 
     final messaging = FirebaseMessaging.instance;
@@ -102,10 +82,7 @@ class GrimFcmManager {
     });
 
     FirebaseMessaging.onMessage.listen((message) async {
-      dev.log(
-        'foreground message: ${message.messageId} data=${message.data}',
-        name: _tag,
-      );
+      dev.log('foreground message: ${message.messageId} data=${message.data}', name: _tag);
       _foregroundMessages.add(message);
       _showForegroundNotification(message);
       if (onForegroundMessage != null) await onForegroundMessage(message);
@@ -141,23 +118,15 @@ class GrimFcmManager {
 
   /// Subscribes [onRefresh] to foreground FCM `export_refresh` messages
   /// targeting the receiver role, for the lifetime of [ref].
-  static void subscribeExportRefresh(
-    Ref ref,
-    Future<void> Function() onRefresh, {
-    void Function()? onDispose,
-  }) {
-    subscribeForeground(
-      ref,
-      (message) async {
-        final data = message.data;
-        if (data['kind'] != 'export_refresh') return;
-        final role = data['role']?.toString();
-        final targetRole = data['targetRole']?.toString();
-        if (role != 'receiver' && targetRole != 'receiver') return;
-        await onRefresh();
-      },
-      onDispose: onDispose,
-    );
+  static void subscribeExportRefresh(Ref ref, Future<void> Function() onRefresh, {void Function()? onDispose}) {
+    subscribeForeground(ref, (message) async {
+      final data = message.data;
+      if (data['kind'] != 'export_refresh') return;
+      final role = data['role']?.toString();
+      final targetRole = data['targetRole']?.toString();
+      if (role != 'receiver' && targetRole != 'receiver') return;
+      await onRefresh();
+    }, onDispose: onDispose);
   }
 
   /// Call after [init] to handle the "app opened from terminated state via tap" case.

@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Applies [factor] to each non-null [TextStyle.fontSize] (clamped for readability).
 TextTheme scaleTextThemeFontSizes(TextTheme theme, double factor) {
-  TextStyle? scale(
-    TextStyle? style, {
-    double minSize = 10,
-    double maxSize = 36,
-  }) {
+  TextStyle? scale(TextStyle? style, {double minSize = 10, double maxSize = 36}) {
     if (style == null) return null;
     final size = style.fontSize;
     if (size == null) return style;

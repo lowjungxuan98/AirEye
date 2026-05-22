@@ -10,13 +10,8 @@ class TerminalView extends ConsumerWidget {
     final client = ref.watch(grimSshProvider)[serverId];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Terminal'),
-        leading: const GrimBackButton(),
-      ),
-      body: client != null
-          ? GrimTerminal(client: client)
-          : const Center(child: CircularProgressIndicator()),
+      appBar: AppBar(title: const Text('Terminal'), leading: const GrimBackButton()),
+      body: client != null ? GrimTerminal(client: client) : const Center(child: CircularProgressIndicator()),
     );
   }
 }

@@ -4,11 +4,7 @@ import 'receiver_state.dart';
 class ReceiverController extends BaseController<ReceiverState> {
   @override
   ReceiverState build() {
-    GrimFcmManager.subscribeExportRefresh(
-      ref,
-      _refreshFromNotification,
-      onDispose: () => _isDisposed = true,
-    );
+    GrimFcmManager.subscribeExportRefresh(ref, _refreshFromNotification, onDispose: () => _isDisposed = true);
     return const ReceiverInitial();
   }
 
@@ -27,12 +23,7 @@ class ReceiverController extends BaseController<ReceiverState> {
 
   static const int _defaultLimit = 50;
 
-  ReceiverReady _readyFromExport(ExportListResponse data) => ReceiverReady(
-    items: data.data,
-    page: data.page,
-    limit: data.limit,
-    isNext: data.isNext,
-  );
+  ReceiverReady _readyFromExport(ExportListResponse data) => ReceiverReady(items: data.data, page: data.page, limit: data.limit, isNext: data.isNext);
 
   Future<void> loadFirstPage({int limit = _defaultLimit}) => run(() async {
     final data = await GrimEndpoints.export(page: 1, limit: limit);
@@ -99,16 +90,11 @@ class ReceiverController extends BaseController<ReceiverState> {
     if (imageUrl == null || imageUrl.isEmpty) return;
     if (current.regeneratingIds.contains(imageUrl)) return;
 
-    state = current.copyWith(
-      regeneratingIds: {...current.regeneratingIds, imageUrl},
-    );
+    state = current.copyWith(regeneratingIds: {...current.regeneratingIds, imageUrl});
 
     try {
       final response = await GrimEndpoints.regenerate(
-        request: RegenerateRequest(
-          imageUrl: imageUrl,
-          text: item.finalText?.trim() ?? '',
-        ),
+        request: RegenerateRequest(imageUrl: imageUrl, text: item.finalText?.trim() ?? ''),
       );
 
       if (response case ImportStreamSseError(:final value)) {
@@ -141,18 +127,9 @@ class ReceiverController extends BaseController<ReceiverState> {
 
     try {
       final nextPage = current.page + 1;
-      final data = await GrimEndpoints.export(
-        page: nextPage,
-        limit: current.limit,
-      );
+      final data = await GrimEndpoints.export(page: nextPage, limit: current.limit);
 
-      state = current.copyWith(
-        items: [...current.items, ...data.data],
-        page: data.page,
-        limit: data.limit,
-        isNext: data.isNext,
-        isLoadingMore: false,
-      );
+      state = current.copyWith(items: [...current.items, ...data.data], page: data.page, limit: data.limit, isNext: data.isNext, isLoadingMore: false);
     } catch (_) {
       // Keep existing list; just stop the spinner.
       state = current.copyWith(isLoadingMore: false);
@@ -160,7 +137,4 @@ class ReceiverController extends BaseController<ReceiverState> {
   }
 }
 
-final receiverControllerProvider =
-    BaseNotifierProvider<ReceiverController, ReceiverState>(
-      ReceiverController.new,
-    );
+final receiverControllerProvider = BaseNotifierProvider<ReceiverController, ReceiverState>(ReceiverController.new);

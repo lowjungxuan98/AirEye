@@ -13,31 +13,20 @@ class ServerBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (state) {
-      ServerInitial() ||
-      ServerLoading() => const Center(child: CircularProgressIndicator()),
+      ServerInitial() || ServerLoading() => const Center(child: CircularProgressIndicator()),
       ServerError(:final message) => Center(
-        child: Text(
-          message,
-          style: TextStyle(color: Theme.of(context).colorScheme.error),
-        ),
+        child: Text(message, style: TextStyle(color: Theme.of(context).colorScheme.error)),
       ),
       ServerReady(:final servers) =>
         servers.isEmpty
             ? const Center(
-                child: Text(
-                  'No servers configured',
-                  style: TextStyle(color: GrimColors.onSurface),
-                ),
+                child: Text('No servers configured', style: TextStyle(color: GrimColors.onSurface)),
               )
             : ListView.builder(
                 itemCount: servers.length,
                 itemBuilder: (context, index) {
                   final server = servers[index];
-                  return ServerTile(
-                    server: server,
-                    onTap: () => controller.connect(server, context),
-                    onDelete: () => controller.deleteServer(server.id),
-                  );
+                  return ServerTile(server: server, onTap: () => controller.connect(server, context), onDelete: () => controller.deleteServer(server.id));
                 },
               ),
     };
