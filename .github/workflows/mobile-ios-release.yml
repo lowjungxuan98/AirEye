@@ -71,7 +71,7 @@ jobs:
       - name: Validate iOS release secrets
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
         env:
-          GRIM_API_BASE_URL: ${{ secrets.GRIM_API_BASE_URL }}
+          AIREYE_API_BASE_URL: ${{ secrets.AIREYE_API_BASE_URL }}
           FIREBASE_IOS_API_KEY: ${{ secrets.FIREBASE_IOS_API_KEY }}
           FIREBASE_IOS_APP_ID: ${{ secrets.FIREBASE_IOS_APP_ID }}
           FIREBASE_IOS_BUNDLE_ID: ${{ secrets.FIREBASE_IOS_BUNDLE_ID }}
@@ -88,7 +88,7 @@ jobs:
         run: |
           set -euo pipefail
           missing=()
-          for name in GRIM_API_BASE_URL FIREBASE_IOS_API_KEY FIREBASE_IOS_APP_ID FIREBASE_IOS_BUNDLE_ID FIREBASE_PROJECT_ID FIREBASE_MESSAGING_SENDER_ID FIREBASE_DATABASE_URL FIREBASE_STORAGE_BUCKET FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64 IOS_DISTRIBUTION_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64 IOS_KEYCHAIN_PASSWORD; do
+          for name in AIREYE_API_BASE_URL FIREBASE_IOS_API_KEY FIREBASE_IOS_APP_ID FIREBASE_IOS_BUNDLE_ID FIREBASE_PROJECT_ID FIREBASE_MESSAGING_SENDER_ID FIREBASE_DATABASE_URL FIREBASE_STORAGE_BUCKET FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64 IOS_DISTRIBUTION_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64 IOS_KEYCHAIN_PASSWORD; do
             if [[ -z "${!name}" ]]; then
               missing+=("$name")
             fi
@@ -110,9 +110,9 @@ jobs:
         run: |
           set -euo pipefail
           CERT_PATH="$RUNNER_TEMP/distribution.p12"
-          PROFILE_PATH="$RUNNER_TEMP/GRIM_AdHoc.mobileprovision"
-          PROFILE_PLIST="$RUNNER_TEMP/GRIM_AdHoc.plist"
-          KEYCHAIN_PATH="$RUNNER_TEMP/grim-build.keychain-db"
+          PROFILE_PATH="$RUNNER_TEMP/AirEye_AdHoc.mobileprovision"
+          PROFILE_PLIST="$RUNNER_TEMP/AirEye_AdHoc.plist"
+          KEYCHAIN_PATH="$RUNNER_TEMP/aireye-build.keychain-db"
 
           printf '%s' "$IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_PATH"
           printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
@@ -150,7 +150,7 @@ jobs:
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
         working-directory: mobile
         env:
-          GRIM_API_BASE_URL: ${{ secrets.GRIM_API_BASE_URL }}
+          AIREYE_API_BASE_URL: ${{ secrets.AIREYE_API_BASE_URL }}
           FIREBASE_IOS_API_KEY: ${{ secrets.FIREBASE_IOS_API_KEY }}
           FIREBASE_IOS_APP_ID: ${{ secrets.FIREBASE_IOS_APP_ID }}
           FIREBASE_IOS_BUNDLE_ID: ${{ secrets.FIREBASE_IOS_BUNDLE_ID }}
@@ -163,7 +163,7 @@ jobs:
           set -euo pipefail
           flutter build ipa --release \
             --export-options-plist=ios/ExportOptions.plist \
-            --dart-define=GRIM_API_BASE_URL="$GRIM_API_BASE_URL" \
+            --dart-define=AIREYE_API_BASE_URL="$AIREYE_API_BASE_URL" \
             --dart-define=FIREBASE_IOS_API_KEY="$FIREBASE_IOS_API_KEY" \
             --dart-define=FIREBASE_IOS_APP_ID="$FIREBASE_IOS_APP_ID" \
             --dart-define=FIREBASE_IOS_BUNDLE_ID="$FIREBASE_IOS_BUNDLE_ID" \
@@ -176,8 +176,8 @@ jobs:
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: grim-ios-ipa
-          path: mobile/build/ios/ipa/GRIM.ipa
+          name: aireye-ios-ipa
+          path: mobile/build/ios/ipa/AirEye.ipa
           if-no-files-found: error
           retention-days: 1
 
@@ -203,8 +203,8 @@ jobs:
         shell: bash
         run: |
           set +e
-          security delete-keychain "$RUNNER_TEMP/grim-build.keychain-db" 2>/dev/null || true
-          rm -f "$RUNNER_TEMP/distribution.p12" "$RUNNER_TEMP/GRIM_AdHoc.mobileprovision"
+          security delete-keychain "$RUNNER_TEMP/aireye-build.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/distribution.p12" "$RUNNER_TEMP/AirEye_AdHoc.mobileprovision"
 
       - name: Skip release
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'false'
@@ -215,9 +215,9 @@ jobs:
     if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && needs.ios.outputs.mobile_changed == 'true'
     uses: ./.github/workflows/mobile-firebase-app-distribution.yml
     with:
-      artifact-name: grim-ios-ipa
-      file-name: GRIM.ipa
-      release-notes: "GRIM mobile ${{ github.ref_name }}"
+      artifact-name: aireye-ios-ipa
+      file-name: AirEye.ipa
+      release-notes: "AirEye mobile ${{ github.ref_name }}"
     secrets:
       firebase_app_id: ${{ secrets.FIREBASE_IOS_APP_ID }}
       firebase_service_account: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT }}
