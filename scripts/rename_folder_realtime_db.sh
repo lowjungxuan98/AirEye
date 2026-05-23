@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   echo "Usage: $0 <old_path> <new_path> [--project <firebase_project_id>]"
-  echo "  Example: $0 /production/uploads /production/AZ-204 --project grim-bd508"
+  echo "  Example: $0 /production/uploads /production/AZ-204 --project aireye-bd508"
   exit 1
 }
 

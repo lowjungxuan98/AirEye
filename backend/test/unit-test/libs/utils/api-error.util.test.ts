@@ -8,8 +8,6 @@ import {
   internalError,
   invalidRequest,
   mapImageMulterError,
-  mapPromptMulterError,
-  promptFileTooLarge,
   toErrorPayload,
   uploadNotFound
 } from "../../../../src/libs/utils/api-error.util";
@@ -48,20 +46,15 @@ describe("ApiError", () => {
       code: API_ERROR_CODES.imageTooLarge,
       message: API_ERROR_MESSAGES.imageTooLarge
     });
-    expect(promptFileTooLarge()).toMatchObject({
-      statusCode: 413,
-      code: API_ERROR_CODES.promptFileTooLarge,
-      message: API_ERROR_MESSAGES.promptFileTooLarge
-    });
     expect(mapImageMulterError(new multer.MulterError("LIMIT_UNEXPECTED_FILE"))).toMatchObject({
       statusCode: 400,
       code: API_ERROR_CODES.invalidRequest,
       message: API_ERROR_MESSAGES.invalidMultipartRequest
     });
-    expect(mapPromptMulterError(new multer.MulterError("LIMIT_FILE_SIZE"))).toMatchObject({
+    expect(mapImageMulterError(new multer.MulterError("LIMIT_FILE_SIZE"))).toMatchObject({
       statusCode: 413,
-      code: API_ERROR_CODES.promptFileTooLarge,
-      message: API_ERROR_MESSAGES.promptFileTooLarge
+      code: API_ERROR_CODES.imageTooLarge,
+      message: API_ERROR_MESSAGES.imageTooLarge
     });
   });
 

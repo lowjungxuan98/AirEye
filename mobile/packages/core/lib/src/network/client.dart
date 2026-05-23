@@ -3,8 +3,8 @@ import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 import 'base_url.dart';
 
-class GrimClient {
-  GrimClient._(this.dio);
+class AirEyeClient {
+  AirEyeClient._(this.dio);
 
   final Dio dio;
 
@@ -26,8 +26,8 @@ class GrimClient {
     }
   }
 
-  static Future<GrimClient> create({Map<String, dynamic>? defaultHeaders}) async {
-    final baseUrl = await GrimBaseUrl.resolve();
+  static Future<AirEyeClient> create({Map<String, dynamic>? defaultHeaders}) async {
+    final baseUrl = await AirEyeBaseUrl.resolve();
 
     final dio = Dio(
       BaseOptions(
@@ -42,7 +42,7 @@ class GrimClient {
 
     dio.interceptors.add(PrettyDioLogger(requestHeader: true, requestBody: true, responseHeader: false, responseBody: true, error: true, compact: true, maxWidth: 120));
 
-    return GrimClient._(dio);
+    return AirEyeClient._(dio);
   }
 
   Future<Response<T>> get<T>(

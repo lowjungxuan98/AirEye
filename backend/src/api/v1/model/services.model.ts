@@ -1,13 +1,14 @@
 import type {
-  GrimUpload,
-  GrimUploadRow,
+  AirEyeUpload,
+  AirEyeUploadRow,
   ImportRequest,
-  ImportStreamSseData,
-  QuestionFlow,
-  QuestionTypeCode
+  ImportStreamSseData
 } from "./import.model";
 import type { RegenerateRequest } from "./regenerate.model";
 import type { LlmProvider } from "../../../libs/configs/env.config";
+import type { ProviderStateService } from "../../../libs/litellm/provider-state";
+import type { ToolReasoning } from "../../../libs/workflow/tool-reasoning";
+import type { StepExecutor } from "../../../libs/workflow/step-executor";
 
 export type UploadedImage = {
   imageUrl: string;
@@ -16,26 +17,10 @@ export type UploadedImage = {
 };
 
 export interface UploadRepository {
-  createPendingUpload(id: string, upload: GrimUpload): Promise<void>;
-  updateUpload(id: string, updates: Partial<GrimUpload>): Promise<void>;
-  getUpload(id: string): Promise<GrimUploadRow | null>;
-  listUploads(limit: number): Promise<GrimUploadRow[]>;
-}
-
-export interface QuestionTypeAnalyzer {
-  analyzeQuestionTypeFromImageUrl(imageUrl: string): Promise<QuestionTypeCode>;
-}
-
-export interface ImageTextExtractor {
-  extractTextFromImageUrl(imageUrl: string, flow: QuestionFlow): Promise<string>;
-}
-
-export interface FinalTextBuilder {
-  buildFinalText(extractedText: string, flow: QuestionFlow): Promise<string>;
-}
-
-export interface FinalTextFormatGuard {
-  guardFinalText(finalText: string): Promise<string>;
+  createPendingUpload(id: string, upload: AirEyeUpload): Promise<void>;
+  updateUpload(id: string, updates: Partial<AirEyeUpload>): Promise<void>;
+  getUpload(id: string): Promise<AirEyeUploadRow | null>;
+  listUploads(limit: number): Promise<AirEyeUploadRow[]>;
 }
 
 export interface ImageStorage {
@@ -55,12 +40,11 @@ export type Logger = Pick<Console, "error" | "warn" | "info">;
 
 export type ImportServiceDependencies = {
   uploadRepository: UploadRepository;
-  questionTypeAnalyzer: QuestionTypeAnalyzer;
-  textExtractor: ImageTextExtractor;
-  finalTextBuilder: FinalTextBuilder;
-  finalTextFormatGuard: FinalTextFormatGuard;
   imageStorage: ImageStorage;
   notifier: ResultNotifier;
+  providerState: Pick<ProviderStateService, "getCurrentProvider">;
+  toolReasoning: Pick<ToolReasoning, "decideSteps">;
+  stepExecutor: Pick<StepExecutor, "run">;
   logger?: Logger;
   now?: () => number;
   generateUploadId?: () => string;
@@ -73,8 +57,8 @@ export interface ImportService {
   streamRegenerate(request: RegenerateRequest, emit: ImportStreamEmitter): Promise<void>;
 }
 
-export interface CaptureService {
-  sendCaptureNotification(): Promise<void>;
+export interface SendNotificationService {
+  sendNotification(): Promise<void>;
 }
 
 export interface ProviderService {

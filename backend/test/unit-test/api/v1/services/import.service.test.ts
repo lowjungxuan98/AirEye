@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ImportService } from "../../../../../src/api/v1/services/import.service";
 import { InMemoryUploadRepository } from "../../../../in-memory-upload-repository";
 import { ApiError } from "../../../../../src/libs/utils/api-error.util";
-import type { QuestionTypeCode } from "../../../../../src/api/v1/model/import.model";
+import type { WorkflowStep } from "../../../../../src/libs/workflow/type";
 
 function makeImageStorage() {
   return {
@@ -21,33 +21,48 @@ function makeNotifier() {
   };
 }
 
+type StepExecutorRun = (input: {
+  provider: string;
+  imageUrl: string;
+  steps: WorkflowStep[];
+  onStepStart?: (i: number, step: WorkflowStep) => void;
+  onStepEnd?: (i: number, output: string) => void;
+}) => Promise<string[]>;
+
+function makeStepExecutor(impl: StepExecutorRun) {
+  return { run: vi.fn(impl) };
+}
+
 describe("ImportService streamImport", () => {
-  it("emits status phases with analyzing_question first then success row, in pipeline order", async () => {
+  it("emits running_step + step output per tool-reasoning step then a success row", async () => {
     const uploadRepository = new InMemoryUploadRepository();
-    const questionTypeAnalyzer = {
-      analyzeQuestionTypeFromImageUrl: vi.fn<[string], Promise<QuestionTypeCode>>(async () => "MCQ-Single")
-    };
-    const textExtractor = {
-      extractTextFromImageUrl: vi.fn(async (_url: string, _flow: "MCQ" | "Task") => "extracted")
-    };
-    const finalTextBuilder = {
-      buildFinalText: vi.fn(async (t: string, _flow: "MCQ" | "Task") => `final:${t}`)
-    };
-    const finalTextFormatGuard = { guardFinalText: vi.fn(async (t: string) => `guarded:${t}`) };
+    const steps: WorkflowStep[] = [
+      { prompt: "task-image", model: "image" },
+      { prompt: "task-reasoning", model: "reasoning" },
+      { prompt: "format-reasoning", model: "reasoning" }
+    ];
+    const providerState = { getCurrentProvider: vi.fn(async () => "test-provider") };
+    const toolReasoning = { decideSteps: vi.fn(async () => steps) };
+    const outputs = ["extracted", "drafted", "guarded"];
+    const stepExecutor = makeStepExecutor(async ({ steps: s, onStepStart, onStepEnd }) => {
+      s.forEach((step, i) => {
+        onStepStart?.(i, step);
+        onStepEnd?.(i, outputs[i]!);
+      });
+      return outputs;
+    });
     const imageStorage = makeImageStorage();
     const notifier = makeNotifier();
-    const logger = { error: vi.fn(), warn: vi.fn(), info: vi.fn() };
     const emit = vi.fn();
 
     const service = new ImportService({
       uploadRepository,
-      questionTypeAnalyzer,
-      textExtractor,
-      finalTextBuilder,
-      finalTextFormatGuard,
       imageStorage,
       notifier,
-      logger,
+      providerState,
+      toolReasoning,
+      stepExecutor,
+      logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
       now: () => 99,
       generateUploadId: () => "upl_testid"
     });
@@ -58,196 +73,151 @@ describe("ImportService streamImport", () => {
     );
 
     expect(emit.mock.calls.map((c) => c[0])).toEqual([
-      { status: "analyzing_question" },
-      { data: { questionType: "MCQ-Single" } },
-      { status: "extracting_text" },
-      { data: { extractedText: "extracted" } },
-      { status: "analyzing_text" },
-      { data: { finalText: "final:extracted" } },
-      { status: "format_guard" },
-      { data: { guardedFinalText: "guarded:final:extracted" } },
+      { status: "running_step", data: { index: 0, prompt: "task-image", model: "image" } },
+      { data: { stepIndex: 0, output: "extracted" } },
+      { status: "running_step", data: { index: 1, prompt: "task-reasoning", model: "reasoning" } },
+      { data: { stepIndex: 1, output: "drafted" } },
+      { status: "running_step", data: { index: 2, prompt: "format-reasoning", model: "reasoning" } },
+      { data: { stepIndex: 2, output: "guarded" } },
       {
         id: "upl_testid",
         createdAt: 99,
         updatedAt: 99,
         extractedText: "extracted",
-        finalText: "guarded:final:extracted",
+        finalText: "guarded",
         imageUrl: "https://img",
         bucket: "b",
         objectKey: "k"
       }
     ]);
 
-    expect(imageStorage.uploadImage).toHaveBeenCalledBefore(
-      questionTypeAnalyzer.analyzeQuestionTypeFromImageUrl
+    expect(imageStorage.uploadImage).toHaveBeenCalledBefore(toolReasoning.decideSteps);
+    expect(notifier.broadcastExportRefresh).toHaveBeenCalledBefore(toolReasoning.decideSteps);
+    expect(providerState.getCurrentProvider).toHaveBeenCalledOnce();
+    expect(toolReasoning.decideSteps).toHaveBeenCalledWith("test-provider", "https://img");
+    expect(stepExecutor.run).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: "test-provider", imageUrl: "https://img", steps })
     );
-    expect(notifier.broadcastExportRefresh).toHaveBeenCalledBefore(
-      questionTypeAnalyzer.analyzeQuestionTypeFromImageUrl
-    );
-    expect(questionTypeAnalyzer.analyzeQuestionTypeFromImageUrl).toHaveBeenCalledWith("https://img");
-    expect(textExtractor.extractTextFromImageUrl).toHaveBeenCalledWith("https://img", "MCQ");
-    expect(finalTextBuilder.buildFinalText).toHaveBeenCalledWith("extracted", "MCQ");
-    expect(finalTextFormatGuard.guardFinalText).toHaveBeenCalledWith("final:extracted");
-    expect(imageStorage.uploadImage).toHaveBeenCalledWith(Buffer.from("img"), "upl_testid", "image/png");
     expect(notifier.broadcastExportRefresh).toHaveBeenCalledTimes(2);
 
     const done = await uploadRepository.getUpload("upl_testid");
-    expect(done?.createdAt).toBe(99);
     expect(done?.extractedText).toBe("extracted");
-    expect(done?.finalText).toBe("guarded:final:extracted");
+    expect(done?.finalText).toBe("guarded");
     expect(done?.imageUrl).toBe("https://img");
-    expect(done?.bucket).toBe("b");
-    expect(done?.objectKey).toBe("k");
-    expect(done?.updatedAt).toBe(99);
-    // questionType is intentionally not persisted
     expect((done as Record<string, unknown>).questionType).toBeUndefined();
   });
 
-  it.each([
-    ["MCQ-Single", "MCQ"],
-    ["MCQ-Multiple", "MCQ"],
-    ["Task", "Task"]
-  ] as const)(
-    "routes %s through the %s extract and final prompts",
-    async (questionType, expectedFlow) => {
-      const uploadRepository = new InMemoryUploadRepository();
-      const questionTypeAnalyzer = {
-        analyzeQuestionTypeFromImageUrl: vi.fn<[string], Promise<QuestionTypeCode>>(async () => questionType)
-      };
-      const textExtractor = {
-        extractTextFromImageUrl: vi.fn(async (_url: string, _flow: "MCQ" | "Task") => "extracted")
-      };
-      const finalTextBuilder = {
-        buildFinalText: vi.fn(async (t: string, _flow: "MCQ" | "Task") => `final:${t}`)
-      };
-      const finalTextFormatGuard = { guardFinalText: vi.fn(async (t: string) => t) };
-      const emit = vi.fn();
-
-      const service = new ImportService({
-        uploadRepository,
-        questionTypeAnalyzer,
-        textExtractor,
-        finalTextBuilder,
-        finalTextFormatGuard,
-        imageStorage: makeImageStorage(),
-        notifier: makeNotifier(),
-        logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
-        now: () => 11,
-        generateUploadId: () => "upl_routing"
-      });
-
-      await service.streamImport(
-        { imageBuffer: Buffer.from("img"), imageMimeType: "image/png" },
-        emit
-      );
-
-      expect(textExtractor.extractTextFromImageUrl).toHaveBeenCalledWith("https://img", expectedFlow);
-      expect(finalTextBuilder.buildFinalText).toHaveBeenCalledWith("extracted", expectedFlow);
-      const questionTypeEvent = emit.mock.calls
-        .map((c) => c[0])
-        .find((value): value is { data: { questionType: QuestionTypeCode } } =>
-          typeof value === "object" && value !== null && "data" in value &&
-          typeof (value as { data?: { questionType?: unknown } }).data?.questionType === "string"
-        );
-      expect(questionTypeEvent?.data.questionType).toBe(questionType);
-    }
-  );
-
-  it("persists failure and emits error when the pipeline throws", async () => {
+  it("collapses to extractedText = finalText when tool-reasoning returns a single step", async () => {
     const uploadRepository = new InMemoryUploadRepository();
-    const questionTypeAnalyzer = {
-      analyzeQuestionTypeFromImageUrl: vi.fn(async () => "MCQ-Single" as QuestionTypeCode)
-    };
-    const textExtractor = {
-      extractTextFromImageUrl: vi.fn(async () => {
-        throw new Error("vision failed");
-      })
-    };
+    const emit = vi.fn();
+    const service = new ImportService({
+      uploadRepository,
+      imageStorage: makeImageStorage(),
+      notifier: makeNotifier(),
+      providerState: { getCurrentProvider: async () => "test-provider" },
+      toolReasoning: {
+        decideSteps: async () => [{ prompt: "only", model: "image" }]
+      },
+      stepExecutor: makeStepExecutor(async ({ steps, onStepStart, onStepEnd }) => {
+        onStepStart?.(0, steps[0]!);
+        onStepEnd?.(0, "the-only-output");
+        return ["the-only-output"];
+      }),
+      logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
+      now: () => 1,
+      generateUploadId: () => "upl_one"
+    });
+
+    await service.streamImport(
+      { imageBuffer: Buffer.from("x"), imageMimeType: "image/png" },
+      emit
+    );
+
+    const final = emit.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(final.extractedText).toBe("the-only-output");
+    expect(final.finalText).toBe("the-only-output");
+  });
+
+  it("persists failure and emits error when tool-reasoning throws", async () => {
+    const uploadRepository = new InMemoryUploadRepository();
     const logger = { error: vi.fn(), warn: vi.fn(), info: vi.fn() };
     const emit = vi.fn();
     const notifier = makeNotifier();
 
     const service = new ImportService({
       uploadRepository,
-      questionTypeAnalyzer,
-      textExtractor,
-      finalTextBuilder: { buildFinalText: vi.fn(async () => "") },
-      finalTextFormatGuard: { guardFinalText: vi.fn(async (t: string) => t) },
       imageStorage: makeImageStorage(),
       notifier,
+      providerState: { getCurrentProvider: async () => "test-provider" },
+      toolReasoning: {
+        decideSteps: async () => {
+          throw new Error("tool reasoning failed");
+        }
+      },
+      stepExecutor: { run: vi.fn() },
       logger,
       now: () => 7,
       generateUploadId: () => "upl_fail"
     });
 
-    await service.streamImport({ imageBuffer: Buffer.from("x"), imageMimeType: "image/jpeg" }, emit);
+    await service.streamImport(
+      { imageBuffer: Buffer.from("x"), imageMimeType: "image/jpeg" },
+      emit
+    );
 
     expect(emit.mock.calls.map((c) => c[0])).toEqual([
-      { status: "analyzing_question" },
-      { data: { questionType: "MCQ-Single" } },
-      { status: "extracting_text" },
-      { error: { code: "INTERNAL_ERROR", message: "vision failed" } }
+      { error: { code: "INTERNAL_ERROR", message: "tool reasoning failed" } }
     ]);
-
     const row = await uploadRepository.getUpload("upl_fail");
-    expect(row?.errorMessage).toBe("vision failed");
+    expect(row?.errorMessage).toBe("tool reasoning failed");
     expect(row?.updatedAt).toBe(7);
     expect(notifier.broadcastExportRefresh).toHaveBeenCalledOnce();
     expect(logger.error).toHaveBeenCalled();
   });
 
-  it("propagates INVALID_PROVIDER when the classifier reply is unrecognized", async () => {
+  it("emits ApiError code when the pipeline throws ApiError", async () => {
     const uploadRepository = new InMemoryUploadRepository();
-    const questionTypeAnalyzer = {
-      analyzeQuestionTypeFromImageUrl: vi.fn(async () => {
-        throw new ApiError(400, "INVALID_PROVIDER", "Unrecognized question type from model: foo");
-      })
-    };
     const emit = vi.fn();
-
     const service = new ImportService({
       uploadRepository,
-      questionTypeAnalyzer,
-      textExtractor: { extractTextFromImageUrl: vi.fn() },
-      finalTextBuilder: { buildFinalText: vi.fn() },
-      finalTextFormatGuard: { guardFinalText: vi.fn() },
       imageStorage: makeImageStorage(),
       notifier: makeNotifier(),
+      providerState: { getCurrentProvider: async () => "test-provider" },
+      toolReasoning: {
+        decideSteps: async () => {
+          throw new ApiError(503, "UPSTREAM", "nim down");
+        }
+      },
+      stepExecutor: { run: vi.fn() },
       logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
-      now: () => 1,
-      generateUploadId: () => "upl_bad"
+      generateUploadId: () => "upl_api"
     });
 
-    await service.streamImport({ imageBuffer: Buffer.from("x"), imageMimeType: "image/png" }, emit);
+    await service.streamImport(
+      { imageBuffer: Buffer.from("x"), imageMimeType: "image/png" },
+      emit
+    );
 
-    expect(emit.mock.calls.map((c) => c[0])).toEqual([
-      { status: "analyzing_question" },
-      {
-        error: { code: "INVALID_PROVIDER", message: "Unrecognized question type from model: foo" }
-      }
-    ]);
-    const row = await uploadRepository.getUpload("upl_bad");
-    expect(row?.errorMessage).toBe("Unrecognized question type from model: foo");
+    expect(emit).toHaveBeenLastCalledWith({
+      error: { code: "UPSTREAM", message: "nim down" }
+    });
   });
 
   it("stops without a database entry when image upload returns null", async () => {
     const uploadRepository = new InMemoryUploadRepository();
-    const questionTypeAnalyzer = { analyzeQuestionTypeFromImageUrl: vi.fn() };
-    const textExtractor = { extractTextFromImageUrl: vi.fn() };
-    const finalTextBuilder = { buildFinalText: vi.fn() };
-    const finalTextFormatGuard = { guardFinalText: vi.fn() };
+    const toolReasoning = { decideSteps: vi.fn() };
+    const stepExecutor = { run: vi.fn() };
     const imageStorage = { uploadImage: vi.fn(async () => null) };
     const notifier = makeNotifier();
     const emit = vi.fn();
 
     const service = new ImportService({
       uploadRepository,
-      questionTypeAnalyzer,
-      textExtractor,
-      finalTextBuilder,
-      finalTextFormatGuard,
       imageStorage,
       notifier,
+      providerState: { getCurrentProvider: vi.fn() },
+      toolReasoning,
+      stepExecutor,
       logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
       generateUploadId: () => "upl_upload_failed"
     });
@@ -255,71 +225,43 @@ describe("ImportService streamImport", () => {
     await service.streamImport({ imageBuffer: Buffer.from("x"), imageMimeType: "image/jpeg" }, emit);
 
     expect(await uploadRepository.getUpload("upl_upload_failed")).toBeNull();
-    expect(questionTypeAnalyzer.analyzeQuestionTypeFromImageUrl).not.toHaveBeenCalled();
-    expect(textExtractor.extractTextFromImageUrl).not.toHaveBeenCalled();
-    expect(finalTextBuilder.buildFinalText).not.toHaveBeenCalled();
-    expect(finalTextFormatGuard.guardFinalText).not.toHaveBeenCalled();
+    expect(toolReasoning.decideSteps).not.toHaveBeenCalled();
+    expect(stepExecutor.run).not.toHaveBeenCalled();
     expect(notifier.broadcastExportRefresh).not.toHaveBeenCalled();
     expect(emit).toHaveBeenCalledOnce();
     expect(emit).toHaveBeenCalledWith({
-      error: {
-        code: "INTERNAL_ERROR",
-        message: "upload failed"
-      }
-    });
-  });
-
-  it("emits ApiError code when pipeline throws ApiError", async () => {
-    const uploadRepository = new InMemoryUploadRepository();
-    const emit = vi.fn();
-    const service = new ImportService({
-      uploadRepository,
-      questionTypeAnalyzer: {
-        analyzeQuestionTypeFromImageUrl: vi.fn(async () => "MCQ-Single" as QuestionTypeCode)
-      },
-      textExtractor: {
-        extractTextFromImageUrl: vi.fn(async () => {
-          throw new ApiError(503, "UPSTREAM", "nim down");
-        })
-      },
-      finalTextBuilder: { buildFinalText: vi.fn() },
-      finalTextFormatGuard: { guardFinalText: vi.fn(async (t: string) => t) },
-      imageStorage: makeImageStorage(),
-      notifier: makeNotifier(),
-      logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
-      generateUploadId: () => "upl_api"
-    });
-
-    await service.streamImport({ imageBuffer: Buffer.from("x"), imageMimeType: "image/png" }, emit);
-
-    expect(emit).toHaveBeenLastCalledWith({
-      error: { code: "UPSTREAM", message: "nim down" }
+      error: { code: "INTERNAL_ERROR", message: "upload failed" }
     });
   });
 });
 
 describe("ImportService streamRegenerate", () => {
-  it("emits analyzing_question first and reuses the existing imageUrl", async () => {
+  it("reuses the existing imageUrl and emits per-step events", async () => {
     const uploadRepository = new InMemoryUploadRepository();
+    const existingImageUrl = "https://storage.example.test/uploads/upl_existing-abc123.jpg";
     await uploadRepository.createPendingUpload("upl_existing", {
       createdAt: 10,
       updatedAt: 11,
       extractedText: "old extracted",
       finalText: "old final",
-      imageUrl: "https://storage.example.test/uploads/upl_existing-abc123.jpg",
+      imageUrl: existingImageUrl,
       bucket: "b",
       objectKey: "k"
     });
-    const questionTypeAnalyzer = {
-      analyzeQuestionTypeFromImageUrl: vi.fn(async () => "Task" as QuestionTypeCode)
-    };
-    const textExtractor = {
-      extractTextFromImageUrl: vi.fn(async (_url: string, _flow: "MCQ" | "Task") => "new extracted")
-    };
-    const finalTextBuilder = {
-      buildFinalText: vi.fn(async (t: string, _flow: "MCQ" | "Task") => `final:${t}`)
-    };
-    const finalTextFormatGuard = { guardFinalText: vi.fn(async (t: string) => `guarded:${t}`) };
+    const steps: WorkflowStep[] = [
+      { prompt: "task-image", model: "image" },
+      { prompt: "task-reasoning", model: "reasoning" }
+    ];
+    const providerState = { getCurrentProvider: vi.fn(async () => "test-provider") };
+    const toolReasoning = { decideSteps: vi.fn(async () => steps) };
+    const outputs = ["new extracted", "new final"];
+    const stepExecutor = makeStepExecutor(async ({ steps: s, onStepStart, onStepEnd }) => {
+      s.forEach((step, i) => {
+        onStepStart?.(i, step);
+        onStepEnd?.(i, outputs[i]!);
+      });
+      return outputs;
+    });
     const imageStorage = {
       uploadImage: vi.fn(async () => ({ imageUrl: "new", bucket: "new", objectKey: "new" }))
     };
@@ -329,50 +271,37 @@ describe("ImportService streamRegenerate", () => {
 
     const service = new ImportService({
       uploadRepository,
-      questionTypeAnalyzer,
-      textExtractor,
-      finalTextBuilder,
-      finalTextFormatGuard,
       imageStorage,
       notifier,
+      providerState,
+      toolReasoning,
+      stepExecutor,
       logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
       now: () => now++
     });
 
     await service.streamRegenerate(
-      { imageUrl: "https://storage.example.test/uploads/upl_existing-abc123.jpg", text: "old final" },
+      { imageUrl: existingImageUrl, text: "old final" },
       emit
     );
 
     expect(imageStorage.uploadImage).not.toHaveBeenCalled();
-    expect(notifier.broadcastExportRefresh).toHaveBeenCalledBefore(
-      questionTypeAnalyzer.analyzeQuestionTypeFromImageUrl
+    expect(toolReasoning.decideSteps).toHaveBeenCalledWith("test-provider", existingImageUrl);
+    expect(stepExecutor.run).toHaveBeenCalledWith(
+      expect.objectContaining({ imageUrl: existingImageUrl, steps })
     );
-    expect(questionTypeAnalyzer.analyzeQuestionTypeFromImageUrl).toHaveBeenCalledWith(
-      "https://storage.example.test/uploads/upl_existing-abc123.jpg"
-    );
-    expect(textExtractor.extractTextFromImageUrl).toHaveBeenCalledWith(
-      "https://storage.example.test/uploads/upl_existing-abc123.jpg",
-      "Task"
-    );
-    expect(finalTextBuilder.buildFinalText).toHaveBeenCalledWith("new extracted", "Task");
-    expect(finalTextFormatGuard.guardFinalText).toHaveBeenCalledWith("final:new extracted");
     expect(emit.mock.calls.map((c) => c[0])).toEqual([
-      { status: "analyzing_question" },
-      { data: { questionType: "Task" } },
-      { status: "extracting_text" },
-      { data: { extractedText: "new extracted" } },
-      { status: "analyzing_text" },
-      { data: { finalText: "final:new extracted" } },
-      { status: "format_guard" },
-      { data: { guardedFinalText: "guarded:final:new extracted" } },
+      { status: "running_step", data: { index: 0, prompt: "task-image", model: "image" } },
+      { data: { stepIndex: 0, output: "new extracted" } },
+      { status: "running_step", data: { index: 1, prompt: "task-reasoning", model: "reasoning" } },
+      { data: { stepIndex: 1, output: "new final" } },
       {
         id: "upl_existing",
         createdAt: 10,
         updatedAt: 101,
         extractedText: "new extracted",
-        finalText: "guarded:final:new extracted",
-        imageUrl: "https://storage.example.test/uploads/upl_existing-abc123.jpg",
+        finalText: "new final",
+        imageUrl: existingImageUrl,
         bucket: "b",
         objectKey: "k"
       }
@@ -385,10 +314,8 @@ describe("ImportService streamRegenerate", () => {
       createdAt: 10,
       updatedAt: 101,
       extractedText: "new extracted",
-      finalText: "guarded:final:new extracted",
-      imageUrl: "https://storage.example.test/uploads/upl_existing-abc123.jpg",
-      bucket: "b",
-      objectKey: "k",
+      finalText: "new final",
+      imageUrl: existingImageUrl,
       errorMessage: ""
     });
     expect((row as Record<string, unknown>).questionType).toBeUndefined();
@@ -397,34 +324,38 @@ describe("ImportService streamRegenerate", () => {
   it("throws NOT_FOUND before streaming when regenerate upload is missing", async () => {
     const service = new ImportService({
       uploadRepository: new InMemoryUploadRepository(),
-      questionTypeAnalyzer: { analyzeQuestionTypeFromImageUrl: vi.fn() },
-      textExtractor: { extractTextFromImageUrl: vi.fn() },
-      finalTextBuilder: { buildFinalText: vi.fn() },
-      finalTextFormatGuard: { guardFinalText: vi.fn() },
       imageStorage: { uploadImage: vi.fn() },
       notifier: makeNotifier(),
+      providerState: { getCurrentProvider: vi.fn() },
+      toolReasoning: { decideSteps: vi.fn() },
+      stepExecutor: { run: vi.fn() },
       logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() }
     });
 
     await expect(
-      service.streamRegenerate({ imageUrl: "https://storage.example.test/uploads/upl_missing-abc.jpg", text: "" }, vi.fn())
+      service.streamRegenerate(
+        { imageUrl: "https://storage.example.test/uploads/upl_missing-abc.jpg", text: "" },
+        vi.fn()
+      )
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
-  it("throws INVALID_REQUEST before streaming when regenerate imageUrl has no upload object name", async () => {
+  it("throws INVALID_REQUEST when regenerate imageUrl has no upload object name", async () => {
     const service = new ImportService({
       uploadRepository: new InMemoryUploadRepository(),
-      questionTypeAnalyzer: { analyzeQuestionTypeFromImageUrl: vi.fn() },
-      textExtractor: { extractTextFromImageUrl: vi.fn() },
-      finalTextBuilder: { buildFinalText: vi.fn() },
-      finalTextFormatGuard: { guardFinalText: vi.fn() },
       imageStorage: { uploadImage: vi.fn() },
       notifier: makeNotifier(),
+      providerState: { getCurrentProvider: vi.fn() },
+      toolReasoning: { decideSteps: vi.fn() },
+      stepExecutor: { run: vi.fn() },
       logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() }
     });
 
     await expect(
-      service.streamRegenerate({ imageUrl: "https://storage.example.test/uploads/no-upload.jpg", text: "" }, vi.fn())
+      service.streamRegenerate(
+        { imageUrl: "https://storage.example.test/uploads/no-upload.jpg", text: "" },
+        vi.fn()
+      )
     ).rejects.toMatchObject({ code: "INVALID_REQUEST" });
   });
 });

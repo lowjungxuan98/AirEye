@@ -1,6 +1,6 @@
 # Mobile code rules (Flutter)
 
-Conventions for Grim’s Flutter client under `mobile/` and internal packages under `mobile/packages/`. This complements **`docs/code-rules/project-architecture.md`**, which covers the backend only.
+Conventions for AirEye’s Flutter client under `mobile/` and internal packages under `mobile/packages/`. This complements **`docs/code-rules/project-architecture.md`**, which covers the backend only.
 
 ## Feature module layout
 
@@ -43,12 +43,12 @@ Group each feature by **module name** (e.g. `sender`, `splash`). Under that modu
 ## Independent screen views
 
 - Each **page** under `presentation/pages/` should stand alone as a **view**: it receives inputs (constructor, `ProviderScope` overrides, or providers) and renders; it does not reach into another feature’s private widgets or controllers.
-- **Do not** couple screens by importing sibling feature trees for convenience. Shared UI belongs in **`grim_core`** (or the agreed shared UI package), not in ad-hoc cross-feature imports.
+- **Do not** couple screens by importing sibling feature trees for convenience. Shared UI belongs in **`core`** (or the agreed shared UI package), not in ad-hoc cross-feature imports.
 - **Do not** embed third-party SDK calls (Dio, Firebase, camera, etc.) directly in `pages/` or `widgets/`; keep them in **`data/`** or behind services exported from **core** (see below).
 
 ## Core package and dependencies
 
-The shared **core** package (e.g. **`mobile/packages/grim_core`**) is the **single home** for cross-cutting client and platform concerns. It should contain **all** of the following; feature modules consume them via **`grim_core`**, not by re-implementing or re-declaring the same concerns.
+The shared **core** package (e.g. **`mobile/packages/core`**) is the **single home** for cross-cutting client and platform concerns. It should contain **all** of the following; feature modules consume them via **`core`**, not by re-implementing or re-declaring the same concerns.
 
 | In core | Examples |
 |--------|-----------|
@@ -56,9 +56,9 @@ The shared **core** package (e.g. **`mobile/packages/grim_core`**) is the **sing
 | **Functions** | Shared pure or side-effecting helpers used across features (parsing, formatting, validation, result types) that are not tied to one module’s domain. |
 | **Libs** | Thin wrappers around third-party SDKs, extension methods on external types, logging, analytics hooks, `path`/`crypto`/similar utilities—anything that would otherwise be duplicated under `mobile/packages/*`. |
 
-- **Screen / feature packages** — every **`mobile/packages/<name>/`** module that exposes **presentation** (pages, routes, or screen-level flows) **must** declare **`grim_core`** under **`dependencies`** in **`pubspec.yaml`** (path dependency to **`../grim_core`** or the canonical core path). Do **not** omit **`grim_core`** because a package is “UI only” today; new shared APIs should be reachable without ad-hoc new roots.
-- The **`mobile`** root package should also depend on **`grim_core`** whenever **`mobile/lib/`** defines screens, routing, or app chrome that should use the same client, theme tokens, or helpers as packages.
-- **Feature packages** (`grim_splash`, `grim_sender_camera`, …) import **`package:grim_core/...`** for HTTP, env, Firebase usage, storage, device APIs, and shared helpers. They **do not** add their own parallel **`dio`**, **`firebase_*`**, or other **core-owned** dependencies unless there is a documented exception.
+- **Screen / feature packages** — every **`mobile/packages/<name>/`** module that exposes **presentation** (pages, routes, or screen-level flows) **must** declare **`core`** under **`dependencies`** in **`pubspec.yaml`** (path dependency to **`../core`** or the canonical core path). Do **not** omit **`core`** because a package is “UI only” today; new shared APIs should be reachable without ad-hoc new roots.
+- The **`mobile`** root package should also depend on **`core`** whenever **`mobile/lib/`** defines screens, routing, or app chrome that should use the same client, theme tokens, or helpers as packages.
+- **Feature packages** (`splash`, `sender`, …) import **`package:core/...`** for HTTP, env, Firebase usage, storage, device APIs, and shared helpers. They **do not** add their own parallel **`dio`**, **`firebase_*`**, or other **core-owned** dependencies unless there is a documented exception.
 - **Module `data/` layers** use types and clients **exported from core** (or injected providers defined there); they implement feature-specific endpoints and DTO mapping on top of the shared client, not a second HTTP stack.
 
 App-level bootstrap (e.g. `Firebase.initializeApp`, `runApp`) stays in **`mobile/lib/main.dart`** per **`docs/mobile/dependencies/`**; day-to-day API and SDK usage still flows through **core** APIs inside features.

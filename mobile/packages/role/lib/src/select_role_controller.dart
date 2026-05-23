@@ -22,7 +22,7 @@ class SelectRoleController extends BaseController<SelectRoleState> {
 
   Future<void> _loadProvider() async {
     try {
-      final provider = await GrimEndpoints.getProvider();
+      final provider = await AirEyeEndpoints.getProvider();
       state = SelectRoleReady(provider: provider);
     } catch (e) {
       setError(e.toString());
@@ -35,7 +35,7 @@ class SelectRoleController extends BaseController<SelectRoleState> {
 
     state = SelectRoleReady(provider: current.provider, isUpdatingProvider: true);
     try {
-      final response = await GrimEndpoints.updateProvider(request: UpdateProviderRequest(provider: provider));
+      final response = await AirEyeEndpoints.updateProvider(request: UpdateProviderRequest(provider: provider));
       state = SelectRoleReady(provider: response);
     } catch (e) {
       setError(e.toString());

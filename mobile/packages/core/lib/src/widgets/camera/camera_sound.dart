@@ -1,7 +1,7 @@
 part of 'high_quality_camera_widget.dart';
 
 class _CameraSound {
-  static const _channel = MethodChannel('grim/camera_sound');
+  static const _channel = MethodChannel('aireye/camera_sound');
   static var _iosShutterDisposed = false;
 
   static Future<void> prepare() async {

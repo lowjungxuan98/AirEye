@@ -5,7 +5,7 @@ import 'grim_colors.dart';
 import 'grim_text_theme_utils.dart';
 import 'grim_theme_extension.dart';
 
-/// Global GRIM dark theme (neon lime on near-black).
+/// Global AirEye dark theme (neon lime on near-black).
 abstract final class GrimAppTheme {
   static const Color _accent = GrimColors.accent;
   static const Color _canvas = GrimColors.scaffold;

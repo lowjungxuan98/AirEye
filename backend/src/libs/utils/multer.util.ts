@@ -1,6 +1,5 @@
 import { extname } from "node:path";
 import multer from "multer";
-import { PROMPT_FILE_MAX_BYTES } from "../constants/limits.contant";
 import { API_ERROR_MESSAGES, unsupportedFileType } from "./api-error.util";
 
 const IMAGE_MIME_TYPES_BY_EXTENSION: Partial<Record<string, string>> = {
@@ -48,30 +47,6 @@ export function createImportImageMulter(maxFileSizeBytes: number): multer.Multer
       }
 
       cb(unsupportedFileType(API_ERROR_MESSAGES.unsupportedImageUpload));
-    }
-  });
-}
-
-/**
- * Multipart upload for `PUT /api/v1/prompts`: optional file parts
- * **`analyze_question`**, **`extract_text`**, **`analyzing_text`**,
- * **`task_extract_text`**, **`task_final_text`**, and **`format_guard`**
- * (UTF-8 `.txt` or `text/*`). At least one part must be supplied in the handler (file buffer or text field).
- */
-export function createPromptFilesMulter(): multer.Multer {
-  return multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: PROMPT_FILE_MAX_BYTES, files: 6 },
-    fileFilter: (_req, file, cb) => {
-      const mt = (file.mimetype ?? "").toLowerCase();
-      const ext = extname(file.originalname || "").toLowerCase();
-
-      if (mt.startsWith("text/") || mt === "application/octet-stream" || ext === ".txt" || mt === "") {
-        cb(null, true);
-        return;
-      }
-
-      cb(unsupportedFileType(API_ERROR_MESSAGES.unsupportedPromptUpload));
     }
   });
 }

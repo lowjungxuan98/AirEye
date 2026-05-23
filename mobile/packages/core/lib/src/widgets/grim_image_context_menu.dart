@@ -12,7 +12,7 @@ import 'grim_text_sheet.dart';
 class GrimImageContextMenu extends StatelessWidget {
   const GrimImageContextMenu({super.key, required this.imageUrl, required this.text, required this.child, this.error, this.onDownload, this.onRegenerate});
 
-  static const _imageClipboardChannel = MethodChannel('grim/image_clipboard');
+  static const _imageClipboardChannel = MethodChannel('aireye/image_clipboard');
 
   final String imageUrl;
   final String text;

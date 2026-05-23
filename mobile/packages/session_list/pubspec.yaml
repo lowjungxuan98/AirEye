@@ -1,5 +1,5 @@
 name: session_list
-description: "Session list package for GRIM."
+description: "Session list package for AirEye."
 version: 0.0.1
 publish_to: none
 environment:

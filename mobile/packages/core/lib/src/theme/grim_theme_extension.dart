@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// GRIM-specific colors not covered by [ColorScheme] alone.
+/// AirEye-specific colors not covered by [ColorScheme] alone.
 @immutable
 class GrimThemeExtension extends ThemeExtension<GrimThemeExtension> {
   const GrimThemeExtension({required this.subtitle, required this.navTile, required this.navTileBorder, required this.sectionLabel, required this.mutedText, required this.chevron});

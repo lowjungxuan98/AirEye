@@ -2,10 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import express, { type RequestHandler, type Response } from "express";
 import type {
-  CaptureService,
   ImportService,
   Logger,
-  ProviderService
+  ProviderService,
+  SendNotificationService
 } from "./api/v1/model/services.model";
 import type { HealthReport } from "./api/v1/model/health.model";
 import type { ExportService } from "./api/v1/services/export.service";
@@ -14,10 +14,8 @@ import { createHealthRouter } from "./api/v1/routes/health.route";
 import { createImportRouter } from "./api/v1/routes/import.route";
 import { createRegenerateRouter } from "./api/v1/routes/regenerate.route";
 import { createExportRouter } from "./api/v1/routes/export.route";
-import { createCaptureRouter } from "./api/v1/routes/capture.route";
-import { createPromptsRouter } from "./api/v1/routes/prompts.route";
+import { createSendNotificationRouter } from "./api/v1/routes/send-notification.route";
 import { createProviderRouter } from "./api/v1/routes/provider.route";
-import type { GrimPromptSettings } from "./libs/utils/prompt.util";
 
 const OPENAPI_ROUTE = "/openapi.yaml";
 const DOCS_ROUTE = "/docs";
@@ -25,23 +23,18 @@ const DOCS_ROUTE = "/docs";
 export type AppDependencies = {
   importService: ImportService;
   exportService: ExportService;
-  captureService: CaptureService;
+  sendNotificationService: SendNotificationService;
   providerService: ProviderService;
   runHealthChecks: () => Promise<HealthReport>;
   logger?: Logger;
-  promptSettings: GrimPromptSettings;
-  /** When set, prompt routes require `X-Grim-Prompt-Secret`. */
-  promptAdminSecret?: string;
 };
 
 export function createApp({
   importService,
   exportService,
-  captureService,
+  sendNotificationService,
   providerService,
   runHealthChecks,
-  promptSettings,
-  promptAdminSecret,
   logger = console
 }: AppDependencies) {
   const app = express();
@@ -70,7 +63,7 @@ export function createApp({
       const { apiReference } = await import("@scalar/express-api-reference");
       scalarHandler = apiReference({
         url: OPENAPI_ROUTE,
-        pageTitle: "Grim API",
+        pageTitle: "AirEye API",
         theme: "default"
       }) as RequestHandler;
     }
@@ -87,8 +80,7 @@ export function createApp({
   v1Router.use(createImportRouter(importService));
   v1Router.use(createRegenerateRouter(importService));
   v1Router.use(createExportRouter(exportService));
-  v1Router.use(createCaptureRouter(captureService));
-  v1Router.use(createPromptsRouter(promptSettings, { adminSecret: promptAdminSecret }));
+  v1Router.use(createSendNotificationRouter(sendNotificationService));
   v1Router.use(createProviderRouter(providerService));
   app.use("/api/v1", v1Router);
 

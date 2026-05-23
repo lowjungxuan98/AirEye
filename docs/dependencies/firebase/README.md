@@ -1,4 +1,4 @@
-# Firebase documentation (Grim)
+# Firebase Documentation (AirEye)
 
 | Document | Purpose |
 |----------|---------|
@@ -9,6 +9,6 @@
 
 ---
 
-**Updated:** 2026-04-18  
-**Applies to:** grim repository `docs/dependencies/firebase/`  
-**Doc version:** 1  
+**Updated:** 2026-05-23  
+**Applies to:** AirEye repository `docs/dependencies/firebase/`  
+**Doc version:** 2  

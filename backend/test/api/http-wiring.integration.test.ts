@@ -22,12 +22,21 @@ describe("HTTP wiring (integration)", () => {
     expect(res.text.length).toBeGreaterThan(0);
   });
 
-  it("wires POST /api/v1/capture to the capture service", async () => {
-    const captureService = { sendCaptureNotification: vi.fn(async () => {}) };
-    const app = buildTestApp({ captureService });
+  it("wires POST /api/v1/send-notification to the send notification service", async () => {
+    const sendNotificationService = { sendNotification: vi.fn(async () => {}) };
+    const app = buildTestApp({ sendNotificationService });
 
-    await request(app).post("/api/v1/capture").expect(200, { ok: true });
+    await request(app).post("/api/v1/send-notification").expect(200, { ok: true });
 
-    expect(captureService.sendCaptureNotification).toHaveBeenCalledOnce();
+    expect(sendNotificationService.sendNotification).toHaveBeenCalledOnce();
+  });
+
+  it("does not mount the old POST /api/v1/capture route", async () => {
+    const sendNotificationService = { sendNotification: vi.fn(async () => {}) };
+    const app = buildTestApp({ sendNotificationService });
+
+    await request(app).post("/api/v1/capture").expect(404);
+
+    expect(sendNotificationService.sendNotification).not.toHaveBeenCalled();
   });
 });

@@ -2,12 +2,12 @@ import type { Database } from "firebase-admin/database";
 import { getDatabase } from "firebase-admin/database";
 import type { App } from "firebase-admin/app";
 import { sortByCreatedAtDesc } from "../utils/sort-by-created-at.util";
-import type { GrimUpload, GrimUploadRow } from "../../api/v1/model/import.model";
+import type { AirEyeUpload, AirEyeUploadRow } from "../../api/v1/model/import.model";
 import type { UploadRepository } from "../../api/v1/model/services.model";
 import type {
   ProviderState,
   ProviderStateRepository
-} from "../utils/provider_orchestrator.util";
+} from "../litellm/provider-state";
 
 const UPLOADS_PATH = "uploads";
 const PROVIDER_STATE_PATH = "provider_state";
@@ -24,29 +24,29 @@ export class FirebaseUploadRepository implements UploadRepository {
     private readonly namespace: RealtimeNamespace
   ) {}
 
-  async createPendingUpload(id: string, upload: GrimUpload): Promise<void> {
+  async createPendingUpload(id: string, upload: AirEyeUpload): Promise<void> {
     await this.database.ref(uploadPath(this.namespace, id)).set(upload);
   }
 
-  async updateUpload(id: string, updates: Partial<GrimUpload>): Promise<void> {
+  async updateUpload(id: string, updates: Partial<AirEyeUpload>): Promise<void> {
     const path = await this.resolveUploadPath(id);
     await this.database.ref(path).update(updates);
   }
 
-  async getUpload(id: string): Promise<GrimUploadRow | null> {
+  async getUpload(id: string): Promise<AirEyeUploadRow | null> {
     const path = await this.resolveUploadPath(id);
     const snapshot = await this.database.ref(path).once("value");
-    const value = snapshot.val() as GrimUpload | null;
+    const value = snapshot.val() as AirEyeUpload | null;
     return value ? { ...value, id } : null;
   }
 
-  async listUploads(limit: number): Promise<GrimUploadRow[]> {
+  async listUploads(limit: number): Promise<AirEyeUploadRow[]> {
     const snapshot = await this.database
       .ref(nsPath(this.namespace, UPLOADS_PATH))
       .orderByChild("createdAt")
       .limitToLast(limit)
       .once("value");
-    const raw = snapshot.val() as Record<string, GrimUpload> | null;
+    const raw = snapshot.val() as Record<string, AirEyeUpload> | null;
     const rows = Object.entries(raw ?? {}).map(([id, upload]) => ({ ...upload, id }));
     return sortByCreatedAtDesc(rows);
   }

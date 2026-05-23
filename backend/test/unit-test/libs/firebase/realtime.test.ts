@@ -3,7 +3,7 @@ import { getDatabase } from "firebase-admin/database";
 import { loadServerEnv } from "../../../../src/libs/configs/env.config";
 import { getFirebaseAdminApp } from "../../../../src/libs/firebase/admin";
 import { FirebaseUploadRepository, getRealtimeDb } from "../../../../src/libs/firebase/realtime";
-import type { GrimUpload } from "../../../../src/api/v1/model/import.model";
+import type { AirEyeUpload } from "../../../../src/api/v1/model/import.model";
 
 function testUploadId(): string {
   return `vitest_${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -30,7 +30,7 @@ describe("FirebaseUploadRepository", () => {
     const path = `${namespace}/uploads/${id}`;
 
     try {
-      const base: GrimUpload = { createdAt: Date.now(), updatedAt: Date.now() };
+      const base: AirEyeUpload = { createdAt: Date.now(), updatedAt: Date.now() };
       await repo.createPendingUpload(id, base);
       await expect(repo.getUpload(id)).resolves.toMatchObject({ id, createdAt: base.createdAt });
 

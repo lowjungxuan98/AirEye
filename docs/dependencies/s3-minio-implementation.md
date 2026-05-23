@@ -1,6 +1,6 @@
-# S3 / MinIO - implementation notes
+# S3 / MinIO - Implementation Notes
 
-Grim stores imported images in an S3-compatible bucket through the AWS SDK for JavaScript v3. The production implementation is `S3ImageStore` in `backend/src/libs/s3/s3.util.ts`.
+AirEye stores imported document images in an S3-compatible bucket through the AWS SDK for JavaScript v3. The production implementation is `S3ImageStore` in `backend/src/libs/s3/client.ts`.
 
 ## Current Repo Status
 
@@ -45,23 +45,23 @@ On a successful import, Realtime Database stores:
 
 ```json
 {
-  "imageUrl": "https://minio.example.test/grim-development/uploads/upl_abc-a1b2c3d4.jpg?X-Amz-...",
-  "bucket": "grim-development",
+  "imageUrl": "https://minio.example.test/document-images/uploads/upl_abc-a1b2c3d4.jpg?X-Amz-...",
+  "bucket": "document-images",
   "objectKey": "uploads/upl_abc-a1b2c3d4.jpg"
 }
 ```
 
-`imageUrl` is for client display while the presigned URL is valid. `bucket` and `objectKey` are the durable location for server-side follow-up work.
+`imageUrl` is for client display while the presigned URL is valid. `bucket` and `objectKey` are the durable location for server-side follow-up work. Existing deployment bucket names are compatibility contracts and are not renamed by the AirEye backend rebrand.
 
 ## Tests And Cleanup
 
-The S3 adapter test is `backend/test/unit-test/libs/s3/s3.util.test.ts`. It uses real credentials from `backend/.env`, creates a real object, verifies `ContentType` with `HeadObjectCommand`, and deletes the object with `DeleteObjectCommand` in `afterAll`.
+The S3 adapter test is `backend/test/unit-test/libs/s3/client.test.ts`. It uses real credentials from `backend/.env`, creates a real object, verifies `ContentType` with `HeadObjectCommand`, and deletes the object with `DeleteObjectCommand` in `afterAll`.
 
 ---
 
-**Updated:** 2026-04-25
-**Applies to:** grim backend S3/MinIO storage (`backend/src/libs/s3/s3.util.ts`, `backend/package.json` -> version `0.2.4`)
-**Doc version:** 2
+**Updated:** 2026-05-23
+**Applies to:** AirEye backend S3/MinIO storage (`backend/src/libs/s3/client.ts`, `backend/package.json` -> version `0.2.8`)
+**Doc version:** 3
 **Upstream refs:**
 - https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 - https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/javascript_s3_code_examples.html

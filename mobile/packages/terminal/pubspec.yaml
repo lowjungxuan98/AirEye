@@ -1,5 +1,5 @@
 name: terminal
-description: "Terminal package for GRIM."
+description: "Terminal package for AirEye."
 version: 0.0.1
 publish_to: none
 environment:

@@ -5,11 +5,7 @@ import type {
   ImportStreamEmitter,
   Logger
 } from "../model/services.model";
-import type {
-  ImportRequest,
-  QuestionFlow,
-  QuestionTypeCode
-} from "../model/import.model";
+import type { ImportRequest } from "../model/import.model";
 import type { RegenerateRequest } from "../model/regenerate.model";
 import {
   API_ERROR_MESSAGES,
@@ -30,9 +26,8 @@ export class ImportService implements ImportServiceContract {
   }
 
   /**
-   * Order: image storage → RTDB initial record + FCM export refresh → SSE analyzing_question →
-   * question-type classification → SSE extracting_text (branch-aware) → image text extraction →
-   * SSE analyzing_text → final text → SSE format_guard → guarded final text →
+   * Order: image storage → RTDB initial record + FCM export refresh →
+   * tool-reasoning decides ordered steps → SSE `running_step` + step output per step →
    * Realtime Database (update) → FCM export refresh →
    * SSE final row (or SSE error after RTDB error write).
    */
@@ -190,28 +185,27 @@ export class ImportService implements ImportServiceContract {
   private async runLlmPipeline(
     imageUrl: string,
     emit: ImportStreamEmitter
-  ): Promise<{ extractedText: string; finalText: string; questionType: QuestionTypeCode }> {
-    const { questionTypeAnalyzer, textExtractor, finalTextBuilder, finalTextFormatGuard } = this.deps;
+  ): Promise<{ extractedText: string; finalText: string }> {
+    const { providerState, toolReasoning, stepExecutor } = this.deps;
 
-    emit({ status: "analyzing_question" });
-    const questionType = await questionTypeAnalyzer.analyzeQuestionTypeFromImageUrl(imageUrl);
-    emit({ data: { questionType } });
+    const provider = await providerState.getCurrentProvider();
+    const steps = await toolReasoning.decideSteps(provider, imageUrl);
 
-    const flow: QuestionFlow = questionType === "Task" ? "Task" : "MCQ";
+    const outputs = await stepExecutor.run({
+      provider,
+      imageUrl,
+      steps,
+      onStepStart: (index, step) =>
+        emit({
+          status: "running_step",
+          data: { index, prompt: step.prompt, model: step.model }
+        }),
+      onStepEnd: (stepIndex, output) => emit({ data: { stepIndex, output } })
+    });
 
-    emit({ status: "extracting_text" });
-    const extractedText = await textExtractor.extractTextFromImageUrl(imageUrl, flow);
-    emit({ data: { extractedText } });
-
-    emit({ status: "analyzing_text" });
-    const finalText = await finalTextBuilder.buildFinalText(extractedText, flow);
-    emit({ data: { finalText } });
-
-    emit({ status: "format_guard" });
-    const guardedFinalText = await finalTextFormatGuard.guardFinalText(finalText);
-    emit({ data: { guardedFinalText } });
-
-    return { extractedText, finalText: guardedFinalText, questionType };
+    const extractedText = outputs[0] ?? "";
+    const finalText = outputs[outputs.length - 1] ?? "";
+    return { extractedText, finalText };
   }
 
   private toStreamError(error: unknown): { code: string; message: string } {

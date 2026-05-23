@@ -5,7 +5,7 @@ export 'server_config.dart';
 export 'request/update_provider_request.dart';
 export 'request/regenerate_request.dart';
 
-export 'response/capture_response.dart';
+export 'response/send_notification_response.dart';
 export 'response/provider_response.dart';
 export 'response/dependency_check.dart';
 export 'response/error_body.dart';

@@ -1,13 +1,12 @@
-import path from "node:path";
-import OpenAI from "openai";
 import type { AppDependencies } from "./app";
 import { createHealthRunner } from "./api/v1/services/health.service";
-import { CaptureService } from "./api/v1/services/capture.service";
+import { SendNotificationService } from "./api/v1/services/send-notification.service";
 import { ExportService } from "./api/v1/services/export.service";
 import { ImportService } from "./api/v1/services/import.service";
 import type { ServerEnv } from "./libs/configs/env.config";
-import { S3ImageStore, type S3Config } from "./libs/s3/s3.util";
-import { DEFAULT_FCM_BROADCAST_TOPIC, FirebaseNotifier } from "./libs/firebase/fcm";
+import { S3ImageStore } from "./libs/s3/client";
+import type { S3Config } from "./libs/s3/type";
+import { DEFAULT_FCM_BROADCAST_TOPIC, FirebaseNotifier } from "./libs/firebase/export";
 import { getFirebaseAdminApp } from "./libs/firebase/admin";
 import {
   FirebaseProviderStateRepository,
@@ -15,14 +14,16 @@ import {
   getRealtimeDb,
   type RealtimeNamespace
 } from "./libs/firebase/realtime";
-import { GrimPromptSettings } from "./libs/utils/prompt.util";
-import { resolveS3Bucket } from "./libs/configs/env.config";
-import { ProviderOrchestrator } from "./libs/utils/provider_orchestrator.util";
-import { LiteLlmModelDiscovery } from "./libs/llm/model-discovery";
+import { resolveFcmBroadcastTopic, resolveS3Bucket } from "./libs/configs/env.config";
+import { LangfuseClient } from "./libs/langfuse/client";
+import { LiteLlmClient } from "./libs/litellm/client";
+import { ProviderStateService } from "./libs/litellm/provider-state";
+import { ToolReasoning } from "./libs/workflow/tool-reasoning";
+import { StepExecutor } from "./libs/workflow/step-executor";
+
+const DEFAULT_LANGFUSE_LABEL = "production";
 
 export function createProductionDependencies(env: ServerEnv): AppDependencies {
-  const promptsDir = env.GRIM_PROMPTS_DIR ?? path.resolve(__dirname, "..", "prompts");
-  const promptSettings = GrimPromptSettings.loadFromDirectory(promptsDir);
   const firebaseApp = getFirebaseAdminApp(env);
   const realtimeDb = getRealtimeDb(firebaseApp);
   const namespace: RealtimeNamespace =
@@ -34,9 +35,9 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
   const exportService = new ExportService(uploadRepository);
   const notifier = new FirebaseNotifier(
     firebaseApp,
-    env.GRIM_FCM_TOPIC ?? DEFAULT_FCM_BROADCAST_TOPIC
+    resolveFcmBroadcastTopic(env, DEFAULT_FCM_BROADCAST_TOPIC)
   );
-  const captureService = new CaptureService(notifier);
+  const sendNotificationService = new SendNotificationService(notifier);
   const s3Config: S3Config = {
     endpoint: env.S3_ENDPOINT,
     accessKeyId: env.S3_ACCESS_KEY_ID,
@@ -45,41 +46,43 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
     bucket: resolveS3Bucket(env),
     presignTtlSeconds: env.S3_PRESIGN_TTL_SECONDS
   };
-  const llmClient = new OpenAI({ apiKey: env.LLM_API_KEY, baseURL: env.LLM_BASE_URL });
-  const modelDiscovery = new LiteLlmModelDiscovery({
-    baseUrl: env.LLM_BASE_URL,
-    apiKey: env.LLM_API_KEY
+
+  const langfuseLabel = env.LANGFUSE_LABEL ?? DEFAULT_LANGFUSE_LABEL;
+  const langfuse = new LangfuseClient({
+    baseUrl: env.LANGFUSE_BASE_URL,
+    publicKey: env.LANGFUSE_PUBLIC_KEY,
+    secretKey: env.LANGFUSE_SECRET_KEY,
+    defaultLabel: langfuseLabel
   });
-  const providerOrchestrator = new ProviderOrchestrator({
-    client: llmClient,
-    getAvailableProviders: () => modelDiscovery.getAvailableProviders(),
-    stateRepository: providerStateRepository,
-    getAnalyzeQuestionPrompt: () => promptSettings.getAnalyzeQuestionPrompt(),
-    getMcqExtractTextPrompt: () => promptSettings.getMcqExtractTextPrompt(),
-    getMcqFinalTextPrompt: () => promptSettings.getMcqFinalTextPrompt(),
-    getTaskExtractTextPrompt: () => promptSettings.getTaskExtractTextPrompt(),
-    getTaskFinalTextPrompt: () => promptSettings.getTaskFinalTextPrompt(),
-    getFormatGuardPrompt: () => promptSettings.getFormatGuardPrompt()
+  const litellm = new LiteLlmClient({ baseUrl: env.LLM_BASE_URL, apiKey: env.LLM_API_KEY });
+  const providerState = new ProviderStateService({
+    litellm,
+    stateRepository: providerStateRepository
   });
+  const toolReasoning = new ToolReasoning({
+    langfuse,
+    litellm,
+    toolPromptName: env.TOOL_REASONING_PROMPT_NAME,
+    label: langfuseLabel
+  });
+  const stepExecutor = new StepExecutor({ langfuse, litellm, label: langfuseLabel });
+
   const importService = new ImportService({
     uploadRepository,
-    questionTypeAnalyzer: providerOrchestrator,
-    textExtractor: providerOrchestrator,
-    finalTextBuilder: providerOrchestrator,
-    finalTextFormatGuard: providerOrchestrator,
     imageStorage: new S3ImageStore(s3Config),
     notifier,
+    providerState,
+    toolReasoning,
+    stepExecutor,
     logger: console
   });
 
   return {
     importService,
     exportService,
-    captureService,
-    providerService: providerOrchestrator,
+    sendNotificationService,
+    providerService: providerState,
     runHealthChecks: createHealthRunner(realtimeDb, env.LLM_BASE_URL, env.LLM_API_KEY, s3Config),
-    logger: console,
-    promptSettings,
-    promptAdminSecret: env.GRIM_PROMPT_ADMIN_SECRET
+    logger: console
   };
 }

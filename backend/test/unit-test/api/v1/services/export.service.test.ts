@@ -5,10 +5,10 @@ import {
   parseExportLimit
 } from "../../../../../src/api/v1/services/export.service";
 import { EXPORT_DEFAULT_LIMIT, EXPORT_MAX_LIMIT } from "../../../../../src/libs/constants/limits.contant";
-import type { GrimUploadRow } from "../../../../../src/api/v1/model/import.model";
+import type { AirEyeUploadRow } from "../../../../../src/api/v1/model/import.model";
 import { InMemoryUploadRepository } from "../../../../in-memory-upload-repository";
 
-async function createUploadRepository(rows: GrimUploadRow[]): Promise<InMemoryUploadRepository> {
+async function createUploadRepository(rows: AirEyeUploadRow[]): Promise<InMemoryUploadRepository> {
   const repository = new InMemoryUploadRepository();
 
   for (const { id, ...upload } of rows) {

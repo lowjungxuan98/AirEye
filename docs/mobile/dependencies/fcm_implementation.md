@@ -1,6 +1,6 @@
 # Firebase Cloud Messaging (FCM) implementation
 
-Implementation guide for receiving Firebase Cloud Messaging events in Grim's Flutter app.
+Implementation guide for receiving Firebase Cloud Messaging events in AirEye's Flutter app.
 
 Key references:
 
@@ -19,21 +19,21 @@ Firebase's FCM Flutter docs checked during this review were last updated 2026-04
 Implemented in this repo:
 
 - `mobile/pubspec.yaml` includes `firebase_core`.
-- `mobile/packages/grim_core/pubspec.yaml` owns `firebase_core`, `firebase_analytics`, `firebase_messaging`, and `flutter_riverpod` exports for feature packages; feature packages should keep using core rather than adding parallel Firebase/Riverpod dependencies.
-- `mobile/packages/grim_core/pubspec.yaml` owns `flutter_local_notifications` for foreground Android notification display.
+- `mobile/packages/core/pubspec.yaml` owns `firebase_core`, `firebase_analytics`, `firebase_messaging`, and `flutter_riverpod` exports for feature packages; feature packages should keep using core rather than adding parallel Firebase/Riverpod dependencies.
+- `mobile/packages/core/pubspec.yaml` owns `flutter_local_notifications` for foreground Android notification display.
 - Firebase config values are supplied through Dart defines; generated files such as `mobile/lib/firebase_options.dart`, `mobile/android/app/google-services.json`, and `mobile/ios/Runner/GoogleService-Info.plist` are intentionally ignored.
-- `mobile/lib/main.dart` initializes Firebase through `initializeFirebase()` and calls `GrimFcmManager().initialize()` before `runApp(...)`.
-- `mobile/packages/grim_core/lib/src/fcm/grim_fcm_manager.dart` registers a top-level background handler, requests notification permission, subscribes to topic `grim_new_result`, returns the FCM token, suppresses local notifications for `notificationType: silent`, and exposes `onMessage`, `onMessageOpenedApp`, `getInitialMessage()`, and `onTokenRefresh`.
-- Android has the Google Services Gradle plugin applied, declares `android.permission.POST_NOTIFICATIONS`, and declares `grim_results` as Firebase Messaging's default notification channel.
-- The backend sends high-priority Android topic messages through `FirebaseNotifier` on topic `grim_new_result` unless `GRIM_FCM_TOPIC` overrides it.
-- `mobile/packages/grim_receiver_grid` can call `POST /api/v1/capture` from the receiver grid action.
-- `mobile/packages/grim_sender_camera` listens for foreground `kind: capture_request` messages targeted to `sender`, takes a camera photo, and calls the import stream API.
+- `mobile/lib/main.dart` initializes Firebase through `initializeFirebase()` and calls `AirEyeFcmManager.init()` before `runApp(...)`.
+- `mobile/packages/core/lib/src/firebase/fcm_manager.dart` registers a top-level background handler, requests notification permission, subscribes to topic `aireye_new_result`, returns the FCM token, suppresses local notifications for `notificationType: silent`, and exposes foreground/opened/initial message helpers.
+- Android has the Google Services Gradle plugin applied, declares `android.permission.POST_NOTIFICATIONS`, and declares `aireye_results` as Firebase Messaging's default notification channel.
+- The backend sends high-priority Android topic messages through `FirebaseNotifier` on topic `aireye_new_result` unless `AIREYE_FCM_TOPIC` overrides it.
+- `mobile/packages/receiver` calls `POST /api/v1/send-notification` from the receiver grid action.
+- `mobile/packages/sender` listens for foreground `kind: capture_request` messages targeted to `sender`, takes a camera photo, and calls the import stream API.
 
 Still missing or not verifiable from the repo:
 
 - Apple push capabilities are not committed yet: no `aps-environment` entitlement, no `UIBackgroundModes` entry, and no checked-in evidence of Push Notifications plus Background fetch / Remote notifications being enabled in Xcode.
 - The Firebase console APNs authentication key cannot be verified from source control.
-- iOS Debug currently builds with bundle ID `com.lowjx.grim.mobile.dev`, while the committed Firebase iOS config is for `com.lowjx.grim.mobile`. Register/configure the debug app too, or align the debug bundle ID, before testing iOS push.
+- iOS builds with bundle ID `com.lowjx.aireye.mobile`. Register/configure that AirEye Firebase app before testing iOS push.
 - The receiver controller listens for foreground silent `kind: export_refresh` and refreshes `GET /api/v1/export`; pull-to-refresh / reload remain available.
 - The app shell does not yet bind `getInitialMessage()` or `onMessageOpenedApp` to a refresh or navigation action.
 - The current manager does not wait for an APNs token before Apple FCM API calls such as topic subscription or `getToken()`. Firebase notes that the APNs token is not guaranteed to be available before FCM plugin calls.
@@ -41,10 +41,10 @@ Still missing or not verifiable from the repo:
 
 ## Install and configuration
 
-For a fresh setup in this repo, keep Firebase dependencies owned by the app shell and `grim_core`:
+For a fresh setup in this repo, keep Firebase dependencies owned by the app shell and `core`:
 
 ```bash
-cd mobile/packages/grim_core
+cd mobile/packages/core
 flutter pub add firebase_messaging
 
 cd ../..
@@ -83,34 +83,34 @@ Do not run that guard on Android.
 
 Firebase's FCM Flutter docs require a device with Google Play services or an emulator image that includes Google APIs.
 
-Android 13 and newer require runtime notification permission; `GrimFcmManager.initialize()` already calls `requestPermission(...)`, and the manifest already declares `POST_NOTIFICATIONS`.
+Android 13 and newer require runtime notification permission; `AirEyeFcmManager.init()` already calls `requestPermission(...)`, and the manifest already declares `POST_NOTIFICATIONS`.
 
 If Android background notifications do not arrive, check logcat before changing Firebase config:
 
 ```bash
-adb logcat -d -v time | rg 'Greezer|CANCELLED|UidFrozen|c2dm|FirebaseMessaging|com.lowjx.grim.mobile'
+adb logcat -d -v time | rg 'Greezer|CANCELLED|UidFrozen|c2dm|FirebaseMessaging|com.lowjx.aireye.mobile'
 ```
 
-On Xiaomi/HyperOS or MIUI, `Greezer Denial` / `UidFrozen` means the device battery or autostart policy canceled the FCM broadcast. The practical device-side fix is to allow GRIM to autostart and set its battery policy to no restrictions. Server-side, Grim uses high-priority Android FCM messages, but OEM freezer policies can still override delivery.
+On Xiaomi/HyperOS or MIUI, `Greezer Denial` / `UidFrozen` means the device battery or autostart policy canceled the FCM broadcast. The practical device-side fix is to allow AirEye to autostart and set its battery policy to no restrictions. Server-side, AirEye uses high-priority Android FCM messages, but OEM freezer policies can still override delivery.
 
 ### Web
 
-The official FCM docs include VAPID-key and service-worker steps for Flutter web, but Grim does not currently have a `mobile/web/` target, so those steps are out of scope for this repo today.
+The official FCM docs include VAPID-key and service-worker steps for Flutter web, but AirEye does not currently have a `mobile/web/` target, so those steps are out of scope for this repo today.
 
-## Startup shape for Grim
+## Startup shape for AirEye
 
-Keep app bootstrap in `mobile/lib/main.dart` and Firebase Messaging usage behind `grim_core`:
+Keep app bootstrap in `mobile/lib/main.dart` and Firebase Messaging usage behind `core`:
 
 ```dart
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeFirebase();
-  await GrimFcmManager().initialize();
+  await AirEyeFcmManager.init();
   runApp(const ProviderScope(child: MainApp()));
 }
 ```
 
-The background handler requirements from Firebase's receive-messages doc are satisfied by `grimFcmBackgroundHandler`:
+The background handler requirements from Firebase's receive-messages doc are satisfied by `airEyeFirebaseMessagingBackgroundHandler`:
 
 - it is not anonymous
 - it is a top-level function
@@ -128,21 +128,21 @@ The Firebase Flutter docs split handling by app state:
 Recommended app-level wiring:
 
 ```dart
-Future<void> bindNotificationNavigation(GrimFcmManager fcm) async {
-  fcm.onMessageOpenedApp.listen(handleMessage);
+Future<void> bindNotificationNavigation() async {
+  AirEyeFcmManager.openedAppMessages.listen(handleMessage);
 
-  final initialMessage = await fcm.getInitialMessage();
+  final initialMessage = await AirEyeFcmManager.getInitialMessage();
   if (initialMessage != null) {
     handleMessage(initialMessage);
   }
 }
 ```
 
-Keep `handleMessage(...)` app-specific and route through Grim's existing navigation or Riverpod state rather than making feature widgets listen to FCM directly.
+Keep `handleMessage(...)` app-specific and route through AirEye's existing navigation or Riverpod state rather than making feature widgets listen to FCM directly.
 
 ## Foreground message behavior
 
-The current backend sends two Grim message kinds:
+The current backend sends two AirEye message kinds:
 
 - `capture_request`: silent data-only message for sender devices.
 - `export_refresh`: silent data-only message for receiver devices.
@@ -153,9 +153,9 @@ Both current backend messages are silent data-only flags. Silent messages are id
 
 The current implemented foreground flow is:
 
-1. Receiver grid calls `POST /api/v1/capture`.
+1. Receiver grid calls `POST /api/v1/send-notification`.
 2. Backend sends silent `kind: capture_request`, `role: sender`.
-3. Sender camera page receives the foreground FCM event, calls `takePicturePath()`, then uploads the photo through `GrimImportStreamClient.streamImportFile(...)`.
+3. Sender camera page receives the foreground FCM event, takes a picture, then uploads the photo through `AirEyeEndpoints.import(...)`.
 4. Backend sends receiver `export_refresh` after the pending row is written, then sends another `export_refresh` after the final row update succeeds.
 5. Receiver maps each `export_refresh` to its existing export endpoint function and reads canonical result rows through `GET /api/v1/export`.
 
@@ -163,7 +163,7 @@ Taking a photo requires the active sender camera controller. Background FCM hand
 
 ## Topic and token strategy for this repo
 
-The backend spec says the server broadcasts to topic `grim_new_result` by default and can override it with `GRIM_FCM_TOPIC`.
+The backend spec says the server broadcasts to topic `aireye_new_result` by default and can override it with `AIREYE_FCM_TOPIC`.
 
 That means the mobile app should:
 
@@ -183,10 +183,10 @@ Keep FCM as a hint and refresh from `GET /api/v1/export`. Do not carry large res
 ## Release checklist
 
 - Android: test foreground and background notification display on a physical device or Google APIs emulator, grant notification permission on Android 13+, and verify a backend send reaches a subscribed app.
-- Android OEMs: on Xiaomi/HyperOS or MIUI, also test after enabling app autostart and disabling battery restrictions for GRIM.
+- Android OEMs: on Xiaomi/HyperOS or MIUI, also test after enabling app autostart and disabling battery restrictions for AirEye.
 - iOS: test on a physical device, enable Push Notifications and Background Modes, upload the APNs key in Firebase, ensure the app's bundle ID matches the Firebase app config, and verify `getAPNSToken()` is non-null before FCM token/topic calls.
 - App UX: wire notification-tap and terminated-open handling to the same receiver refresh event used by foreground `export_refresh`.
-- Backend contract: keep `grimDefaultFcmTopic` aligned with `DEFAULT_FCM_BROADCAST_TOPIC` or document any environment-specific override.
+- Backend contract: keep `DEFAULT_FCM_BROADCAST_TOPIC` aligned with the mobile default topic or document any environment-specific override.
 
 ## References
 
@@ -200,7 +200,7 @@ Keep FCM as a hint and refresh from `GET /api/v1/export`. Do not carry large res
 ---
 
 **Updated:** 2026-04-19
-**Applies to:** grim mobile (`mobile/`) receiving FCM events from the current grim backend
+**Applies to:** AirEye mobile (`mobile/`) receiving FCM events from the current AirEye backend
 **Doc version:** 3
 **Upstream refs:**
 - https://firebase.google.com/docs/cloud-messaging/flutter/get-started

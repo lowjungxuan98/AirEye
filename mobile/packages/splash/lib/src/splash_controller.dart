@@ -16,7 +16,7 @@ class SplashController extends BaseController<SplashState> {
   void setError(String message) => state = SplashError(message);
 
   Future<void> initialize() => run(() async {
-    final report = await GrimEndpoints.health();
+    final report = await AirEyeEndpoints.health();
     if (!report.ok) {
       state = const SplashError('Backend health check failed');
       return;

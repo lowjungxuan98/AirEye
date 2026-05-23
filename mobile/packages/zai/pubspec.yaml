@@ -1,5 +1,5 @@
 name: zai
-description: "ZAI package for GRIM."
+description: "ZAI package for AirEye."
 version: 0.0.1
 publish_to: none
 environment:

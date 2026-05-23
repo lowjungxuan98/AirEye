@@ -2,7 +2,8 @@ import axios from "axios";
 import type { Database } from "firebase-admin/database";
 import OpenAI from "openai";
 import { getAppVersion } from "../../../libs/utils/app-version.util";
-import { createS3Client, pingS3, type S3Config } from "../../../libs/s3/s3.util";
+import { createS3Client, pingS3 } from "../../../libs/s3/client";
+import type { S3Config } from "../../../libs/s3/type";
 import type { DependencyCheck, HealthReport } from "../model/health.model";
 
 const HEALTH_REQUEST_TIMEOUT_MS = 10_000;

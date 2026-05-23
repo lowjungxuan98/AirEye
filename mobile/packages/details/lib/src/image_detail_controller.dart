@@ -7,7 +7,7 @@ class ImageDetailController extends BaseController<ImageDetailState> {
 
   @override
   ImageDetailState build() {
-    GrimFcmManager.subscribeExportRefresh(ref, _refresh, onDispose: () => _isDisposed = true);
+    AirEyeFcmManager.subscribeExportRefresh(ref, _refresh, onDispose: () => _isDisposed = true);
     return const ImageDetailInitial();
   }
 
@@ -32,7 +32,7 @@ class ImageDetailController extends BaseController<ImageDetailState> {
     if (refItem == null || _isDisposed) return;
 
     try {
-      final response = await GrimEndpoints.export(page: 1, limit: 50);
+      final response = await AirEyeEndpoints.export(page: 1, limit: 50);
       final updated = response.data.firstWhere((i) => i.createdAt == refItem.createdAt, orElse: () => refItem);
       if (!_isDisposed) state = ImageDetailReady(updated);
     } catch (_) {}

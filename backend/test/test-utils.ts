@@ -1,21 +1,18 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { createApp } from "../src/app";
 import type {
-  CaptureService,
   ImportServiceDependencies,
   Logger,
-  ProviderService
+  ProviderService,
+  SendNotificationService
 } from "../src/api/v1/model/services.model";
 import type { HealthReport } from "../src/api/v1/model/health.model";
 import type { ImportService } from "../src/api/v1/model/services.model";
 import { ExportService } from "../src/api/v1/services/export.service";
 import { ImportService as ImportServiceImpl } from "../src/api/v1/services/import.service";
-import { GrimPromptSettings } from "../src/libs/utils/prompt.util";
 import { invalidProvider } from "../src/libs/utils/api-error.util";
 import { InMemoryUploadRepository } from "./in-memory-upload-repository";
 import type { LlmProvider } from "../src/libs/configs/env.config";
+import type { WorkflowStep } from "../src/libs/workflow/type";
 
 export const silentLogger: Logger = {
   error: () => {},
@@ -44,26 +41,12 @@ export function stableDegradedHealth(overrides: Partial<Omit<HealthReport, "ok">
 export type BuildTestAppInput = {
   importService?: ImportService;
   exportService?: ExportService;
-  captureService?: CaptureService;
+  sendNotificationService?: SendNotificationService;
   providerService?: ProviderService;
   providerCurrent?: LlmProvider;
   providerAvailable?: LlmProvider[];
   runHealthChecks?: () => Promise<HealthReport>;
   logger?: Logger;
-  /** When set, `GET`/`PUT /api/v1/prompts` require this secret via `X-Grim-Prompt-Secret`. */
-  promptAdminSecret?: string;
-  /** Seed file `analyze_question_prompt.txt` (default short test string). */
-  initialAnalyzeQuestionPrompt?: string;
-  /** Seed file `extract_text_prompt.txt` (MCQ extract; default short test string). */
-  initialExtractPrompt?: string;
-  /** Seed file `analyzing_text_prompt.txt` (MCQ final; default short test string). */
-  initialAnalyzingPrompt?: string;
-  /** Seed file `task_extract_text_prompt.txt` (Task extract; default short test string). */
-  initialTaskExtractPrompt?: string;
-  /** Seed file `task_final_text_prompt.txt` (Task final; default short test string). */
-  initialTaskFinalPrompt?: string;
-  /** Seed file `format_guard_prompt.txt` (default short test string). */
-  initialFormatGuardPrompt?: string;
 };
 
 const noopImportService: ImportService = {
@@ -75,8 +58,8 @@ const noopImportService: ImportService = {
   }
 };
 
-const noopCaptureService: CaptureService = {
-  sendCaptureNotification: async () => {}
+const noopSendNotificationService: SendNotificationService = {
+  sendNotification: async () => {}
 };
 
 const inMemoryProviderService = (
@@ -100,65 +83,38 @@ const inMemoryProviderService = (
   };
 };
 
-function createIsolatedPromptSettings(input: BuildTestAppInput): GrimPromptSettings {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "grim-prompts-"));
-  fs.writeFileSync(
-    path.join(dir, "analyze_question_prompt.txt"),
-    input.initialAnalyzeQuestionPrompt ?? "test analyze question prompt",
-    "utf8"
-  );
-  fs.writeFileSync(
-    path.join(dir, "extract_text_prompt.txt"),
-    input.initialExtractPrompt ?? "test extract prompt",
-    "utf8"
-  );
-  fs.writeFileSync(
-    path.join(dir, "analyzing_text_prompt.txt"),
-    input.initialAnalyzingPrompt ?? "test analyzing prompt",
-    "utf8"
-  );
-  fs.writeFileSync(
-    path.join(dir, "task_extract_text_prompt.txt"),
-    input.initialTaskExtractPrompt ?? "test task extract prompt",
-    "utf8"
-  );
-  fs.writeFileSync(
-    path.join(dir, "task_final_text_prompt.txt"),
-    input.initialTaskFinalPrompt ?? "test task final prompt",
-    "utf8"
-  );
-  fs.writeFileSync(
-    path.join(dir, "format_guard_prompt.txt"),
-    input.initialFormatGuardPrompt ?? "test format guard prompt",
-    "utf8"
-  );
-  return GrimPromptSettings.loadFromDirectory(dir);
-}
-
 export function buildTestApp(input: BuildTestAppInput = {}) {
   const importService = input.importService ?? noopImportService;
   const exportService = input.exportService ?? new ExportService(new InMemoryUploadRepository());
-  const captureService = input.captureService ?? noopCaptureService;
+  const sendNotificationService = input.sendNotificationService ?? noopSendNotificationService;
   const providerCurrent = input.providerCurrent ?? input.providerAvailable?.[0] ?? "test-provider";
   const providerService =
     input.providerService ??
     inMemoryProviderService(providerCurrent, input.providerAvailable ?? [providerCurrent]);
   const runHealthChecks = input.runHealthChecks ?? (async () => stableOkHealth());
-  const promptSettings = createIsolatedPromptSettings(input);
   return createApp({
     importService,
     exportService,
-    captureService,
+    sendNotificationService,
     providerService,
     runHealthChecks,
-    promptSettings,
-    promptAdminSecret: input.promptAdminSecret,
     logger: input.logger ?? silentLogger
   });
 }
 
+export type StubbedPipelineOverrides = {
+  steps?: WorkflowStep[];
+  /** Output returned by every vision step (or per-call overrides keyed by prompt name). */
+  visionOutput?: string | ((prompt: string) => string);
+  reasoningOutput?: string | ((prompt: string, input: string) => string);
+  provider?: LlmProvider;
+};
+
 /** Real {@link ImportServiceImpl} with stubbed pipeline deps and no vendor I/O. */
-export function createImportServiceWithStubbedPipeline(deps?: Partial<ImportServiceDependencies>) {
+export function createImportServiceWithStubbedPipeline(
+  deps?: Partial<ImportServiceDependencies>,
+  overrides: StubbedPipelineOverrides = {}
+) {
   const uploadRepository = deps?.uploadRepository ?? new InMemoryUploadRepository();
   const imageStorage =
     deps?.imageStorage ??
@@ -169,20 +125,49 @@ export function createImportServiceWithStubbedPipeline(deps?: Partial<ImportServ
         objectKey: `uploads/${publicId}.${imageMimeType === "image/png" ? "png" : "jpg"}`
       })
     };
+  const provider = overrides.provider ?? "test-provider";
+  const defaultSteps: WorkflowStep[] = overrides.steps ?? [
+    { prompt: "vision-prompt", model: "image" },
+    { prompt: "reasoning-prompt", model: "reasoning" }
+  ];
+  const providerState = deps?.providerState ?? {
+    getCurrentProvider: async () => provider
+  };
+  const toolReasoning = deps?.toolReasoning ?? {
+    decideSteps: async () => defaultSteps
+  };
+  const visionOutputFn =
+    typeof overrides.visionOutput === "function"
+      ? overrides.visionOutput
+      : (_prompt: string) =>
+          typeof overrides.visionOutput === "string" ? overrides.visionOutput : "extracted";
+  const reasoningOutputFn =
+    typeof overrides.reasoningOutput === "function"
+      ? overrides.reasoningOutput
+      : (_prompt: string, input: string) =>
+          typeof overrides.reasoningOutput === "string"
+            ? overrides.reasoningOutput
+            : `reasoned:${input}`;
+  const stepExecutor =
+    deps?.stepExecutor ??
+    {
+      run: async ({ steps, imageUrl, onStepStart, onStepEnd }) => {
+        const outputs: string[] = [];
+        for (let i = 0; i < steps.length; i += 1) {
+          const step = steps[i]!;
+          onStepStart?.(i, step);
+          const output =
+            step.model === "image"
+              ? visionOutputFn(step.prompt)
+              : reasoningOutputFn(step.prompt, outputs[i - 1] ?? imageUrl);
+          outputs.push(output);
+          onStepEnd?.(i, output);
+        }
+        return outputs;
+      }
+    };
   return new ImportServiceImpl({
     uploadRepository,
-    questionTypeAnalyzer:
-      deps?.questionTypeAnalyzer ??
-      {
-        analyzeQuestionTypeFromImageUrl: async () => "MCQ-Single"
-      },
-    textExtractor:
-      deps?.textExtractor ??
-      {
-        extractTextFromImageUrl: async () => "extracted"
-      },
-    finalTextBuilder: deps?.finalTextBuilder ?? { buildFinalText: async (t) => `final:${t}` },
-    finalTextFormatGuard: deps?.finalTextFormatGuard ?? { guardFinalText: async (t) => `guarded:${t}` },
     imageStorage,
     notifier:
       deps?.notifier ??
@@ -190,6 +175,9 @@ export function createImportServiceWithStubbedPipeline(deps?: Partial<ImportServ
         broadcastCaptureRequest: async () => {},
         broadcastExportRefresh: async () => {}
       },
+    providerState,
+    toolReasoning,
+    stepExecutor,
     logger: deps?.logger ?? silentLogger,
     now: deps?.now ?? (() => 4242),
     generateUploadId: deps?.generateUploadId ?? (() => "integration_upload_id")

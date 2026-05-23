@@ -8,27 +8,16 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { ImageStorage, UploadedImage } from "../../api/v1/model/services.model";
+import {
+  DEFAULT_IMAGE_EXTENSION,
+  DEFAULT_PRESIGN_TTL_SECONDS,
+  IMAGE_EXTENSIONS_BY_MIME_TYPE,
+  OBJECT_KEY_SUFFIX_LENGTH
+} from "./constants";
+import { buildUploadObjectKey } from "./endpoint";
+import type { S3Config } from "./type";
 
-const DEFAULT_PRESIGN_TTL_SECONDS = 7 * 24 * 3600;
-const IMAGE_EXTENSIONS_BY_MIME_TYPE: Partial<Record<string, string>> = {
-  "image/avif": ".avif",
-  "image/bmp": ".bmp",
-  "image/gif": ".gif",
-  "image/jpeg": ".jpg",
-  "image/jpg": ".jpg",
-  "image/png": ".png",
-  "image/tiff": ".tiff",
-  "image/webp": ".webp"
-};
-
-export type S3Config = {
-  endpoint: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  region: string;
-  bucket: string;
-  presignTtlSeconds?: number;
-};
+export type { S3Config } from "./type";
 
 export function createS3Client(config: Pick<S3Config, "endpoint" | "accessKeyId" | "secretAccessKey" | "region">) {
   return new S3Client({
@@ -90,8 +79,9 @@ export class S3ImageStore implements ImageStorage {
     const subtype = contentType.startsWith("image/")
       ? contentType.slice("image/".length).split("+")[0].replace(/[^a-z0-9]/g, "")
       : "";
-    const extension = knownExtension ?? (subtype ? `.${subtype}` : ".img");
-    const objectKey = `uploads/${publicId}-${randomUUID().slice(0, 8)}${extension}`;
+    const extension = knownExtension ?? (subtype ? `.${subtype}` : DEFAULT_IMAGE_EXTENSION);
+    const suffix = randomUUID().slice(0, OBJECT_KEY_SUFFIX_LENGTH);
+    const objectKey = buildUploadObjectKey(publicId, suffix, extension);
 
     await ensureBucketExists(this.client, this.bucket);
     await this.client.send(

@@ -10,9 +10,9 @@ void main() async {
   await initializeFirebase();
 
   // Must be registered before runApp.
-  FirebaseMessaging.onBackgroundMessage(grimFirebaseMessagingBackgroundHandler);
+  FirebaseMessaging.onBackgroundMessage(airEyeFirebaseMessagingBackgroundHandler);
 
-  await GrimFcmManager.init();
+  await AirEyeFcmManager.init();
 
   runApp(
     AppScope(

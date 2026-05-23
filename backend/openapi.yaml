@@ -1,24 +1,23 @@
 openapi: 3.0.3
 info:
-  title: Grim API
+  title: AirEye API
   description: |
-    HTTP API for Grim’s backend: integration **health**, manual **capture** notification, image **import** (question-type-aware LLM pipeline over SSE), paginated **export**, runtime **provider** selection, and **prompt** templates for the six pipeline stages.
+    HTTP API for the AirEye backend: capture a document image, run a prompt-configured workflow, and return normalized output.
 
     | Area | Base path |
     |------|-----------|
     | Health | `GET /api/v1/health` |
-    | Import | `POST /api/v1/import` — `multipart/form-data`, required file field **`image`** (`text/event-stream`) |
-    | Regenerate | `POST /api/v1/regenerate` — JSON body for rerunning an existing result (`text/event-stream`) |
-    | Capture | `POST /api/v1/capture` |
+    | Import | `POST /api/v1/import` - `multipart/form-data`, required file field `image` (`text/event-stream`) |
+    | Regenerate | `POST /api/v1/regenerate` - JSON body for rerunning an existing export row (`text/event-stream`) |
+    | Send notification | `POST /api/v1/send-notification` |
     | Export | `GET /api/v1/export` |
     | Provider | `GET /api/v1/provider`, `PUT /api/v1/provider` |
-    | Prompts | `GET /api/v1/prompts`, `PUT /api/v1/prompts` (JSON or **`multipart/form-data`** fields **`analyze_question`** / **`extract_text`** / **`analyzing_text`** / **`task_extract_text`** / **`task_final_text`** / **`format_guard`**) |
 
-    **`POST /api/v1/import`** returns **Server-Sent Events** (`text/event-stream`): JSON on each `data:` line (progress, then a terminal success row or `error` object). The pipeline first classifies the image as **`Task`**, **`MCQ-Single`**, or **`MCQ-Multiple`**, then branches into either the MCQ or Task extract/final prompt pair, and finally runs an HTML-aware format guard. The Firebase upload object shape is unchanged — `questionType` is emitted only on SSE and is never persisted. `finalText` is an HTML fragment string.
+    Prompt text is loaded from Langfuse. The configured tool-reasoning prompt returns ordered workflow steps; each step references another Langfuse prompt and selects either a vision step or reasoning step. Import and regenerate stream the running workflow step, each step output, then a terminal export row or error object.
 
-    **Prompts:** text loaded from `analyze_question_prompt.txt`, `extract_text_prompt.txt`, `analyzing_text_prompt.txt`, `task_extract_text_prompt.txt`, `task_final_text_prompt.txt`, and `format_guard_prompt.txt` under **`GRIM_PROMPTS_DIR`** (default `./prompts` relative to the server process). **`PUT /api/v1/prompts`** overwrites those strings on disk and updates the in-memory copy used by the next import. Optional **`GRIM_PROMPT_ADMIN_SECRET`** forces clients to send **`X-Grim-Prompt-Secret`**.
+    FCM topic messages use `AIREYE_FCM_TOPIC`, or the AirEye default `aireye_new_result` when the environment variable is unset.
 
-    **Interactive docs:** with the backend running, open **`/docs`** on the same origin for embedded [Scalar API Reference](https://scalar.com/products/api-references), or import this file’s URL elsewhere.
+    With the backend running, open `/docs` on the same origin for the embedded Scalar API Reference, or import this file's URL elsewhere.
   version: 0.2.8
 
 servers:
@@ -27,28 +26,15 @@ servers:
 
 tags:
   - name: health
-    description: Firebase, configured LLM provider, and S3 readiness
+    description: Firebase, LiteLLM, and S3 readiness
   - name: import
-    description: |
-      Multipart image upload (`multipart/form-data`); the file part must be named **`image`**.
-      Response is Server-Sent Events until the pipeline finishes.
-      The pipeline first classifies the image as `Task`, `MCQ-Single`, or `MCQ-Multiple`, then runs the matching extract/final prompt pair (MCQ or Task), and finishes with an HTML format-guard pass. Prompts come from the six **prompts** templates (`analyze_question_prompt.txt`, `extract_text_prompt.txt`, `analyzing_text_prompt.txt`, `task_extract_text_prompt.txt`, `task_final_text_prompt.txt`, `format_guard_prompt.txt`) unless changed at runtime via **`PUT /api/v1/prompts`**.
-  - name: export
-    description: Paginated newest-first list from Realtime Database (`page`, `limit`, `is_next`)
+    description: Photo capture upload that streams a prompt-configured document image workflow
   - name: regenerate
-    description: Rerun the LLM pipeline for an existing upload using its stored image URL and current result text
-  - name: capture
-    description: Receiver-triggered silent FCM topic request for sender devices to capture and import a photo
-  - name: prompts
-    description: |
-      Read or replace the six prompt strings used by **`POST /api/v1/import`** and **`POST /api/v1/regenerate`**:
-      **`analyzeQuestionPrompt`** (image classifier returning `Task` / `MCQ-Single` / `MCQ-Multiple`),
-      **`mcqExtractTextPrompt`** (MCQ vision extractor),
-      **`mcqFinalTextPrompt`** (MCQ HTML answerer),
-      **`taskExtractTextPrompt`** (Task/CKA vision extractor),
-      **`taskFinalTextPrompt`** (Task/CKA HTML answerer),
-      **`formatGuardPrompt`** (HTML format guard).
-      Files on disk: **`analyze_question_prompt.txt`**, **`extract_text_prompt.txt`**, **`analyzing_text_prompt.txt`**, **`task_extract_text_prompt.txt`**, **`task_final_text_prompt.txt`**, **`format_guard_prompt.txt`** under **`GRIM_PROMPTS_DIR`**. Request body for **PUT** is JSON (server **`express.json` limit 2 MB**) or **`multipart/form-data`** with same-named file or text fields.
+    description: Rerun the prompt-configured workflow for an existing export row
+  - name: send-notification
+    description: Receiver-triggered silent FCM topic request for sender devices to capture a photo
+  - name: export
+    description: Paginated newest-first export rows from Realtime Database
   - name: provider
     description: Runtime LLM provider state stored in Firebase Realtime Database under `provider_state/current_provide`
 
@@ -58,14 +44,7 @@ paths:
       tags: [health]
       summary: Integration health
       description: |
-        Parallel checks: **Firebase** Realtime Database (`/.info/serverTimeOffset`),
-        **extract** and **final** LLM stage configs via the models API (aggregated into the single `llm` result field),
-        **S3** bucket readiness (connectivity + bucket exists).
-
-        | HTTP | Meaning |
-        |------|---------|
-        | **200** | `ok: true` — all three checks succeeded |
-        | **503** | `ok: false` — at least one check failed (see per-service `error`) |
+        Checks Firebase Realtime Database, LiteLLM model discovery, and S3 bucket readiness.
       operationId: getHealth
       responses:
         "200":
@@ -74,80 +53,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IntegrationHealthReport"
-              examples:
-                allOk:
-                  summary: All integrations healthy
-                  value:
-                    version: 0.2.7
-                    ok: true
-                    firebase:
-                      ok: true
-                      latencyMs: 24
-                    llm:
-                      ok: true
-                      latencyMs: 156
-                    s3:
-                      ok: true
-                      latencyMs: 89
+              example:
+                version: 0.2.8
+                ok: true
+                firebase:
+                  ok: true
+                  latencyMs: 24
+                llm:
+                  ok: true
+                  latencyMs: 156
+                s3:
+                  ok: true
+                  latencyMs: 89
         "503":
-          description: One or more checks failed (body still returns full report)
+          description: One or more checks failed; body still returns the full report
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/IntegrationHealthReport"
-              examples:
-                llmUnauthorized:
-                  summary: LLM provider key rejected (API reachable)
-                  value:
-                    version: 0.2.7
-                    ok: false
-                    firebase:
-                      ok: true
-                      latencyMs: 18
-                    llm:
-                      ok: false
-                      latencyMs: 42
-                      error: 401 Unauthorized
-                    s3:
-                      ok: true
-                      latencyMs: 71
 
   /api/v1/import:
     post:
       tags: [import]
-      summary: Import image (SSE stream)
+      summary: Import document image
       description: |
-        **Body:** `multipart/form-data` with a **`boundary`** in the top-level `Content-Type` header (e.g. `multipart/form-data; boundary=----WebKitFormBoundary…`).
+        Accepts a single photo capture as `multipart/form-data` with one required file part named `image`.
 
-        **Do not** send a bare header `Content-Type: multipart/form-data` with no `boundary=` — servers (and **Multer**) cannot parse the body, so uploads fail. With **curl**, use **`--form` / `-F`** and **omit** `Content-Type`: curl injects the correct `multipart/form-data` + boundary. In **Scalar “Try it”**, clear any manually added **`Content-Type`** for multipart so the client can generate boundary + parts.
+        The server stores the image in S3/MinIO, writes a pending Realtime Database row, sends a receiver export refresh hint, runs the Langfuse/LiteLLM workflow, updates the same row with normalized output, then sends another export refresh hint.
 
-        The upload uses a **single** file part whose name must be exactly **`image`** (same as HTML `<input type="file" name="image">` or curl **`-F image=@path/to.jpg`**). Any other part names are ignored for the pipeline.
+        Each workflow step is prompt-configured through Langfuse. A vision step receives the image URL and prompt text. A reasoning step receives the previous step output and prompt text. The first step output becomes `extractedText`; the final step output becomes `finalText`.
 
-        Each image part must declare **one** MIME type (e.g. `image/jpeg` for `.jpg`), not a comma-separated list. Example: **`-F image=@photo.jpg;type=image/jpeg`**.
+        The response is Server-Sent Events. Each event is one `data:` line containing JSON:
 
-        **API clients (e.g. Scalar):** this operation intentionally has **no** `multipart/form-data` **examples** in the OpenAPI document. An empty example object made “Try it” show a blank form; without examples, the UI derives the default **`image`** row from **`schema.properties`** (same idea as **`PUT /api/v1/prompts`** and **`extract_text` / `analyzing_text`**).
+        1. `{"status":"running_step","data":{"index":0,"prompt":"...","model":"image"}}`
+        2. `{"data":{"stepIndex":0,"output":"..."}}`
+        3. Additional running/output pairs for later workflow steps
+        4. A terminal export row with `id`, timestamps, image storage fields, `extractedText`, and `finalText`
+        5. Or a terminal `{"error":{"code":"...","message":"..."}}`
 
-        | Part name | Required | Notes |
-        |-----------|----------|--------|
-        | **`image`** | yes | Binary image body; `image/*` MIME type preferred; max **500 MB** |
-
-        After the initial pending upload row is written, the server sends a receiver-targeted FCM **topic** message on the configured topic: `kind: export_refresh`, `notificationType: silent`, `role: receiver`. When the pipeline **succeeds**, it sends the same refresh flag again after the final row update. The mobile app maps this flag to its existing export endpoint function. Topic defaults to **`grim_new_result`** (override with env `GRIM_FCM_TOPIC`).
-
-        **LLM prompts (configurable):** the pipeline first sends the uploaded image plus the current **`analyzeQuestionPrompt`** to the image model and expects a plain-text reply matching one of `Task`, `MCQ-Single`, `MCQ-Multiple`. Based on the result it then runs either the **MCQ branch** (extract with **`mcqExtractTextPrompt`**, final-answer with **`mcqFinalTextPrompt`**) or the **Task branch** (extract with **`taskExtractTextPrompt`**, final-answer with **`taskFinalTextPrompt`**). The format guard stage always receives **system** = current **`formatGuardPrompt`** and **user** = only the final answer text, and produces a hardened **HTML fragment** (no JSON, no Markdown). The extract stages use the image model; the final and format-guard stages use the reasoning model. Change prompts with **`GET/PUT /api/v1/prompts`**.
-
-        **Response:** **200** with **`Content-Type: text/event-stream`** (Server-Sent Events). The HTTP connection stays open until the pipeline completes. After the multipart **image** is buffered, the server runs **S3** (image upload) → **Realtime Database** pending row write under `uploads/{id}` → initial **FCM** export-refresh broadcast → **analyze-question LLM** (classifier) → **extract LLM** (image text extraction for the chosen branch) → **final LLM** (HTML answer for the chosen branch) → **format guard LLM** (HTML hardening) → **Realtime Database** update of `extractedText` and `finalText` on the same row → final **FCM** export-refresh broadcast.
-
-        Each SSE message is one `data:` line whose value is a single JSON object:
-
-        1. `{"status":"analyzing_question"}` — after the pending RTDB row write and the initial FCM broadcast, before question-type classification.
-        2. `{"data":{"questionType":"Task" | "MCQ-Single" | "MCQ-Multiple"}}` — the classifier result. `questionType` is **never** persisted to Firebase.
-        3. `{"status":"extracting_text"}` — before vision text extraction (MCQ or Task branch).
-        4. `{"status":"analyzing_text"}` — after extraction, before final-answer generation.
-        5. `{"status":"format_guard"}` — after final-answer generation, before HTML hardening and the Firebase update.
-        6. On success: a JSON object with `id`, `createdAt`, `updatedAt`, `extractedText`, guarded `finalText` (HTML fragment string), `imageUrl`, `bucket`, and `objectKey` (same shape as stored under `uploads/{id}`).
-        7. On failure: `{"error":{"code":"…","message":"…"}}` (same `code` / `message` style as `ErrorBody` elsewhere). If **image storage** fails before any `status` event, the stream may contain **only** this terminal `data:` line. If the stream has already started, this appears as the last `data:` line instead of a separate HTTP error body. An unparseable classifier reply surfaces here as `{"code":"INVALID_PROVIDER",…}`.
-
-        **HTTP 500** with a normal JSON `ErrorBody` is used only when the request fails **before** any SSE bytes are sent (for example an internal error in the handler). Once `text/event-stream` has started, failures use the terminal SSE `data:` object above.
+        Topic resolution for sender capture requests and receiver import refresh messages is `AIREYE_FCM_TOPIC`, then the AirEye default `aireye_new_result`.
       operationId: postImport
       requestBody:
         required: true
@@ -160,14 +104,10 @@ paths:
                 image:
                   type: string
                   format: binary
-                  description: |
-                    **Form field name must be `image`.** Image bytes for the vision pipeline.
-                    Use **one** `image/*` part Content-Type per file (e.g. `image/jpeg` for `.jpg`).
-                    `application/octet-stream` is accepted when the filename has a known image extension.
+                  description: Binary document image. Use one image MIME type per file part.
       responses:
         "200":
-          description: |
-            SSE stream. Each event is one `data:` line containing JSON (`ImportStreamSseData` — status, success row, or terminal error).
+          description: SSE stream containing workflow step events and the terminal result
           headers:
             Cache-Control:
               description: Clients must not cache the live stream as a static document.
@@ -188,42 +128,17 @@ paths:
             text/event-stream:
               schema:
                 type: string
-                description: |
-                  UTF-8 **Server-Sent Events** body (`text/event-stream`). Split on blank lines (`\n\n`); each block whose lines start with `data:` carries one JSON value per line. In practice each event uses a single `data:` line whose JSON matches **`ImportStreamSseData`** (see components).
-              examples:
-                success:
-                  summary: Typical success sequence (line breaks as in SSE)
-                  value: |
-                    data: {"status":"analyzing_question"}
+                description: UTF-8 Server-Sent Events body. Split on blank lines; each `data:` line carries one JSON value.
+              example: |
+                data: {"status":"running_step","data":{"index":0,"prompt":"extract-document-fields","model":"image"}}
 
-                    data: {"data":{"questionType":"MCQ-Single"}}
+                data: {"data":{"stepIndex":0,"output":"{\"fields\":[{\"label\":\"total\",\"value\":\"42.10\"}]}"}}
 
-                    data: {"status":"extracting_text"}
+                data: {"status":"running_step","data":{"index":1,"prompt":"format-export-row","model":"reasoning"}}
 
-                    data: {"status":"analyzing_text"}
+                data: {"data":{"stepIndex":1,"output":"<section><h2>Summary</h2><p>Total: 42.10</p></section>"}}
 
-                    data: {"status":"format_guard"}
-
-                    data: {"id":"upl_abc","createdAt":1745000001000,"updatedAt":1745000001500,"extractedText":"…","finalText":"<h2>Question</h2><p>…</p><h2>Answer</h2><ul><li>…</li></ul>","imageUrl":"https://minio.example.test/grim-development/uploads/upl_abc-a1b2c3d4.jpg","bucket":"grim-development","objectKey":"uploads/upl_abc-a1b2c3d4.jpg"}
-
-                pipelineError:
-                  summary: Terminal error after stream started
-                  value: |
-                    data: {"status":"analyzing_question"}
-
-                    data: {"error":{"code":"INTERNAL_ERROR","message":"vision failed"}}
-
-                unrecognizedQuestionType:
-                  summary: Classifier returned a value outside the supported set
-                  value: |
-                    data: {"status":"analyzing_question"}
-
-                    data: {"error":{"code":"INVALID_PROVIDER","message":"Unrecognized question type from model: foo"}}
-
-                earlyFailure:
-                  summary: Storage failed before any status line (optional)
-                  value: |
-                    data: {"error":{"code":"INTERNAL_ERROR","message":"upload failed"}}
+                data: {"id":"upl_abc","createdAt":1745000001000,"updatedAt":1745000001500,"extractedText":"{\"fields\":[{\"label\":\"total\",\"value\":\"42.10\"}]}","finalText":"<section><h2>Summary</h2><p>Total: 42.10</p></section>","imageUrl":"https://minio.example.test/document-images/uploads/upl_abc-a1b2c3d4.jpg","bucket":"document-images","objectKey":"uploads/upl_abc-a1b2c3d4.jpg"}
         "400":
           $ref: "#/components/responses/BadRequest"
         "413":
@@ -233,135 +148,100 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/prompts:
-    get:
-      tags: [prompts]
-      summary: Get LLM prompt templates
+  /api/v1/regenerate:
+    post:
+      tags: [regenerate]
+      summary: Regenerate existing export row
       description: |
-        Returns the current **`extractTextPrompt`** (extract stage instructions), **`analyzingTextPrompt`** (final-text system instructions), and **`formatGuardPrompt`** (format hardening system instructions).
+        Reruns the same prompt-configured workflow for an existing upload row without uploading image bytes again.
 
-        When the server sets env **`GRIM_PROMPT_ADMIN_SECRET`**, clients must send header **`X-Grim-Prompt-Secret`** with that exact value or the call returns **401**.
-      operationId: getPrompts
-      parameters:
-        - $ref: "#/components/parameters/GrimPromptSecret"
-      responses:
-        "200":
-          description: Current prompt bodies
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PromptBundle"
-              examples:
-                defaultsShape:
-                  summary: Typical response shape (content abbreviated)
-                  value:
-                    analyzeQuestionPrompt: "You are a question-type classifier…"
-                    mcqExtractTextPrompt: "You are Quizzer (MCQ extractor)…"
-                    mcqFinalTextPrompt: "You are Answerer (MCQ)…"
-                    taskExtractTextPrompt: "You are a vision OCR + task-extraction agent…"
-                    taskFinalTextPrompt: "You are a senior practical-exam engineer…"
-                    formatGuardPrompt: "You are an HTML format guard…"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/InternalError"
-    put:
-      tags: [prompts]
-      summary: Overwrite LLM prompt templates
-      description: |
-        Updates one or more of the six prompt files on the server (`analyze_question_prompt.txt` / `extract_text_prompt.txt` / `analyzing_text_prompt.txt` / `task_extract_text_prompt.txt` / `task_final_text_prompt.txt` / `format_guard_prompt.txt` under **`GRIM_PROMPTS_DIR`**, default `./prompts`).
-
-        **`POST /api/v1/import`** uses the updated strings for **subsequent** runs (same process; in-memory and files stay aligned).
-
-        **Two content types:**
-
-        1. **`multipart/form-data`** (recommended for files) — optional parts:
-           - **`analyze_question`** — UTF-8 text file (`.txt`, `text/*`, or `application/octet-stream`) **or** a plain text field with the same name. Image-only classifier prompt.
-           - **`extract_text`** — same rules as **`analyze_question`**. **MCQ** vision extractor.
-           - **`analyzing_text`** — same rules. **MCQ** final-answer (HTML) prompt.
-           - **`task_extract_text`** — same rules. **Task/CKA** vision extractor.
-           - **`task_final_text`** — same rules. **Task/CKA** final-answer (HTML) prompt.
-           - **`format_guard`** — same rules. HTML format hardening pass.
-           At least one of these six names must be present (file or non-empty text field). Each file is limited to **2 MB**.
-
-        2. **`application/json`** — optional keys **`analyzeQuestionPrompt`**, **`mcqExtractTextPrompt`**, **`mcqFinalTextPrompt`**, **`taskExtractTextPrompt`**, **`taskFinalTextPrompt`**, and **`formatGuardPrompt`** (camelCase). At least one key must be present. Whole JSON body is limited by the server parser (**2 MB**).
-
-        Same **`X-Grim-Prompt-Secret`** rule as **GET** when **`GRIM_PROMPT_ADMIN_SECRET`** is set.
-      operationId: putPrompts
-      parameters:
-        - $ref: "#/components/parameters/GrimPromptSecret"
+        The server extracts the upload id from the image object filename, loads the existing row, clears stale output fields, streams workflow step events, and updates the same row with the new normalized output.
+      operationId: postRegenerate
       requestBody:
         required: true
         content:
-          multipart/form-data:
-            schema:
-              type: object
-              description: At least one of the six fields must be supplied (as a file part or a non-empty text field).
-              properties:
-                analyze_question:
-                  type: string
-                  description: Question-type classifier prompt — UTF-8 `.txt` upload (`text/*` / `application/octet-stream`) or plain text field
-                  format: binary
-                extract_text:
-                  type: string
-                  description: MCQ vision-extract prompt — same rules as **`analyze_question`**
-                  format: binary
-                analyzing_text:
-                  type: string
-                  description: MCQ final-answer HTML prompt — same rules as **`analyze_question`**
-                  format: binary
-                task_extract_text:
-                  type: string
-                  description: Task/CKA vision-extract prompt — same rules as **`analyze_question`**
-                  format: binary
-                task_final_text:
-                  type: string
-                  description: Task/CKA final-answer HTML prompt — same rules as **`analyze_question`**
-                  format: binary
-                format_guard:
-                  type: string
-                  description: HTML format guard prompt — same rules as **`analyze_question`**
-                  format: binary
           application/json:
             schema:
-              $ref: "#/components/schemas/PromptUpdateRequest"
-            examples:
-              all:
-                summary: Replace all six prompts (JSON)
-                value:
-                  analyzeQuestionPrompt: "…"
-                  mcqExtractTextPrompt: "…"
-                  mcqFinalTextPrompt: "…"
-                  taskExtractTextPrompt: "…"
-                  taskFinalTextPrompt: "…"
-                  formatGuardPrompt: "…"
-              analyzeOnly:
-                summary: Replace classifier prompt only (JSON)
-                value:
-                  analyzeQuestionPrompt: "…"
+              $ref: "#/components/schemas/RegenerateRequest"
+            example:
+              imageUrl: https://minio.example.test/document-images/uploads/upl_abc-a1b2c3d4.jpg
+              text: "<section><h2>Summary</h2><p>Total: 42.10</p></section>"
       responses:
         "200":
-          description: Echo of the stored prompts after the update
+          description: SSE stream containing workflow step events and the terminal result
           content:
-            application/json:
+            text/event-stream:
               schema:
-                $ref: "#/components/schemas/PromptBundle"
+                type: string
+              example: |
+                data: {"status":"running_step","data":{"index":0,"prompt":"extract-document-fields","model":"image"}}
+
+                data: {"data":{"stepIndex":0,"output":"normalized fields"}}
+
+                data: {"id":"upl_abc","createdAt":1745000001000,"updatedAt":1745000002500,"extractedText":"normalized fields","finalText":"formatted result","imageUrl":"https://minio.example.test/document-images/uploads/upl_abc-a1b2c3d4.jpg","bucket":"document-images","objectKey":"uploads/upl_abc-a1b2c3d4.jpg"}
         "400":
           $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "413":
-          description: A multipart prompt file exceeded the 2 MB per-file limit
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/send-notification:
+    post:
+      tags: [send-notification]
+      summary: Send notification
+      description: |
+        Sends a silent FCM topic data message through the configured AirEye notifier. The payload is targeted at sender devices: `kind: capture_request`, `notificationType: silent`, `notification_type: silent`, `role: sender`, and `targetRole: sender`.
+
+        The response is returned after Firebase accepts the send request.
+      operationId: postSendNotification
+      responses:
+        "200":
+          description: Silent FCM sender notification accepted by Firebase
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorBody"
+                $ref: "#/components/schemas/SendNotificationResponse"
               example:
-                error:
-                  code: PROMPT_FILE_TOO_LARGE
-                  message: Each prompt file must be at most 2 MB
-        "415":
-          $ref: "#/components/responses/UnsupportedMediaType"
+                ok: true
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/export:
+    get:
+      tags: [export]
+      summary: Export rows
+      description: |
+        Returns paginated, newest-first export rows from Realtime Database.
+
+        Pending rows can include `imageUrl`; completed rows add `finalText`; failed rows add `errorMessage`.
+      operationId: getExport
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated export rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportListResponse"
+              example:
+                page: 1
+                limit: 20
+                is_next: false
+                data:
+                  - createdAt: 1745000002000
+                    updatedAt: 1745000002100
+                    imageUrl: https://minio.example.test/document-images/uploads/upl_pending-a1b2c3d4.jpg
+                  - createdAt: 1745000001000
+                    updatedAt: 1745000001500
+                    finalText: "<section><h2>Summary</h2><p>Total: 42.10</p></section>"
+                    imageUrl: https://minio.example.test/document-images/uploads/upl_abc-a1b2c3d4.jpg
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -370,7 +250,7 @@ paths:
       tags: [provider]
       summary: Get active LLM provider
       description: |
-        Returns the active LLM provider stored in Firebase Realtime Database at **`provider_state/current_provide`** plus providers dynamically discovered from LiteLLM model routes. A provider is available only when both **`<provider>-image`** and **`<provider>-reasoning`** exist.
+        Returns the active LLM provider stored in Firebase Realtime Database plus providers dynamically discovered from LiteLLM model routes. A provider is available only when both `<provider>-image` and `<provider>-reasoning` exist.
       operationId: getProvider
       responses:
         "200":
@@ -387,7 +267,7 @@ paths:
       tags: [provider]
       summary: Switch active LLM provider
       description: |
-        Stores the selected base provider in Firebase Realtime Database at **`provider_state/current_provide`**. Subsequent import pipeline LLM calls use **`<provider>-image`** for image extraction and **`<provider>-reasoning`** for reasoning/format guard.
+        Stores the selected base provider in Firebase Realtime Database at `provider_state/current_provide`. Subsequent workflow calls use `<provider>-image` for vision steps and `<provider>-reasoning` for reasoning steps.
       operationId: putProvider
       requestBody:
         required: true
@@ -407,152 +287,13 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/capture:
-    post:
-      tags: [capture]
-      summary: Send capture notification
-      description: |
-        Sends a silent FCM topic data message through the configured Grim notifier. The payload is targeted at sender devices: `kind: capture_request`, `notificationType: silent`, `notification_type: silent`, `role: sender`, and `targetRole: sender`.
-
-        This uses the same configured topic as the import success refresh signal: default **`grim_new_result`**, override with env **`GRIM_FCM_TOPIC`**.
-
-        Response is returned after Firebase accepts the send request.
-      operationId: postCapture
-      responses:
-        "200":
-          description: Silent FCM capture request accepted by Firebase
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CaptureResponse"
-              example:
-                ok: true
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /api/v1/export:
-    get:
-      tags: [export]
-      summary: Export uploads
-      description: |
-        Returns a **paginated**, **newest-first** list of rows from Realtime Database (`uploads/{id}`). Each row has `createdAt`. Pending rows can include `imageUrl` and `updatedAt` before text processing finishes. When the pipeline has finished successfully, `finalText`, `imageUrl`, and `updatedAt` appear. On failure, `errorMessage` and `updatedAt` appear.
-
-        **Query:** optional `page` (default **1**, min **1**), optional `limit` (default **20**, max **50**, page size).
-
-        **Response:** `data` holds up to `limit` rows for the requested `page`; `page` and `limit` echo the resolved query; `is_next` is **true** when at least one more row exists after this page in newest-first order.
-      operationId: getExport
-      parameters:
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/Limit"
-      responses:
-        "200":
-          description: Paginated export rows (`data`), newest-first by `createdAt`
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ExportListResponse"
-              examples:
-                listDefaultLimit:
-                  summary: Pending, completed, and error rows
-                  value:
-                    page: 1
-                    limit: 20
-                    is_next: false
-                    data:
-                      - createdAt: 1745000002000
-                      - createdAt: 1745000001000
-                        updatedAt: 1745000001500
-                        finalText: "Rewritten answer text."
-                        imageUrl: https://minio.example.test/grim-development/uploads/upl_abc-a1b2c3d4.jpg
-                      - createdAt: 1744999999000
-                        updatedAt: 1744999999500
-                        errorMessage: "provider failure"
-                pageWithMore:
-                  summary: First page with further rows available
-                  value:
-                    page: 1
-                    limit: 2
-                    is_next: true
-                    data:
-                      - createdAt: 1745000003000
-                      - createdAt: 1745000002000
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "503":
-          $ref: "#/components/responses/ServiceUnavailable"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /api/v1/regenerate:
-    post:
-      tags: [regenerate]
-      summary: Regenerate existing result (SSE stream)
-      description: |
-        Reruns the import LLM pipeline for an existing upload row without uploading image bytes again.
-
-        The client sends the currently displayed `imageUrl` and current result `text`.
-        The server extracts the Firebase upload key from the image object filename, for example `uploads/upl_abc-a1b2c3d4.jpg` maps to `upl_abc`, then loads that upload row before streaming starts.
-        The extract stage downloads the existing image bytes and reuses the same image extraction pipeline as `POST /api/v1/import`.
-
-        On success, the same upload row is updated in Realtime Database with new `extractedText`, guarded `finalText`, and `updatedAt`.
-        `createdAt`, `imageUrl`, `bucket`, and `objectKey` are preserved.
-
-        The SSE events use the same payload shapes as `POST /api/v1/import`: `analyzing_question` (with the intermediate `{"data":{"questionType":…}}` event), `extracting_text`, optional intermediate `data`, `analyzing_text`, `format_guard`, and a terminal `ImportStreamResult` or `ImportStreamTerminalError`. The Firebase row shape is unchanged.
-      operationId: postRegenerate
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RegenerateRequest"
-            examples:
-              retryExistingResult:
-                value:
-                  imageUrl: https://minio.example.test/grim-development/uploads/upl_abc-a1b2c3d4.jpg
-                  text: '{"questions":[{"type":"single","question":"Q1?","options":["A","B"],"answer":["B"]}]}'
-      responses:
-        "200":
-          description: SSE stream. Each event is one `data:` line containing JSON (`ImportStreamSseData`).
-          content:
-            text/event-stream:
-              schema:
-                type: string
-              examples:
-                success:
-                  value: |
-                    data: {"status":"analyzing_question"}
-
-                    data: {"data":{"questionType":"Task"}}
-
-                    data: {"status":"extracting_text"}
-
-                    data: {"status":"analyzing_text"}
-
-                    data: {"status":"format_guard"}
-
-                    data: {"id":"upl_abc","createdAt":1745000001000,"updatedAt":1745000002500,"extractedText":"…","finalText":"<h2>Task</h2><p>…</p><h2>Steps</h2><ol><li>…</li></ol><h2>Notes</h2><ul><li>…</li></ul>","imageUrl":"https://minio.example.test/grim-development/uploads/upl_abc-a1b2c3d4.jpg","bucket":"grim-development","objectKey":"uploads/upl_abc-a1b2c3d4.jpg"}
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
 components:
   parameters:
-    GrimPromptSecret:
-      name: X-Grim-Prompt-Secret
-      in: header
-      required: false
-      description: |
-        Required when **`GRIM_PROMPT_ADMIN_SECRET`** is configured on the server. Must match that env value exactly.
-      schema:
-        type: string
     Page:
       name: page
       in: query
       required: false
-      description: 1-based page index. **Omitted ⇒ 1.**
+      description: 1-based page index. Omitted means 1.
       schema:
         type: integer
         format: int32
@@ -563,7 +304,7 @@ components:
       name: limit
       in: query
       required: false
-      description: Page size (1–50). **Omitted ⇒ 20.**
+      description: Page size from 1 to 50. Omitted means 20.
       schema:
         type: integer
         format: int32
@@ -574,48 +315,17 @@ components:
 
   responses:
     BadRequest:
-      description: Missing/invalid input (HTTP 400)
+      description: Missing or invalid input
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorBody"
-          examples:
-            invalidLimit:
-              summary: Export — invalid limit
-              value:
-                error:
-                  code: INVALID_REQUEST
-                  message: limit must be a positive integer
-            invalidPage:
-              summary: Export — invalid page
-              value:
-                error:
-                  code: INVALID_REQUEST
-                  message: page must be a positive integer
-            multipartInvalid:
-              summary: Import — invalid multipart
-              value:
-                error:
-                  code: INVALID_REQUEST
-                  message: Invalid multipart request
-            promptsEmptyBody:
-              summary: Prompts — no fields to update
-              value:
-                error:
-                  code: INVALID_REQUEST
-                  message: >-
-                    Provide at least one prompt: JSON keys analyzeQuestionPrompt / mcqExtractTextPrompt /
-                    mcqFinalTextPrompt / taskExtractTextPrompt / taskFinalTextPrompt / formatGuardPrompt,
-                    or multipart fields analyze_question / extract_text / analyzing_text /
-                    task_extract_text / task_final_text / format_guard (file or text)
-            promptsNotObject:
-              summary: Prompts — body must be a JSON object
-              value:
-                error:
-                  code: INVALID_REQUEST
-                  message: Expected a JSON object body
+          example:
+            error:
+              code: INVALID_REQUEST
+              message: image is required
     PayloadTooLarge:
-      description: Image larger than 500 MB (HTTP 413)
+      description: Image larger than 500 MB
       content:
         application/json:
           schema:
@@ -625,26 +335,17 @@ components:
               code: IMAGE_TOO_LARGE
               message: image exceeds the 500 MB limit
     UnsupportedMediaType:
-      description: Rejected file type or MIME (HTTP 415)
+      description: Rejected file type or MIME
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorBody"
-          examples:
-            importNonImage:
-              summary: Import — not an image
-              value:
-                error:
-                  code: UNSUPPORTED_FILE_TYPE
-                  message: Only image uploads are supported
-            promptsNonText:
-              summary: Prompts — not a text-friendly type
-              value:
-                error:
-                  code: UNSUPPORTED_FILE_TYPE
-                  message: Prompt files must be text/plain, text/*, or .txt
+          example:
+            error:
+              code: UNSUPPORTED_FILE_TYPE
+              message: Only image uploads are supported
     InternalError:
-      description: Unexpected server error (HTTP 500)
+      description: Unexpected server error
       content:
         application/json:
           schema:
@@ -653,31 +354,18 @@ components:
             error:
               code: INTERNAL_ERROR
               message: Internal server error
-    Unauthorized:
-      description: Missing or wrong prompt admin secret (HTTP 401)
+    ServiceUnavailable:
+      description: Storage or upstream dependency unavailable
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorBody"
           example:
             error:
-              code: UNAUTHORIZED
-              message: Invalid or missing X-Grim-Prompt-Secret header
-    ServiceUnavailable:
-      description: Storage or upstream dependency unavailable (HTTP 503)
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ErrorBody"
-          examples:
-            storageOffline:
-              summary: Export — storage unavailable
-              value:
-                error:
-                  code: UNAVAILABLE
-                  message: storage offline
+              code: PROVIDER_NOT_CONFIGURED
+              message: Current provider is not configured
     NotFound:
-      description: Requested resource was not found (HTTP 404)
+      description: Requested resource was not found
       content:
         application/json:
           schema:
@@ -694,18 +382,12 @@ components:
       properties:
         ok:
           type: boolean
-          description: Whether this dependency responded successfully
-          example: true
         latencyMs:
           type: integer
           format: int32
           minimum: 0
-          description: Round-trip time for this check in milliseconds
-          example: 42
         error:
           type: string
-          description: Human-readable failure reason when `ok` is false
-          example: request timed out
 
     IntegrationHealthReport:
       type: object
@@ -714,11 +396,9 @@ components:
         version:
           type: string
           description: Backend application version from `backend/package.json`
-          example: 0.2.7
+          example: 0.2.8
         ok:
           type: boolean
-          description: True only when **firebase**, **llm**, and **s3** are all `ok`
-          example: true
         firebase:
           $ref: "#/components/schemas/DependencyCheck"
         llm:
@@ -726,22 +406,45 @@ components:
         s3:
           $ref: "#/components/schemas/DependencyCheck"
 
-    ImportStreamStatus:
+    ImportStreamRunningStep:
       type: object
-      required: [status]
+      required: [status, data]
       properties:
         status:
           type: string
-          enum: [analyzing_question, extracting_text, analyzing_text, format_guard]
+          enum: [running_step]
+        data:
+          type: object
+          required: [index, prompt, model]
+          properties:
+            index:
+              type: integer
+              minimum: 0
+            prompt:
+              type: string
+              description: Langfuse prompt name for this workflow step
+            model:
+              type: string
+              enum: [image, reasoning]
+
+    ImportStreamStepOutput:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [stepIndex, output]
+          properties:
+            stepIndex:
+              type: integer
+              minimum: 0
+            output:
+              type: string
 
     ImportStreamResult:
       type: object
       required: [id, createdAt, updatedAt]
-      description: |
-        Success terminal event; mirrors the Realtime Database row under `uploads/{id}`.
-        **`extractedText`** is the vision model’s reply for the chosen branch (default templates emit a JSON array for the MCQ branch and a JSON object matching the CKA extraction schema for the Task branch — this is an internal hand-off to the final-answer stage and is not user-rendered).
-        **`finalText`** is the format-guarded analyzing model reply as an **HTML fragment** (MCQ uses `<h2>Question</h2>` / `<h2>Options</h2>` / `<h2>Answer</h2>` / `<h2>Explanation</h2>`; Task uses `<h2>Task</h2>` / `<h2>Steps</h2>` / `<h2>Notes</h2>`).
-        Note: the classifier output (`questionType`) is sent only via the intermediate SSE `{"data":{"questionType":…}}` event and is **not** persisted to the Firebase row.
+      description: Terminal event that mirrors the Realtime Database row under `uploads/{id}`.
       properties:
         id:
           type: string
@@ -754,12 +457,10 @@ components:
           format: int64
         extractedText:
           type: string
-          description: Raw model output from the vision extract stage for the chosen branch (string; default templates emit JSON used internally as input to the final-answer prompt).
-          example: '[{"type":"single","question":"Q1?","instructions":"","requiredAnswerCount":1,"options":["A. Alpha","B. Beta"]}]'
+          description: First workflow step output
         finalText:
           type: string
-          description: HTML fragment after the format guard stage. MCQ branch returns `<h2>Question</h2>` / `<h2>Options</h2>` / `<h2>Answer</h2>` / `<h2>Explanation</h2>`; Task branch returns `<h2>Task</h2>` / `<h2>Steps</h2>` / `<h2>Notes</h2>`.
-          example: "<h2>Question</h2><p>What does kubectl get pods do?</p><h2>Options</h2><ul><li>A. Alpha</li><li>B. Beta</li></ul><h2>Answer</h2><ul><li>A. Alpha</li></ul><h2>Explanation</h2><p>It lists pods.</p>"
+          description: Final workflow step output; usually a formatted result
         imageUrl:
           type: string
           format: uri
@@ -771,7 +472,6 @@ components:
     ImportStreamTerminalError:
       type: object
       required: [error]
-      description: Terminal SSE payload on pipeline failure (same `error.code` / `error.message` shape as `ErrorBody`).
       properties:
         error:
           type: object
@@ -779,17 +479,15 @@ components:
           properties:
             code:
               type: string
-              description: Stable machine-readable code (aligned with `ErrorBody.error.code`)
             message:
               type: string
-              description: Human-readable detail (aligned with `ErrorBody.error.message`)
 
     ImportStreamSseData:
       oneOf:
-        - $ref: "#/components/schemas/ImportStreamStatus"
+        - $ref: "#/components/schemas/ImportStreamRunningStep"
+        - $ref: "#/components/schemas/ImportStreamStepOutput"
         - $ref: "#/components/schemas/ImportStreamResult"
         - $ref: "#/components/schemas/ImportStreamTerminalError"
-      description: JSON payload carried in one SSE `data:` line for `POST /api/v1/import` or `POST /api/v1/regenerate`.
 
     RegenerateRequest:
       type: object
@@ -798,24 +496,22 @@ components:
         imageUrl:
           type: string
           format: uri
-          description: Current image URL from the export row. The object filename must begin with the upload key, e.g. `upl_abc-1234.jpg`.
+          description: Current image URL from the export row. The object filename must begin with the upload key, such as `upl_abc-1234.jpg`.
         text:
           type: string
-          description: Current displayed result text; may be empty.
-          example: '{"questions":[{"type":"single","question":"Q1?","options":["A","B"],"answer":["B"]}]}'
+          description: Current displayed formatted result; may be empty.
 
-    CaptureResponse:
+    SendNotificationResponse:
       type: object
       required: [ok]
       properties:
         ok:
           type: boolean
           enum: [true]
-          description: True when Firebase accepted the FCM send request
 
     LlmProvider:
       type: string
-      description: Base provider name discovered from LiteLLM routes that have both `<provider>-image` and `<provider>-reasoning`, or from the configured fallback when LiteLLM model discovery is unavailable.
+      description: Base provider name discovered from LiteLLM routes that have both `<provider>-image` and `<provider>-reasoning`.
 
     ProviderState:
       type: object
@@ -841,7 +537,7 @@ components:
       properties:
         data:
           type: array
-          description: Newest-first by `createdAt`; length ≤ `limit`
+          description: Newest-first by `createdAt`
           items:
             $ref: "#/components/schemas/ExportListItem"
           default: []
@@ -849,16 +545,13 @@ components:
           type: integer
           format: int32
           minimum: 1
-          description: Echo of the resolved `page` query
         limit:
           type: integer
           format: int32
           minimum: 1
           maximum: 50
-          description: Echo of the resolved `limit` query (capped at 50)
         is_next:
           type: boolean
-          description: True when at least one more row exists after this page (newest-first order)
 
     ExportListItem:
       type: object
@@ -867,71 +560,16 @@ components:
         createdAt:
           type: integer
           format: int64
-          description: Unix ms when the upload was created
-          example: 1745000001000
         updatedAt:
           type: integer
           format: int64
-          description: Present when the pipeline finished (success or error)
-          example: 1745000001500
         finalText:
           type: string
-          description: Present when the pipeline completed successfully
-          example: "Rewritten answer text."
+          description: Present when the workflow completed successfully
         imageUrl:
           type: string
           format: uri
-          description: Present when the pipeline completed successfully
-          example: https://minio.example.test/grim-development/uploads/upl_abc-a1b2c3d4.jpg
         errorMessage:
-          type: string
-          description: Present when the pipeline failed
-          example: "Processing failed"
-
-    PromptBundle:
-      type: object
-      required:
-        - analyzeQuestionPrompt
-        - mcqExtractTextPrompt
-        - mcqFinalTextPrompt
-        - taskExtractTextPrompt
-        - taskFinalTextPrompt
-        - formatGuardPrompt
-      properties:
-        analyzeQuestionPrompt:
-          type: string
-          description: Image-only classifier instructions. Must elicit exactly one of `Task`, `MCQ-Single`, or `MCQ-Multiple` as plain text.
-        mcqExtractTextPrompt:
-          type: string
-          description: MCQ vision-extract instructions. Produces the JSON used as input to the MCQ final-answer prompt.
-        mcqFinalTextPrompt:
-          type: string
-          description: MCQ final-answer system instructions. Produces an HTML fragment (`<h2>Question</h2>` / `<h2>Options</h2>` / `<h2>Answer</h2>` / `<h2>Explanation</h2>`).
-        taskExtractTextPrompt:
-          type: string
-          description: Task/CKA vision-extract instructions. Produces the JSON used as input to the Task final-answer prompt.
-        taskFinalTextPrompt:
-          type: string
-          description: Task/CKA final-answer system instructions. Produces an HTML fragment (`<h2>Task</h2>` / `<h2>Steps</h2>` / `<h2>Notes</h2>`).
-        formatGuardPrompt:
-          type: string
-          description: HTML format guard system instructions for the post-analysis hardening pass.
-
-    PromptUpdateRequest:
-      type: object
-      description: At least one property must be present.
-      properties:
-        analyzeQuestionPrompt:
-          type: string
-        mcqExtractTextPrompt:
-          type: string
-        mcqFinalTextPrompt:
-          type: string
-        taskExtractTextPrompt:
-          type: string
-        taskFinalTextPrompt:
-          type: string
-        formatGuardPrompt:
           type: string
 
     ErrorBody:
@@ -944,9 +582,7 @@ components:
           properties:
             code:
               type: string
-              description: Stable machine-readable code
               example: INVALID_REQUEST
             message:
               type: string
-              description: Human-readable detail
               example: image is required

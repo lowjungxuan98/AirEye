@@ -1,4 +1,4 @@
-import type { GrimUploadRow } from "./import.model";
+import type { AirEyeUploadRow } from "./import.model";
 
 export type ExportListItem = {
   createdAt: number;
@@ -8,7 +8,7 @@ export type ExportListItem = {
   errorMessage?: string;
 };
 
-export function toPublicExportListItem(row: GrimUploadRow): ExportListItem {
+export function toPublicExportListItem(row: AirEyeUploadRow): ExportListItem {
   if (row.errorMessage) {
     return {
       createdAt: row.createdAt,

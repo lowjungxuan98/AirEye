@@ -1,6 +1,6 @@
-## Backend (TypeScript)
+## AirEye Backend (TypeScript)
 
-Express backend for Grim's async import/export pipeline.
+Express backend for the AirEye prompt-driven document image workflow: capture a document image, run a prompt-configured workflow, and return normalized output.
 
 ### Setup
 
@@ -19,11 +19,11 @@ Server runs on `PORT` (default `3001`).
 npm test
 ```
 
-Vitest loads **`backend/.env` first** (`test/setup-env.ts`). **Configure `.env` before you run tests** (same steps as [Setup](#setup): copy `.env.example` to `.env` and fill every required value). Several suites exercise S3 (MinIO-compatible), Firebase Admin (Realtime Database and FCM topic messaging), and the configured OpenAI-compatible LLM provider against your real credentials; without a complete `.env`, those tests will fail with authentication or network errors from the vendors. **Library integration tests** under **`test/unit-test/libs/`** do not mock storage or the database—they create real rows/uploads and **must delete that test data** (see **`docs/code-rules/unit-test-rules.md`**).
+Vitest loads `backend/.env` first (`test/setup-env.ts`). Configure `.env` before running tests: several suites exercise S3-compatible storage, Firebase Admin, FCM topic messaging, and configured LiteLLM/Langfuse integrations against real credentials. Without a complete `.env`, those tests can fail with vendor authentication or network errors.
 
 Required environment variables:
 
-- `S3_ENDPOINT` — production MinIO reverse-proxy endpoint is `https://lowjungxuan.dpdns.org/minIO`
+- `S3_ENDPOINT`
 - `S3_ACCESS_KEY_ID`
 - `S3_SECRET_ACCESS_KEY`
 - `S3_REGION`
@@ -36,72 +36,58 @@ Required environment variables:
 - `FIREBASE_DATABASE_URL`
 - `LITELLM_BASE_URL`
 - `LITELLM_API_KEY`
+- `LANGFUSE_BASE_URL`
+- `LANGFUSE_PUBLIC_KEY`
+- `LANGFUSE_SECRET_KEY`
 
 Optional:
 
-- `GRIM_FCM_TOPIC` — FCM topic for capture/import signals (default `grim_new_result`)
-- `GRIM_PROMPTS_DIR` — directory for `extract_text_prompt.txt`, `analyzing_text_prompt.txt`, and `format_guard_prompt.txt`
-- `GRIM_PROMPT_ADMIN_SECRET` — requires `X-Grim-Prompt-Secret` on prompt reads/writes when set
+- `AIREYE_FCM_TOPIC` - FCM topic for sender capture requests and receiver import refresh signals
+- `LANGFUSE_LABEL` - prompt label used for workflow prompts, default `production`
+- `TOOL_REASONING_PROMPT_NAME` - Langfuse prompt that returns workflow steps, default `tool-reasoning`
+- `SCALAR_DOCS_URL` - optional published docs URL logged at startup
+
+The FCM topic resolves from `AIREYE_FCM_TOPIC`, then falls back to the AirEye default `aireye_new_result`.
 
 ### API
 
-- `GET /docs` — Scalar API Reference UI (loads `openapi.yaml` from this server)
-- `GET /openapi.yaml` — OpenAPI 3 spec (health, import, capture, export, prompts, provider)
-- `GET /api/v1/health`
-  - integration checks (Firebase Realtime Database, extract/final LLM configs aggregated under `llm`, S3); **200** or **503**; JSON matches OpenAPI schema `IntegrationHealthReport` with top-level keys `ok`, `firebase`, `llm`, and `s3`
-  - production public URL: `https://lowjungxuan.dpdns.org/backend/api/v1/health`; `GET /health` remains available as a legacy local alias
-- `POST /api/v1/capture`
-  - receiver-triggered capture request
-  - sends a silent FCM topic data message to sender devices: `kind: capture_request`, `notificationType: silent`, `role: sender`
-  - returns `{ "ok": true }` after Firebase accepts the send request
-- `POST /api/v1/import`
-  - accepts `multipart/form-data` with exactly one file part named **`image`** (e.g. `<input name="image" type="file">`)
-  - **curl:** use **`-F` / `--form`** and **do not** set `Content-Type` yourself — curl must add `boundary=…`. Use one part type, e.g. **`-F 'image=@photo.jpg;type=image/jpeg'`** (not a comma-separated list of MIME types)
-  - **Scalar:** if “Try it” fails, remove a manual **`Content-Type: multipart/form-data`** header so the UI can send a proper boundary
-  - stores the image in S3/MinIO with `ContentType` metadata and a MIME-derived key extension such as `.jpg`
-  - returns **200** `text/event-stream` (SSE): status events, then terminal JSON (success row or `error`)
-  - writes the pending row to Realtime Database, sends a silent receiver FCM refresh flag, and on success sends the same refresh flag again after the final row update: `kind: export_refresh`
-- `GET /api/v1/export`
-  - optional `page` (default 1), optional `limit` (default 20, max 50)
-  - returns `200` paginated JSON (`data`, `page`, `limit`, `is_next`); newest first by `createdAt`; pending rows can include `imageUrl`, completed rows add `finalText`, and failed rows add `errorMessage`
-- `GET /api/v1/prompts`, `PUT /api/v1/prompts` — read or overwrite extract, analyzing, and format guard prompt templates (`backend/prompts/*.txt` by default; optional `GRIM_PROMPTS_DIR`, `GRIM_PROMPT_ADMIN_SECRET`). **PUT** accepts **`multipart/form-data`** with file or text fields **`extract_text`**, **`analyzing_text`**, and **`format_guard`**, or **`application/json`** with **`extractTextPrompt`**, **`analyzingTextPrompt`**, and **`formatGuardPrompt`**.
-- `GET /api/v1/provider`, `PUT /api/v1/provider` — read or switch the active LLM provider. State is stored in Realtime Database at `provider_state/current_provide`; available values are discovered from LiteLLM routes that expose both `<provider>-image` and `<provider>-reasoning`.
+- `GET /docs` - Scalar API Reference UI
+- `GET /openapi.yaml` - OpenAPI 3 spec
+- `GET /api/v1/health` - Firebase, LiteLLM, and S3 readiness
+- `POST /api/v1/send-notification` - sends a silent sender capture request through FCM
+- `POST /api/v1/import` - accepts one multipart `image` file, stores it, runs the prompt-configured workflow, and streams SSE events until a terminal export row or error
+- `POST /api/v1/regenerate` - reruns the workflow for an existing image URL and export row
+- `GET /api/v1/export` - returns paginated newest-first export rows
+- `GET /api/v1/provider`, `PUT /api/v1/provider` - reads or switches the active LiteLLM provider
+
+Workflow prompts are managed in Langfuse, not local prompt files or HTTP prompt routes. The tool-reasoning prompt returns ordered workflow steps. Each workflow step references a Langfuse prompt and chooses either a vision step or reasoning step.
 
 ### Docs
 
-Reference docs used to design the current implementation and future follow-up work:
+- `docs/workflow.md` - capture a document image -> run a prompt-configured workflow -> return normalized output
+- `docs/specification.md` - API summary
+- `docs/dependencies/` - vendor integration notes
 
-- **`docs/dependencies/`** — vendor integration notes (S3/MinIO, OpenAI-compatible LLM providers via the OpenAI SDK, Scalar, Firebase); start at [`docs/dependencies/README.md`](../docs/dependencies/README.md).
-- Repository **`docs/`** (top level): `workflow.md` (target end-to-end backend flow), `specification.md`, `testing-plan.md`, plus `code-rules/`, `instructions/`, `design/`.
-
-The v1 backend wires S3 (MinIO-compatible), Firebase Admin / Realtime Database / FCM, and one OpenAI-compatible adapter class into **`backend/src/`**. LLM calls go through LiteLLM using `<provider>-image` for extraction and `<provider>-reasoning` for final/guard stages. Optional **`SCALAR_DOCS_URL`** only logs a link if you publish docs elsewhere; local Scalar UI is always **`/docs`** when the server runs.
+The v1 backend wires S3-compatible storage, Firebase Admin / Realtime Database / FCM, Langfuse, and LiteLLM into `backend/src/`. LiteLLM uses `<provider>-image` for vision steps and `<provider>-reasoning` for reasoning steps.
 
 ### GitHub Actions / GHCR
 
-This repo includes **`.github/workflows/publish-backend-image.yml`** to build the **`backend/`** Docker image and publish it to GitHub Packages / GitHub Container Registry.
+This repo includes `.github/workflows/publish-backend-image.yml` to build the `backend/` Docker image and publish it to GitHub Packages / GitHub Container Registry.
 
 Published image:
 
 - `ghcr.io/<owner>/<repo>/backend`
 
-Version tags:
-
-- Pushing to `main` publishes `latest`, `main`, and `sha-<commit>`.
-- Pushing a Git tag like `v1.2.3` publishes `1.2.3`, `1.2`, and `sha-<commit>`.
-- Manual `workflow_dispatch` builds are supported from GitHub Actions.
-
-The workflow uses the built-in `GITHUB_TOKEN`; no external deployment token is required to publish the image. Runtime configuration still comes from the environment where the container is deployed.
-
 Local image build:
 
 ```bash
 cd backend
-docker build -t grim-backend:local .
-docker run --rm -p 3001:3001 --env-file .env grim-backend:local
+docker build -t aireye-backend:local .
+docker run --rm -p 3001:3001 --env-file .env aireye-backend:local
 ```
 
 ---
 
-**Updated:** 2026-04-25
-**Applies to:** grim backend (`backend/package.json` -> version `0.2.7`)
-**Doc version:** 8
+**Updated:** 2026-05-23
+**Applies to:** AirEye backend (`backend/package.json` -> version `0.2.8`)
+**Doc version:** 9

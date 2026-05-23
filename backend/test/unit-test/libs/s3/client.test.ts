@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
-import { createS3Client, ensureBucketExists, S3ImageStore } from "../../../../src/libs/s3/s3.util";
+import { createS3Client, ensureBucketExists, S3ImageStore } from "../../../../src/libs/s3/client";
 import { loadServerEnv, resolveS3Bucket } from "../../../../src/libs/configs/env.config";
 
 describe("S3 util (MinIO)", () => {

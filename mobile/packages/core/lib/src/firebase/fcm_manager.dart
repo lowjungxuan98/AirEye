@@ -7,27 +7,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'init.dart';
 
-const _tag = 'GrimFcm';
+const _tag = 'AirEyeFcm';
 
-const _channel = AndroidNotificationChannel('grim_results', 'GRIM Results', description: 'Notifications for new GRIM results', importance: Importance.high);
+const _channel = AndroidNotificationChannel('aireye_results', 'AirEye Results', description: 'Notifications for new AirEye results', importance: Importance.high);
 
 final _localNotifications = FlutterLocalNotificationsPlugin();
 final _foregroundMessages = StreamController<RemoteMessage>.broadcast();
 final _openedAppMessages = StreamController<RemoteMessage>.broadcast();
 
-typedef GrimFcmForegroundHandler = Future<void> Function(RemoteMessage message);
-typedef GrimFcmOpenedAppHandler = Future<void> Function(RemoteMessage message);
-typedef GrimFcmTokenHandler = Future<void> Function(String? token);
+typedef AirEyeFcmForegroundHandler = Future<void> Function(RemoteMessage message);
+typedef AirEyeFcmOpenedAppHandler = Future<void> Function(RemoteMessage message);
+typedef AirEyeFcmTokenHandler = Future<void> Function(String? token);
 
 /// Must be called before [runApp] — registers the background isolate entry-point.
 @pragma('vm:entry-point')
-Future<void> grimFirebaseMessagingBackgroundHandler(RemoteMessage message) async {
+Future<void> airEyeFirebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await initializeFirebase();
   dev.log('background message: ${message.messageId}', name: _tag);
 }
 
-class GrimFcmManager {
-  GrimFcmManager._();
+class AirEyeFcmManager {
+  AirEyeFcmManager._();
 
   static bool _initialized = false;
 
@@ -46,10 +46,10 @@ class GrimFcmManager {
   }
 
   static Future<void> init({
-    GrimFcmForegroundHandler? onForegroundMessage,
-    GrimFcmOpenedAppHandler? onMessageOpenedApp,
-    GrimFcmTokenHandler? onToken,
-    List<String> topics = const ['grim_new_result'],
+    AirEyeFcmForegroundHandler? onForegroundMessage,
+    AirEyeFcmOpenedAppHandler? onMessageOpenedApp,
+    AirEyeFcmTokenHandler? onToken,
+    List<String> topics = const ['aireye_new_result'],
   }) async {
     if (_initialized) return;
     _initialized = true;

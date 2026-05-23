@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'dart:io' show Platform;
 import '../env.dart';
 
-class GrimBaseUrl {
+class AirEyeBaseUrl {
   static const _androidEmulatorBaseUrl = 'http://10.0.2.2:3001';
   static const _iosSimulatorBaseUrl = 'http://127.0.0.1:3001';
 
@@ -14,8 +14,8 @@ class GrimBaseUrl {
     if (kReleaseMode) {
       if (baseUrl.isEmpty) {
         throw StateError(
-          'Missing GRIM_API_BASE_URL. In release builds you must pass '
-          '--dart-define=GRIM_API_BASE_URL=http(s)://host:port/path',
+          'Missing AIREYE_API_BASE_URL. In release builds you must pass '
+          '--dart-define=AIREYE_API_BASE_URL=http(s)://host:port/path',
         );
       }
       return baseUrl;
@@ -27,7 +27,7 @@ class GrimBaseUrl {
       final info = await deviceInfo.androidInfo;
       if (info.isPhysicalDevice) {
         if (ip.isEmpty) {
-          throw StateError('Missing GRIM_API_IP_ADDRESS for debug physical device.');
+          throw StateError('Missing AIREYE_API_IP_ADDRESS for debug physical device.');
         }
         return ip;
       }
@@ -38,7 +38,7 @@ class GrimBaseUrl {
       final info = await deviceInfo.iosInfo;
       if (info.isPhysicalDevice) {
         if (ip.isEmpty) {
-          throw StateError('Missing GRIM_API_IP_ADDRESS for debug physical device.');
+          throw StateError('Missing AIREYE_API_IP_ADDRESS for debug physical device.');
         }
         return ip;
       }

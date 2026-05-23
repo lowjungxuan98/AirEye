@@ -2,7 +2,7 @@
   "name": "backend",
   "version": "0.2.8",
   "private": true,
-  "description": "Grim backend (Express + TypeScript)",
+  "description": "AirEye backend (Express + TypeScript)",
   "engines": {
     "node": ">=22"
   },
@@ -21,6 +21,8 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1041.0",
     "@aws-sdk/s3-request-presigner": "^3.1041.0",
+    "@langfuse/client": "latest",
+    "@langfuse/openai": "latest",
     "@scalar/express-api-reference": "^0.9.13",
     "axios": "^1.16.0",
     "dotenv": "^17.4.2",

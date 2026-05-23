@@ -4,26 +4,19 @@ export const API_ERROR_MESSAGES = {
   internalServerError: "Internal server error",
   invalidMultipartRequest: "Invalid multipart request",
   imageTooLarge: "image exceeds the 500 MB limit",
-  promptFileTooLarge: "Each prompt file must be at most 2 MB",
   imageRequired: "image is required",
   importNoStreamOutput: "Import produced no stream output",
   regenerateNoStreamOutput: "Regenerate produced no stream output",
   expectedJsonObjectBody: "Expected a JSON object body",
-  expectedJsonObjectBodyOrMultipart: "Expected a JSON object body or multipart/form-data",
   textMustBeString: "text must be a string",
   imageUrlMissingUploadObjectName: "imageUrl must contain an upload object name",
   uploadNotFound: "upload not found",
   uploadFailed: "upload failed",
   invalidProvider:
     "Expected provider to be one of the LiteLLM providers with both -image and -reasoning routes",
-  unrecognizedQuestionType: "Unrecognized question type from model",
   unsupportedImageUpload: "Only image uploads are supported",
-  unsupportedPromptUpload: "Prompt files must be text/plain, text/*, or .txt",
-  invalidPromptSecret: "Invalid or missing X-Grim-Prompt-Secret header",
   invalidPage: "page must be a positive integer",
-  invalidLimit: "limit must be a positive integer",
-  missingPromptUpdate:
-    "Provide at least one prompt: JSON keys analyzeQuestionPrompt / mcqExtractTextPrompt / mcqFinalTextPrompt / taskExtractTextPrompt / taskFinalTextPrompt / formatGuardPrompt, or multipart fields analyze_question / extract_text / analyzing_text / task_extract_text / task_final_text / format_guard (file or text)"
+  invalidLimit: "limit must be a positive integer"
 } as const;
 
 export const API_ERROR_CODES = {
@@ -32,7 +25,6 @@ export const API_ERROR_CODES = {
   notFound: "NOT_FOUND",
   unsupportedFileType: "UNSUPPORTED_FILE_TYPE",
   imageTooLarge: "IMAGE_TOO_LARGE",
-  promptFileTooLarge: "PROMPT_FILE_TOO_LARGE",
   invalidProvider: "INVALID_PROVIDER",
   providerNotConfigured: "PROVIDER_NOT_CONFIGURED",
   unauthorized: "UNAUTHORIZED"
@@ -72,48 +64,8 @@ export function imageTooLarge(): ApiError {
   return new ApiError(413, API_ERROR_CODES.imageTooLarge, API_ERROR_MESSAGES.imageTooLarge);
 }
 
-export function promptFileTooLarge(): ApiError {
-  return new ApiError(
-    413,
-    API_ERROR_CODES.promptFileTooLarge,
-    API_ERROR_MESSAGES.promptFileTooLarge
-  );
-}
-
 export function invalidProvider(message: string = API_ERROR_MESSAGES.invalidProvider): ApiError {
   return new ApiError(400, API_ERROR_CODES.invalidProvider, message);
-}
-
-export type UnrecognizedQuestionTypeContext = {
-  provider: string;
-  model: string;
-  raw: string;
-  stripped: string;
-  finishReason: string | null;
-  reasoning: string | null;
-};
-
-const REASONING_TAIL_PREVIEW_CHARS = 200;
-
-/**
- * Question-type classifier returned a value outside the supported set
- * (`Task` / `MCQ-Single` / `MCQ-Multiple`). Carries enough provider / model /
- * finish-reason / reasoning context for the operator to diagnose without
- * re-running the request.
- */
-export function unrecognizedQuestionType(context: UnrecognizedQuestionTypeContext): ApiError {
-  const parts = [
-    `${API_ERROR_MESSAGES.unrecognizedQuestionType}.`,
-    `provider=${context.provider}`,
-    `model=${context.model}`,
-    `finish_reason=${context.finishReason ?? "null"}`,
-    `raw=${JSON.stringify(context.raw)}`,
-    `stripped=${JSON.stringify(context.stripped)}`
-  ];
-  if (context.reasoning) {
-    parts.push(`reasoning_tail=${JSON.stringify(context.reasoning.slice(-REASONING_TAIL_PREVIEW_CHARS))}`);
-  }
-  return new ApiError(400, API_ERROR_CODES.invalidProvider, parts.join(" "));
 }
 
 export function providerNotConfigured(provider: string): ApiError {
@@ -136,22 +88,11 @@ export function fieldMustBeNonEmptyString(field: string): ApiError {
   return invalidRequest(`${field} must be a non-empty string`);
 }
 
-export function promptFieldMustBeString(field: string): ApiError {
-  return invalidRequest(`${field} must be a string`);
-}
-
 export function mapImageMulterError(error: multer.MulterError): ApiError {
   if (error.code === "LIMIT_FILE_SIZE") {
     return imageTooLarge();
   }
   return invalidRequest(API_ERROR_MESSAGES.invalidMultipartRequest);
-}
-
-export function mapPromptMulterError(error: multer.MulterError): ApiError {
-  if (error.code === "LIMIT_FILE_SIZE") {
-    return promptFileTooLarge();
-  }
-  return invalidRequest(error.message);
 }
 
 export function mapRequestError(error: unknown): ApiError {

@@ -4,8 +4,8 @@ import UIKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
-  private static let cameraSoundChannelName = "grim/camera_sound"
-  private static let imageClipboardChannelName = "grim/image_clipboard"
+  private static let cameraSoundChannelName = "aireye/camera_sound"
+  private static let imageClipboardChannelName = "aireye/image_clipboard"
 
   override func application(
     _ application: UIApplication,
@@ -17,7 +17,7 @@ import UIKit
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
 
-    let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "GrimCameraSoundPlugin")
+    let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AirEyeCameraSoundPlugin")
     guard let messenger = registrar?.messenger() else { return }
 
     let cameraSoundChannel = FlutterMethodChannel(

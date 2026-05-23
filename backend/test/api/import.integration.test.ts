@@ -81,20 +81,22 @@ describe("POST /api/v1/import (HTTP integration)", () => {
       .expect(200);
 
     const events = parseSseDataLines(res.text);
-    expect(events[0]).toEqual({ status: "analyzing_question" });
-    expect(events[1]).toEqual({ data: { questionType: "MCQ-Single" } });
-    expect(events[2]).toEqual({ status: "extracting_text" });
-    expect(events[3]).toEqual({ data: { extractedText: "extracted" } });
-    expect(events[4]).toEqual({ status: "analyzing_text" });
-    expect(events[5]).toEqual({ data: { finalText: "final:extracted" } });
-    expect(events[6]).toEqual({ status: "format_guard" });
-    expect(events[7]).toEqual({ data: { guardedFinalText: "guarded:final:extracted" } });
-    expect(events[8]).toMatchObject({
+    expect(events[0]).toEqual({
+      status: "running_step",
+      data: { index: 0, prompt: "vision-prompt", model: "image" }
+    });
+    expect(events[1]).toEqual({ data: { stepIndex: 0, output: "extracted" } });
+    expect(events[2]).toEqual({
+      status: "running_step",
+      data: { index: 1, prompt: "reasoning-prompt", model: "reasoning" }
+    });
+    expect(events[3]).toEqual({ data: { stepIndex: 1, output: "reasoned:extracted" } });
+    expect(events[4]).toMatchObject({
       id: "integration_upload_id",
       createdAt: 4242,
       updatedAt: 4242,
       extractedText: "extracted",
-      finalText: "guarded:final:extracted",
+      finalText: "reasoned:extracted",
       bucket: "testing",
       objectKey: expect.any(String),
       imageUrl: expect.any(String)
@@ -105,7 +107,7 @@ describe("POST /api/v1/import (HTTP integration)", () => {
       id: "integration_upload_id",
       createdAt: 4242,
       updatedAt: 4242,
-      finalText: "guarded:final:extracted"
+      finalText: "reasoned:extracted"
     });
   });
 

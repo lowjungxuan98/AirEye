@@ -1,7 +1,11 @@
 import { Buffer } from "node:buffer";
 import process from "node:process";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadServerEnv, parseLlmProvider } from "../../../../src/libs/configs/env.config";
+import {
+  loadServerEnv,
+  parseLlmProvider,
+  resolveFcmBroadcastTopic
+} from "../../../../src/libs/configs/env.config";
 
 const requiredBase = {
   S3_ENDPOINT: "http://127.0.0.1:9000",
@@ -9,14 +13,17 @@ const requiredBase = {
   S3_SECRET_ACCESS_KEY: "test",
   S3_REGION: "us-east-1",
   S3_PRESIGN_TTL_SECONDS: "604800",
-  S3_BUCKET_DEVELOPMENT: "grim-development",
-  S3_BUCKET_PRODUCTION: "grim-production",
+  S3_BUCKET_DEVELOPMENT: "aireye-development",
+  S3_BUCKET_PRODUCTION: "aireye-production",
   S3_BUCKET_TESTING: "testing",
   GOOGLE_APPLICATION_CREDENTIALS: "/path/cred.json",
   FIREBASE_PROJECT_ID: "proj",
   FIREBASE_DATABASE_URL: "https://proj.firebaseio.com",
   LITELLM_BASE_URL: "https://litellm.example.test/v1",
-  LITELLM_API_KEY: "sk-test"
+  LITELLM_API_KEY: "sk-test",
+  LANGFUSE_BASE_URL: "https://langfuse.example.test",
+  LANGFUSE_PUBLIC_KEY: "pk-test",
+  LANGFUSE_SECRET_KEY: "sk-langfuse-test"
 } as const;
 
 describe("loadServerEnv", () => {
@@ -59,6 +66,16 @@ describe("loadServerEnv", () => {
     expect(() => loadServerEnv()).toThrow(/Missing required env var LITELLM_BASE_URL/);
   });
 
+  it.each([
+    "LANGFUSE_BASE_URL",
+    "LANGFUSE_PUBLIC_KEY",
+    "LANGFUSE_SECRET_KEY"
+  ] as const)("throws when %s is missing", (name) => {
+    vi.stubEnv(name, "");
+    delete process.env[name];
+    expect(() => loadServerEnv()).toThrow(new RegExp(`Missing required env var ${name}`));
+  });
+
   it("accepts Firebase credentials from base64 when the local file path is unset", () => {
     vi.stubEnv("GOOGLE_APPLICATION_CREDENTIALS", "");
     delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
@@ -87,22 +104,39 @@ describe("loadServerEnv", () => {
     expect(() => loadServerEnv()).toThrow(/Missing Firebase credentials env/);
   });
 
-  it("loads LiteLLM base URL and API key from env", () => {
+  it("loads LiteLLM and Langfuse settings from env", () => {
     const env = loadServerEnv();
     expect(env.LLM_BASE_URL).toBe("https://litellm.example.test/v1");
     expect(env.LLM_API_KEY).toBe("sk-test");
+    expect(env.LANGFUSE_BASE_URL).toBe("https://langfuse.example.test");
+    expect(env.LANGFUSE_PUBLIC_KEY).toBe("pk-test");
+    expect(env.LANGFUSE_SECRET_KEY).toBe("sk-langfuse-test");
   });
 
   it("returns optional vars when set and undefined when blank", () => {
     vi.stubEnv("SCALAR_DOCS_URL", " https://docs.example ");
-    vi.stubEnv("GRIM_FCM_TOPIC", "");
-    delete process.env.GRIM_FCM_TOPIC;
-    vi.stubEnv("GRIM_PROMPTS_DIR", "/tmp/prompts");
+    vi.stubEnv("AIREYE_FCM_TOPIC", "");
+    delete process.env.AIREYE_FCM_TOPIC;
+    vi.stubEnv("LANGFUSE_LABEL", "staging");
+    vi.stubEnv("TOOL_REASONING_PROMPT_NAME", "tool-reasoning-v2");
     const env = loadServerEnv();
     expect(env.SCALAR_DOCS_URL).toBe("https://docs.example");
-    expect(env.GRIM_FCM_TOPIC).toBeUndefined();
-    expect(env.GRIM_PROMPTS_DIR).toBe("/tmp/prompts");
-    expect(env.GRIM_PROMPT_ADMIN_SECRET).toBeUndefined();
+    expect(env.AIREYE_FCM_TOPIC).toBeUndefined();
+    expect(env.LANGFUSE_LABEL).toBe("staging");
+    expect(env.TOOL_REASONING_PROMPT_NAME).toBe("tool-reasoning-v2");
+  });
+
+  it("uses only the AirEye FCM topic before falling back to the AirEye default", () => {
+    vi.stubEnv("AIREYE_FCM_TOPIC", " aireye_topic ");
+    let env = loadServerEnv();
+    expect(env.AIREYE_FCM_TOPIC).toBe("aireye_topic");
+    expect(resolveFcmBroadcastTopic(env, "aireye_new_result")).toBe("aireye_topic");
+
+    vi.stubEnv("AIREYE_FCM_TOPIC", "");
+    delete process.env.AIREYE_FCM_TOPIC;
+    env = loadServerEnv();
+    expect(env.AIREYE_FCM_TOPIC).toBeUndefined();
+    expect(resolveFcmBroadcastTopic(env, "aireye_new_result")).toBe("aireye_new_result");
   });
 });
 

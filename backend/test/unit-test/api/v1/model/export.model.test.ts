@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { toPublicExportListItem } from "../../../../../src/api/v1/model/export.model";
-import type { GrimUploadRow } from "../../../../../src/api/v1/model/import.model";
+import type { AirEyeUploadRow } from "../../../../../src/api/v1/model/import.model";
 
 describe("toPublicExportListItem", () => {
   it("returns base fields when row has no error and no completed image", () => {
-    const row: GrimUploadRow = {
+    const row: AirEyeUploadRow = {
       id: "upl_1",
       createdAt: 1,
       updatedAt: 2
@@ -13,7 +13,7 @@ describe("toPublicExportListItem", () => {
   });
 
   it("includes error path when errorMessage is set", () => {
-    const row: GrimUploadRow = {
+    const row: AirEyeUploadRow = {
       id: "upl_1",
       createdAt: 1,
       updatedAt: 2,
@@ -27,7 +27,7 @@ describe("toPublicExportListItem", () => {
   });
 
   it("includes finalText and imageUrl when both are defined", () => {
-    const row: GrimUploadRow = {
+    const row: AirEyeUploadRow = {
       id: "upl_1",
       createdAt: 1,
       updatedAt: 2,
@@ -43,7 +43,7 @@ describe("toPublicExportListItem", () => {
   });
 
   it("includes imageUrl for pending rows before finalText is ready", () => {
-    const row: GrimUploadRow = {
+    const row: AirEyeUploadRow = {
       id: "upl_1",
       createdAt: 1,
       updatedAt: 2,

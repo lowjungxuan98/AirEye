@@ -6,16 +6,16 @@ import '../model/model.dart';
 import 'base_url.dart';
 import 'client.dart';
 
-class GrimEndpoints {
+class AirEyeEndpoints {
   static const String _healthPath = '/api/v1/health';
   static const String _importPath = '/api/v1/import';
   static const String _regeneratePath = '/api/v1/regenerate';
-  static const String _capturePath = '/api/v1/capture';
+  static const String _sendNotificationPath = '/api/v1/send-notification';
   static const String _exportPath = '/api/v1/export';
   static const String _providerPath = '/api/v1/provider';
 
   static Future<String> _url(String pathAndQuery) {
-    return GrimBaseUrl.resolve().then((base) => '$base$pathAndQuery');
+    return AirEyeBaseUrl.resolve().then((base) => '$base$pathAndQuery');
   }
 
   static Future<IntegrationHealthReport> health({
@@ -23,7 +23,7 @@ class GrimEndpoints {
     void Function(Object error, StackTrace stackTrace)? onError,
     void Function()? onFinally,
   }) async {
-    final client = await GrimClient.create();
+    final client = await AirEyeClient.create();
     final url = await _url(_healthPath);
 
     final res = await client.get<JsonMap>(url, onError: onError, onFinally: onFinally);
@@ -41,7 +41,7 @@ class GrimEndpoints {
     void Function()? onFinally,
   }) async {
     final qp = <String>['page=$page', 'limit=$limit'];
-    final client = await GrimClient.create();
+    final client = await AirEyeClient.create();
     final url = await _url('$_exportPath?${qp.join('&')}');
 
     final res = await client.get<JsonMap>(url, onError: onError, onFinally: onFinally);
@@ -51,13 +51,17 @@ class GrimEndpoints {
     return model;
   }
 
-  static Future<CaptureResponse> capture({void Function(CaptureResponse response)? onSuccess, void Function(Object error, StackTrace stackTrace)? onError, void Function()? onFinally}) async {
-    final client = await GrimClient.create();
-    final url = await _url(_capturePath);
+  static Future<SendNotificationResponse> sendNotification({
+    void Function(SendNotificationResponse response)? onSuccess,
+    void Function(Object error, StackTrace stackTrace)? onError,
+    void Function()? onFinally,
+  }) async {
+    final client = await AirEyeClient.create();
+    final url = await _url(_sendNotificationPath);
 
     final res = await client.post<JsonMap>(url, onError: onError, onFinally: onFinally);
 
-    final model = CaptureResponse.fromJson(res.data ?? const <String, dynamic>{});
+    final model = SendNotificationResponse.fromJson(res.data ?? const <String, dynamic>{});
     onSuccess?.call(model);
     return model;
   }
@@ -72,7 +76,7 @@ class GrimEndpoints {
     CancelToken? cancelToken,
     Options? options,
   }) async {
-    final client = await GrimClient.create();
+    final client = await AirEyeClient.create();
     final url = await _url(_importPath);
 
     final formData = FormData.fromMap({'image': image});
@@ -103,7 +107,7 @@ class GrimEndpoints {
     CancelToken? cancelToken,
     Options? options,
   }) async {
-    final client = await GrimClient.create();
+    final client = await AirEyeClient.create();
     final url = await _url(_regeneratePath);
 
     final res = await client.post<String>(
@@ -123,7 +127,7 @@ class GrimEndpoints {
   }
 
   static Future<ProviderResponse> getProvider({void Function(ProviderResponse response)? onSuccess, void Function(Object error, StackTrace stackTrace)? onError, void Function()? onFinally}) async {
-    final client = await GrimClient.create();
+    final client = await AirEyeClient.create();
     final url = await _url(_providerPath);
 
     final res = await client.get<JsonMap>(url, onError: onError, onFinally: onFinally);
@@ -139,7 +143,7 @@ class GrimEndpoints {
     void Function(Object error, StackTrace stackTrace)? onError,
     void Function()? onFinally,
   }) async {
-    final client = await GrimClient.create();
+    final client = await AirEyeClient.create();
     final url = await _url(_providerPath);
 
     final res = await client.put<JsonMap>(url, data: request.toJson(), onError: onError, onFinally: onFinally);

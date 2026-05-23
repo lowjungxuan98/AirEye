@@ -1,6 +1,6 @@
 # Dio implementation
 
-Implementation guide for adding a shared HTTP client to Grim's Flutter app.
+Implementation guide for adding a shared HTTP client to AirEye's Flutter app.
 
 Key references:
 
@@ -12,9 +12,9 @@ Vendor docs reviewed: 2026-04-19.
 
 ## Current repo status
 
-- `mobile/packages/grim_core` owns the shared Dio client and endpoint helpers.
-- Feature packages consume `GrimDioClient` / `GrimEndpoints` from `grim_core`; they should not create a second HTTP stack.
-- Grim's backend API contract exists in `backend/openapi.yaml` and `docs/specification.md`.
+- `mobile/packages/core` owns the shared Dio client and endpoint helpers.
+- Feature packages consume `AirEyeClient` / `AirEyeEndpoints` from `core`; they should not create a second HTTP stack.
+- AirEye's backend API contract exists in `backend/openapi.yaml` and `docs/specification.md`.
 
 ## Why use Dio here
 
@@ -27,7 +27,7 @@ The current Dio docs describe it as a full-featured HTTP client for Dart and Flu
 - multipart upload support
 - download/upload progress callbacks
 
-That makes it a good fit for Grim's likely mobile flows:
+That makes it a good fit for AirEye's likely mobile flows:
 
 - upload a captured image to `POST /api/v1/import`
 - read paginated export data from `GET /api/v1/export`
@@ -41,14 +41,14 @@ From `mobile/`:
 flutter pub add dio
 ```
 
-## Recommended structure for Grim
+## Recommended structure for AirEye
 
-Keep shared HTTP concerns in `mobile/packages/grim_core`.
+Keep shared HTTP concerns in `mobile/packages/core`.
 
 Reason:
 
 - base URL, timeouts, headers, auth, and logging are cross-cutting client concerns
-- internal packages such as `grim_sender_camera` should depend on repositories or core services, not construct their own HTTP stack
+- internal packages such as `sender` should depend on repositories or core services, not construct their own HTTP stack
 
 ## Baseline client setup
 
@@ -60,8 +60,8 @@ Example shape:
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-class GrimApiClient {
-  GrimApiClient(String baseUrl)
+class AirEyeApiClient {
+  AirEyeApiClient(String baseUrl)
       : dio = Dio(
           BaseOptions(
             baseUrl: baseUrl,
@@ -114,7 +114,7 @@ try {
 
 ## Uploading images
 
-Grim's backend import route expects `multipart/form-data` with an `image` field.
+AirEye's backend import route expects `multipart/form-data` with an `image` field.
 
 Dio's `FormData` and `MultipartFile` support maps cleanly onto that contract:
 
@@ -159,11 +159,11 @@ This is especially useful for:
 - long-running uploads the user abandons
 - repeated queries from pull-to-refresh or search UI
 
-## Grim-specific notes
+## AirEye-specific notes
 
 - Keep the base URL configurable per environment instead of hardcoding localhost values into feature widgets.
-- `GrimEndpoints.initialize()` runs during app startup to detect simulator/emulator vs physical device for debug URLs.
-- Release builds use `GRIM_RELEASE_API_PREFIX` for `/api/v1/*` routes. The health URL is derived in source as `{apiPrefix}/v1/health`. Production uses the public prefix `https://lowjungxuan.dpdns.org/backend/api`.
+- `AirEyeBaseUrl.resolve()` detects simulator/emulator versus physical device for debug URLs.
+- Release builds use `AIREYE_API_BASE_URL` for `/api/v1/*` routes. Production uses the public prefix `https://lowjungxuan.dpdns.org/backend/api`.
 - If the sender camera flow uploads captured images, pass file paths from the camera package into Dio; do not hold large binary payloads in Riverpod state unless necessary.
 - The `POST /api/v1/import` route is documented as server-sent events on success in `docs/specification.md`; if the mobile app consumes that streaming response, validate whether plain Dio is enough for the final UX or whether that route should gain a mobile-friendly polling or non-SSE alternative.
 
@@ -173,12 +173,12 @@ This is especially useful for:
 - Dio API docs: https://pub.dev/documentation/dio/latest/
 - `Dio` class: https://pub.dev/documentation/dio/latest/dio/Dio-class.html
 - `LogInterceptor` class: https://pub.dev/documentation/dio/latest/dio/LogInterceptor-class.html
-- Grim backend contract: `backend/openapi.yaml`, `docs/specification.md`
+- AirEye backend contract: `backend/openapi.yaml`, `docs/specification.md`
 
 ---
 
 **Updated:** 2026-04-19  
-**Applies to:** grim mobile (`mobile/`) talking to the current grim backend API  
+**Applies to:** AirEye mobile (`mobile/`) talking to the current AirEye backend API  
 **Doc version:** 1  
 **Upstream refs:**  
 - https://pub.dev/packages/dio  

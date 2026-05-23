@@ -32,7 +32,7 @@ class ReadyBody extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('GRIM', style: textTheme.headlineLarge),
+                              Text('AirEye', style: textTheme.headlineLarge),
                               const SizedBox(height: 6),
                               Text('Select your role to continue.', style: textTheme.bodyMedium?.copyWith(color: GrimColors.sectionLabel)),
                             ],

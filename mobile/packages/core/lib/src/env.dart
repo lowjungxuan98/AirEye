@@ -3,8 +3,8 @@
 /// Values are provided via `--dart-define=KEY=value`.
 abstract final class Env {
   // API
-  static const apiBaseUrl = String.fromEnvironment('GRIM_API_BASE_URL');
-  static const apiIpAddress = String.fromEnvironment('GRIM_API_IP_ADDRESS');
+  static const apiBaseUrl = String.fromEnvironment('AIREYE_API_BASE_URL');
+  static const apiIpAddress = String.fromEnvironment('AIREYE_API_IP_ADDRESS');
 
   // Firebase (shared)
   static const firebaseProjectId = String.fromEnvironment('FIREBASE_PROJECT_ID');

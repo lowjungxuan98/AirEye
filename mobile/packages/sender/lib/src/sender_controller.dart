@@ -12,7 +12,7 @@ class SenderController extends BaseController<SenderState> {
 
   @override
   SenderState build() {
-    GrimFcmManager.subscribeForeground(ref, _handleForegroundMessage, onDispose: () => _isDisposed = true);
+    AirEyeFcmManager.subscribeForeground(ref, _handleForegroundMessage, onDispose: () => _isDisposed = true);
 
     return const SenderInitial();
   }
@@ -62,7 +62,7 @@ class SenderController extends BaseController<SenderState> {
         return;
       }
 
-      final response = await GrimEndpoints.import(image: await MultipartFile.fromFile(image.path, filename: _imageFilename(image)));
+      final response = await AirEyeEndpoints.import(image: await MultipartFile.fromFile(image.path, filename: _imageFilename(image)));
 
       if (response case ImportStreamSseError(:final value)) {
         throw StateError(value.error.message);

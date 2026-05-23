@@ -56,7 +56,7 @@ mkdir -p "$(dirname "$KEYSTORE_PATH")"
 echo "Repository: $(cd "$ROOT_DIR" && gh repo view --json nameWithOwner -q .nameWithOwner)"
 echo
 
-key_alias="$(prompt_value "Android key alias" "grim_upload")"
+key_alias="$(prompt_value "Android key alias" "aireye_upload")"
 store_password="$(prompt_secret "Android keystore password")"
 key_password="$(prompt_secret "Android key password (can match keystore password)")"
 
@@ -71,7 +71,7 @@ if [[ ! -f "$KEYSTORE_PATH" ]]; then
     -alias "$key_alias" \
     -storepass "$store_password" \
     -keypass "$key_password" \
-    -dname "CN=GRIM, OU=Mobile, O=GRIM, L=Singapore, S=Singapore, C=SG"
+    -dname "CN=AirEye, OU=Mobile, O=AirEye, L=Singapore, S=Singapore, C=SG"
 else
   echo "Using existing keystore at $KEYSTORE_PATH"
 fi
@@ -85,7 +85,7 @@ EOF
 
 mac_ip="$(ipconfig getifaddr en0 2>/dev/null || true)"
 mac_ip="${mac_ip:-192.168.68.57}"
-grim_api_base_url="$(prompt_value "Release API base URL" "https://lowjungxuan.dpdns.org/backend/api")"
+aireye_api_base_url="$(prompt_value "Release API base URL" "https://lowjungxuan.dpdns.org/backend/api")"
 firebase_project_id="$(prompt_value "Firebase project ID")"
 firebase_messaging_sender_id="$(prompt_value "Firebase messaging sender ID")"
 firebase_database_url="$(prompt_value "Firebase database URL")"
@@ -97,8 +97,8 @@ firebase_ios_app_id="$(prompt_value "Firebase iOS app ID")"
 firebase_ios_bundle_id="$(prompt_value "Firebase iOS bundle ID")"
 
 cat > "$LOCAL_ENV_PATH" <<EOF
-GRIM_API_BASE_URL=$grim_api_base_url
-GRIM_API_IP_ADDRESS=http://$mac_ip:3001
+AIREYE_API_BASE_URL=$aireye_api_base_url
+AIREYE_API_IP_ADDRESS=http://$mac_ip:3001
 FIREBASE_PROJECT_ID=$firebase_project_id
 FIREBASE_MESSAGING_SENDER_ID=$firebase_messaging_sender_id
 FIREBASE_DATABASE_URL=$firebase_database_url
@@ -116,7 +116,7 @@ secret_set MOBILE_ANDROID_KEYSTORE_BASE64 "$(encode_base64_one_line "$KEYSTORE_P
 secret_set MOBILE_ANDROID_KEYSTORE_PASSWORD "$store_password"
 secret_set MOBILE_ANDROID_KEY_ALIAS "$key_alias"
 secret_set MOBILE_ANDROID_KEY_PASSWORD "$key_password"
-secret_set GRIM_API_BASE_URL "$grim_api_base_url"
+secret_set AIREYE_API_BASE_URL "$aireye_api_base_url"
 secret_set FIREBASE_PROJECT_ID "$firebase_project_id"
 secret_set FIREBASE_MESSAGING_SENDER_ID "$firebase_messaging_sender_id"
 secret_set FIREBASE_DATABASE_URL "$firebase_database_url"

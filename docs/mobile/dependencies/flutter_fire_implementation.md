@@ -1,6 +1,6 @@
 # FlutterFire implementation
 
-Implementation guide for wiring Firebase into Grim's Flutter app.
+Implementation guide for wiring Firebase into AirEye's Flutter app.
 
 Key references:
 
@@ -12,7 +12,7 @@ Vendor docs reviewed: 2026-04-19.
 
 ## Current repo status
 
-- Firebase Flutter plugins are owned by `mobile/packages/grim_core`.
+- Firebase Flutter plugins are owned by `mobile/packages/core`.
 - `mobile/lib/main.dart` initializes Firebase once before `runApp(...)`.
 - `mobile/packages/core/lib/src/firebase/init.dart` builds `FirebaseOptions` from Dart defines instead of committing generated client config files.
 - The repo currently has Android and iOS targets; there is no `mobile/web/` target to configure yet.
@@ -26,7 +26,7 @@ Per Firebase's current Flutter setup docs, the FlutterFire CLI is the canonical 
 - keep Firebase configuration current as new platforms or Firebase products are added
 - add required Android Gradle plugins for products such as Crashlytics or Performance Monitoring when applicable
 
-For Grim, keep this setup at the app root under `mobile/`, not inside an internal package such as `grim_sender_camera`.
+For AirEye, keep this setup at the app root under `mobile/`, not inside an internal package such as `sender`.
 
 ## One-time tool install
 
@@ -63,7 +63,7 @@ flutterfire configure
 
 In this repo, keep generated Firebase config files out of version control and provide Firebase values through Dart defines.
 
-## Initialize in Grim
+## Initialize in AirEye
 
 Initialize Firebase once in `mobile/lib/main.dart` before `runApp(...)`.
 
@@ -75,7 +75,7 @@ import 'package:core/core.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeFirebase();
-  runApp(AppScope(child: MaterialApp(theme: GrimAppTheme.dark, home: const SplashScreen())));
+  runApp(AppScope(child: MaterialApp(theme: appTheme, home: const SplashScreen())));
 }
 ```
 
@@ -102,7 +102,7 @@ Do not commit generated FlutterFire config files such as `mobile/lib/firebase_op
 
 `mobile/android/app/build.gradle.kts` uses the same application ID for debug and release builds today.
 
-That matters because Firebase registration is tied to the actual Android application ID. If Grim wants separate Firebase apps or projects for debug and release, register the matching IDs and re-run `flutterfire configure` after settling the variant strategy.
+That matters because Firebase registration is tied to the actual Android application ID. If AirEye wants separate Firebase apps or projects for debug and release, register the matching IDs and re-run `flutterfire configure` after settling the variant strategy.
 
 ### Shared backend project
 
@@ -125,7 +125,7 @@ flutterfire configure
 flutter run
 ```
 
-Examples relevant to Grim:
+Examples relevant to AirEye:
 
 - `firebase_messaging` for push notifications
 - `firebase_database` if the mobile client ever reads Realtime Database directly
@@ -141,7 +141,7 @@ Examples relevant to Grim:
 ---
 
 **Updated:** 2026-04-19  
-**Applies to:** grim mobile (`mobile/`, especially `mobile/lib/main.dart`)  
+**Applies to:** AirEye mobile (`mobile/`, especially `mobile/lib/main.dart`)  
 **Doc version:** 1  
 **Upstream refs:**  
 - https://firebase.google.com/docs/flutter/setup  

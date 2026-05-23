@@ -32,7 +32,7 @@ Add or refresh a short **footer block** (or YAML front matter, if the file alrea
 **Required**
 
 - **`Updated`**: ISO date **`YYYY-MM-DD`** of the last substantive review (not a future date).
-- **`Applies to`**: What the doc describes, e.g. `grim backend` + optional pointer such as `backend/package.json` version when the change is release-related.
+- **`Applies to`**: What the doc describes, e.g. `AirEye backend` + optional pointer such as `backend/package.json` version when the change is release-related.
 
 **Optional (use when useful)**
 
@@ -45,7 +45,7 @@ Add or refresh a short **footer block** (or YAML front matter, if the file alrea
 ---
 
 **Updated:** 2026-04-18
-**Applies to:** grim backend (`backend/package.json` → version `0.1.0`)
+**Applies to:** AirEye backend (`backend/package.json` → version `0.1.0`)
 **Doc version:** 1
 **Upstream refs:**
 - https://firebase.google.com/docs/…
@@ -87,7 +87,7 @@ Adjust paths and URLs to match what you **actually** read. Omit **Upstream refs*
 
 ---
 
-## 7. Project-specific pointers (Grim backend)
+## 7. Project-specific pointers (AirEye backend)
 
 - HTTP contract: **`backend/openapi.yaml`**
 - Env schema and loader: **`backend/src/libs/configs/env.config.ts`**
@@ -100,5 +100,5 @@ When this list goes stale relative to the tree, update **this** file’s **Updat
 ---
 
 **Updated:** 2026-04-25
-**Applies to:** grim repository — documentation process (`docs/`, `backend/`)
+**Applies to:** AirEye repository — documentation process (`docs/`, `backend/`)
 **Doc version:** 4

@@ -1,6 +1,6 @@
 # Flutter camera implementation
 
-Implementation guide for adding a real camera flow to Grim's mobile client.
+Implementation guide for adding a real camera flow to AirEye's mobile client.
 
 Key references:
 
@@ -12,7 +12,7 @@ Vendor docs reviewed: 2026-04-19.
 
 ## Current repo status
 
-- `mobile/packages/grim_sender_camera/lib/src/grim_sender_camera_page.dart` is still a mock screen with a placeholder viewport.
+- `mobile/packages/sender/lib/src/sender_page.dart` is still a mock screen with a placeholder viewport.
 - `mobile/pubspec.yaml` does not currently include `camera`, `path_provider`, or `path`.
 - `mobile/ios/Runner/Info.plist` does not yet declare camera or microphone usage descriptions.
 - `mobile/android/app/build.gradle.kts` inherits `flutter.minSdkVersion`; verify that value against the camera package version you pin before merging.
@@ -24,7 +24,7 @@ Use Flutter's official `camera` plugin for the app-facing API.
 - `camera` provides preview, still capture, video capture, and image stream access.
 - On Android, `camera_android_camerax` is the endorsed implementation and is automatically included when you depend on `camera` on current releases.
 
-If Grim only needs still-image capture, keep the first integration narrow:
+If AirEye only needs still-image capture, keep the first integration narrow:
 
 - `camera`
 - `path_provider` if you want to move or persist captures outside the plugin's returned temp file path
@@ -39,7 +39,7 @@ flutter pub add camera
 flutter pub add path_provider path
 ```
 
-If Grim keeps captured files only as the `XFile.path` returned by `takePicture()`, `path_provider` and `path` can wait until persistence requirements are clearer.
+If AirEye keeps captured files only as the `XFile.path` returned by `takePicture()`, `path_provider` and `path` can wait until persistence requirements are clearer.
 
 ## Platform setup
 
@@ -49,12 +49,12 @@ The official camera docs require camera and microphone usage strings in `mobile/
 
 ```xml
 <key>NSCameraUsageDescription</key>
-<string>Capture an image to import into GRIM.</string>
+<string>Capture an image to import into AirEye.</string>
 <key>NSMicrophoneUsageDescription</key>
-<string>Record audio when capturing video in GRIM.</string>
+<string>Record audio when capturing video in AirEye.</string>
 ```
 
-If Grim ships still photos only, keeping the microphone string in place is still the safer default because the plugin supports video capture too.
+If AirEye ships still photos only, keeping the microphone string in place is still the safer default because the plugin supports video capture too.
 
 ### Android
 
@@ -69,11 +69,11 @@ For this repo, do not assume the scaffold default is sufficient. Check the resol
 
 The `camera` package no longer manages lifecycle transitions for you. The app is expected to release the controller when the app becomes inactive and recreate it when the app resumes.
 
-That matters for Grim because the sender camera view lives in its own package. Put lifecycle-aware controller management in the `grim_sender_camera` package instead of scattering camera calls across app-level widgets.
+That matters for AirEye because the sender camera view lives in its own package. Put lifecycle-aware controller management in the `sender` package instead of scattering camera calls across app-level widgets.
 
 ## Minimal repo-shaped implementation
 
-Keep app bootstrapping in `mobile/lib/main.dart`, but put camera-specific state inside `mobile/packages/grim_sender_camera/`.
+Keep app bootstrapping in `mobile/lib/main.dart`, but put camera-specific state inside `mobile/packages/sender/`.
 
 Example shape for the sender camera package:
 
@@ -81,14 +81,14 @@ Example shape for the sender camera package:
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
-class GrimSenderCameraView extends StatefulWidget {
-  const GrimSenderCameraView({super.key});
+class AirEyeSenderCameraView extends StatefulWidget {
+  const AirEyeSenderCameraView({super.key});
 
   @override
-  State<GrimSenderCameraView> createState() => _GrimSenderCameraViewState();
+  State<AirEyeSenderCameraView> createState() => _AirEyeSenderCameraViewState();
 }
 
-class _GrimSenderCameraViewState extends State<GrimSenderCameraView>
+class _AirEyeSenderCameraViewState extends State<AirEyeSenderCameraView>
     with WidgetsBindingObserver {
   CameraController? _controller;
   List<CameraDescription> _cameras = const [];
@@ -178,11 +178,11 @@ The current `camera` package documentation explicitly calls out permission-relat
 
 Translate these into app-level UI states instead of letting initialization failures collapse into a blank screen.
 
-## Grim-specific integration notes
+## AirEye-specific integration notes
 
-- Keep camera controller ownership inside `grim_sender_camera`; other packages should receive captured file paths or typed domain objects, not raw `CameraController` references.
+- Keep camera controller ownership inside `sender`; other packages should receive captured file paths or typed domain objects, not raw `CameraController` references.
 - If the next step is upload, prefer handing `XFile.path` into the network layer rather than storing binary image data in Riverpod state.
-- If Grim later adds continuous image analysis, re-evaluate background streaming and Android-specific CameraX limits before enabling `startImageStream`.
+- If AirEye later adds continuous image analysis, re-evaluate background streaming and Android-specific CameraX limits before enabling `startImageStream`.
 
 ## References
 
@@ -193,7 +193,7 @@ Translate these into app-level UI states instead of letting initialization failu
 ---
 
 **Updated:** 2026-04-19  
-**Applies to:** grim mobile (`mobile/`, especially `mobile/packages/grim_sender_camera/`)  
+**Applies to:** AirEye mobile (`mobile/`, especially `mobile/packages/sender/`)  
 **Doc version:** 1  
 **Upstream refs:**  
 - https://docs.flutter.dev/cookbook/plugins/picture-using-camera  

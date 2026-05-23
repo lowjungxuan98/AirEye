@@ -5,7 +5,7 @@ import {
   invalidProvider,
   invalidRequest
 } from "../../../libs/utils/api-error.util";
-import { parseProvider } from "../../../libs/utils/provider_orchestrator.util";
+import { parseProvider } from "../../../libs/litellm/provider-state";
 
 export function createGetProviderHandler(providerService: ProviderService): RequestHandler {
   return async (_req, res) => {

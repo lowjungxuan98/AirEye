@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Brand palette for GRIM (dark UI + neon lime).
+/// Brand palette for AirEye (dark UI + neon lime).
 abstract final class GrimColors {
   static const scaffold = Color(0xFF080A0C);
   static const canvas = Color(0xFF0B0E14);

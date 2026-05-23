@@ -17,12 +17,12 @@ Kinds:
 Examples:
   ./scripts/notification.sh
   ./scripts/notification.sh all
-  ./scripts/notification.sh capture_request grim_new_result
+  ./scripts/notification.sh capture_request aireye_new_result
   ./scripts/notification.sh export_refresh --dry-run
 
 Environment:
   Reads backend/.env for FIREBASE_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS,
-  and GRIM_FCM_TOPIC. GOOGLE_APPLICATION_CREDENTIALS may be a service-account
+  and AIREYE_FCM_TOPIC. GOOGLE_APPLICATION_CREDENTIALS may be a service-account
   JSON path, raw JSON, or base64-encoded JSON.
 USAGE
 }
@@ -65,18 +65,18 @@ fi
 
 cd "$BACKEND_DIR"
 
-GRIM_NOTIFICATION_KIND="$kind" \
-GRIM_NOTIFICATION_TOPIC="$topic" \
-GRIM_NOTIFICATION_DRY_RUN="$dry_run" \
+AIREYE_NOTIFICATION_KIND="$kind" \
+AIREYE_NOTIFICATION_TOPIC="$topic" \
+AIREYE_NOTIFICATION_DRY_RUN="$dry_run" \
 node <<'NODE'
 const fs = require("node:fs");
 const dotenv = require("dotenv");
 
 dotenv.config({ path: ".env" });
 
-const kind = process.env.GRIM_NOTIFICATION_KIND || "export_refresh";
-const topic = process.env.GRIM_NOTIFICATION_TOPIC || process.env.GRIM_FCM_TOPIC || "grim_new_result";
-const dryRun = process.env.GRIM_NOTIFICATION_DRY_RUN === "true";
+const kind = process.env.AIREYE_NOTIFICATION_KIND || "export_refresh";
+const topic = process.env.AIREYE_NOTIFICATION_TOPIC || process.env.AIREYE_FCM_TOPIC || "aireye_new_result";
+const dryRun = process.env.AIREYE_NOTIFICATION_DRY_RUN === "true";
 
 const validKinds = new Set(["capture_request", "export_refresh", "all"]);
 if (!validKinds.has(kind)) {

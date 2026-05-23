@@ -4,7 +4,7 @@ import 'receiver_state.dart';
 class ReceiverController extends BaseController<ReceiverState> {
   @override
   ReceiverState build() {
-    GrimFcmManager.subscribeExportRefresh(ref, _refreshFromNotification, onDispose: () => _isDisposed = true);
+    AirEyeFcmManager.subscribeExportRefresh(ref, _refreshFromNotification, onDispose: () => _isDisposed = true);
     return const ReceiverInitial();
   }
 
@@ -26,7 +26,7 @@ class ReceiverController extends BaseController<ReceiverState> {
   ReceiverReady _readyFromExport(ExportListResponse data) => ReceiverReady(items: data.data, page: data.page, limit: data.limit, isNext: data.isNext);
 
   Future<void> loadFirstPage({int limit = _defaultLimit}) => run(() async {
-    final data = await GrimEndpoints.export(page: 1, limit: limit);
+    final data = await AirEyeEndpoints.export(page: 1, limit: limit);
     state = _readyFromExport(data);
   });
 
@@ -39,7 +39,7 @@ class ReceiverController extends BaseController<ReceiverState> {
     }
 
     try {
-      final data = await GrimEndpoints.export(page: 1, limit: _defaultLimit);
+      final data = await AirEyeEndpoints.export(page: 1, limit: _defaultLimit);
       state = _readyFromExport(data);
     } catch (e) {
       state = ReceiverError(e.toString());
@@ -72,7 +72,7 @@ class ReceiverController extends BaseController<ReceiverState> {
     state = current.copyWith(isCapturing: true);
 
     try {
-      await GrimEndpoints.capture();
+      await AirEyeEndpoints.sendNotification();
     } catch (_) {
       // Keep UI state; capture errors can be surfaced later if needed.
     } finally {
@@ -93,7 +93,7 @@ class ReceiverController extends BaseController<ReceiverState> {
     state = current.copyWith(regeneratingIds: {...current.regeneratingIds, imageUrl});
 
     try {
-      final response = await GrimEndpoints.regenerate(
+      final response = await AirEyeEndpoints.regenerate(
         request: RegenerateRequest(imageUrl: imageUrl, text: item.finalText?.trim() ?? ''),
       );
 
@@ -127,7 +127,7 @@ class ReceiverController extends BaseController<ReceiverState> {
 
     try {
       final nextPage = current.page + 1;
-      final data = await GrimEndpoints.export(page: nextPage, limit: current.limit);
+      final data = await AirEyeEndpoints.export(page: nextPage, limit: current.limit);
 
       state = current.copyWith(items: [...current.items, ...data.data], page: data.page, limit: data.limit, isNext: data.isNext, isLoadingMore: false);
     } catch (_) {
