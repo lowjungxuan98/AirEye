@@ -10,11 +10,6 @@ on:
   push:
     tags:
       - "mobile-v*"
-    paths:
-      - "mobile/**"
-      - "docs/mobile/**"
-      - ".github/workflows/mobile-ios-release.yml"
-      - ".github/workflows/mobile-firebase-app-distribution.yml"
   workflow_dispatch:
 
 jobs:
