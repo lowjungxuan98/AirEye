@@ -16,6 +16,15 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		AECAFE0000000000000000B1 /* NativeCameraPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECAFE0000000000000000B2 /* NativeCameraPlugin.swift */; };
+		AECAFE0000000000000000B3 /* NativeCameraPlatformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECAFE0000000000000000B4 /* NativeCameraPlatformView.swift */; };
+		AECAFE0000000000000000B5 /* NativeCameraPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECAFE0000000000000000B6 /* NativeCameraPreviewView.swift */; };
+		AECAFE0000000000000000B7 /* NativeCameraMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECAFE0000000000000000B8 /* NativeCameraMode.swift */; };
+		AECAFE0000000000000000B9 /* NativeCameraEventSink.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECAFE0000000000000000BA /* NativeCameraEventSink.swift */; };
+		AECAFE0000000000000000BB /* NativeCameraSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECAFE0000000000000000BC /* NativeCameraSession.swift */; };
+		AECAFE0000000000000000BD /* NativeCameraSession+VideoOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECAFE0000000000000000BE /* NativeCameraSession+VideoOutput.swift */; };
+		AECAFE0000000000000000BF /* PhotoCaptureDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECAFE0000000000000000C0 /* PhotoCaptureDelegate.swift */; };
+		AECAFE0000000000000000C1 /* AutoCaptureEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECAFE0000000000000000C2 /* AutoCaptureEvaluator.swift */; };
 		FBDBF17021FDE05ED50CC0F4 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60E5AE530C3AE7B77265E8FE /* Pods_Runner.framework */; };
 /* End PBXBuildFile section */
 
@@ -65,6 +74,15 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AECAFE0000000000000000B2 /* NativeCameraPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCameraPlugin.swift; sourceTree = "<group>"; };
+		AECAFE0000000000000000B4 /* NativeCameraPlatformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCameraPlatformView.swift; sourceTree = "<group>"; };
+		AECAFE0000000000000000B6 /* NativeCameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCameraPreviewView.swift; sourceTree = "<group>"; };
+		AECAFE0000000000000000B8 /* NativeCameraMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCameraMode.swift; sourceTree = "<group>"; };
+		AECAFE0000000000000000BA /* NativeCameraEventSink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCameraEventSink.swift; sourceTree = "<group>"; };
+		AECAFE0000000000000000BC /* NativeCameraSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCameraSession.swift; sourceTree = "<group>"; };
+		AECAFE0000000000000000BE /* NativeCameraSession+VideoOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NativeCameraSession+VideoOutput.swift"; sourceTree = "<group>"; };
+		AECAFE0000000000000000C0 /* PhotoCaptureDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCaptureDelegate.swift; sourceTree = "<group>"; };
+		AECAFE0000000000000000C2 /* AutoCaptureEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoCaptureEvaluator.swift; sourceTree = "<group>"; };
 		B4F52DADBC32CE0A5F425F38 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		BAD091D1F4596AF442CEA22F /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		FC050DF60B37D96F385F361E /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
@@ -151,9 +169,26 @@
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
+				AECAFE0000000000000000B0 /* NativeCamera */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
+			sourceTree = "<group>";
+		};
+		AECAFE0000000000000000B0 /* NativeCamera */ = {
+			isa = PBXGroup;
+			children = (
+				AECAFE0000000000000000B2 /* NativeCameraPlugin.swift */,
+				AECAFE0000000000000000B4 /* NativeCameraPlatformView.swift */,
+				AECAFE0000000000000000B6 /* NativeCameraPreviewView.swift */,
+				AECAFE0000000000000000B8 /* NativeCameraMode.swift */,
+				AECAFE0000000000000000BA /* NativeCameraEventSink.swift */,
+				AECAFE0000000000000000BC /* NativeCameraSession.swift */,
+				AECAFE0000000000000000BE /* NativeCameraSession+VideoOutput.swift */,
+				AECAFE0000000000000000C0 /* PhotoCaptureDelegate.swift */,
+				AECAFE0000000000000000C2 /* AutoCaptureEvaluator.swift */,
+			);
+			path = NativeCamera;
 			sourceTree = "<group>";
 		};
 		F77FB7EFF48823D264009D69 /* Pods */ = {
@@ -400,8 +435,17 @@
 			buildActionMask = 2147483647;
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
+				AECAFE0000000000000000C1 /* AutoCaptureEvaluator.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+				AECAFE0000000000000000BD /* NativeCameraSession+VideoOutput.swift in Sources */,
+				AECAFE0000000000000000B5 /* NativeCameraPreviewView.swift in Sources */,
+				AECAFE0000000000000000B1 /* NativeCameraPlugin.swift in Sources */,
+				AECAFE0000000000000000B3 /* NativeCameraPlatformView.swift in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
+				AECAFE0000000000000000BB /* NativeCameraSession.swift in Sources */,
+				AECAFE0000000000000000B7 /* NativeCameraMode.swift in Sources */,
+				AECAFE0000000000000000B9 /* NativeCameraEventSink.swift in Sources */,
+				AECAFE0000000000000000BF /* PhotoCaptureDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -459,6 +503,7 @@
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
@@ -481,6 +526,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
@@ -587,6 +633,7 @@
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
@@ -616,6 +663,7 @@
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -644,6 +692,7 @@
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
@@ -666,6 +715,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";

@@ -35,7 +35,12 @@ class _SenderViewState extends BasePageState<SenderView> {
           Positioned.fill(
             child: switch (state) {
               SenderLoading() => const Center(child: CircularProgressIndicator()),
-              _ => HighQualityCameraWidget(controller: senderController.cameraController, previewFit: CameraPreviewFit.contain, showCaptureButton: false, onImageCaptured: (_) {}),
+              _ => CameraOrchestratorWidget(
+                  controller: senderController.cameraController,
+                  mode: CameraMode.screenText,
+                  autoCaptureEnabled: state is SenderCapturing,
+                  previewFit: CameraPreviewFit.contain,
+                ),
             },
           ),
           const GrimBackButton(),

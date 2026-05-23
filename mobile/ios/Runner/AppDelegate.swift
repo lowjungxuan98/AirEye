@@ -17,6 +17,10 @@ import UIKit
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
 
+    if let nativeCameraRegistrar = engineBridge.pluginRegistry.registrar(forPlugin: "AirEyeNativeCameraPlugin") {
+      NativeCameraPlugin.register(with: nativeCameraRegistrar)
+    }
+
     let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AirEyeCameraSoundPlugin")
     guard let messenger = registrar?.messenger() else { return }
 
