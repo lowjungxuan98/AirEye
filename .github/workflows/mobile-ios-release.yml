@@ -136,6 +136,26 @@ jobs:
           mkdir -p "$PROFILE_DEST"
           cp "$PROFILE_PATH" "$PROFILE_DEST/$PROFILE_UUID.mobileprovision"
 
+      - name: Switch to manual code signing for CI
+        if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
+        working-directory: mobile/ios
+        shell: bash
+        run: |
+          set -euo pipefail
+          PBXPROJ="Runner.xcodeproj/project.pbxproj"
+          # Runner Release config
+          sed -i '' -e '/97C147071CF9000F007C117D/,/^[[:space:]]*};/{
+            s/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/
+            s/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "Apple Distribution";/
+            s/PROVISIONING_PROFILE_SPECIFIER = "";/PROVISIONING_PROFILE_SPECIFIER = "AirEye Ad-Hoc";/
+          }' "$PBXPROJ"
+          # Runner Profile config
+          sed -i '' -e '/249021D4217E4FDB00AE95B9/,/^[[:space:]]*};/{
+            s/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/
+            s/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "Apple Distribution";/
+            s/PROVISIONING_PROFILE_SPECIFIER = "";/PROVISIONING_PROFILE_SPECIFIER = "AirEye Ad-Hoc";/
+          }' "$PBXPROJ"
+
       - name: Install CocoaPods
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
         working-directory: mobile/ios
