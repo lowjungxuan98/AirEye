@@ -4,9 +4,7 @@ import { parseLlmProvider, type LlmProvider } from "../configs/env.config";
 import {
   STAGE_IMAGE,
   STAGE_REASONING,
-  VISION_MAX_TOKENS,
   VISION_TEMPERATURE,
-  REASONING_MAX_TOKENS,
   REASONING_TEMPERATURE,
   DISABLE_THINKING_EXTRA_BODY,
   type ModelStage
@@ -64,7 +62,7 @@ export class LiteLlmClient {
         }
       ],
       extra_body: { ...DISABLE_THINKING_EXTRA_BODY },
-      max_tokens: VISION_MAX_TOKENS,
+      max_tokens: 16384,
       temperature: VISION_TEMPERATURE
     });
 
@@ -78,7 +76,7 @@ export class LiteLlmClient {
         { role: "system", content: prompt.trimEnd() },
         { role: "user", content: input }
       ],
-      max_tokens: REASONING_MAX_TOKENS,
+      max_tokens: 8192,
       temperature: REASONING_TEMPERATURE
     });
 
