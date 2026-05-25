@@ -425,7 +425,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/FirebaseCrashlytics/upload-symbols\" -gsp \"${PROJECT_DIR}/Runner/GoogleService-Info.plist\" -p ios \"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\"\n";
+			shellScript = "CRASHLYTICS_UPLOAD_SYMBOLS=\"${PODS_ROOT}/FirebaseCrashlytics/upload-symbols\"\nif [ ! -x \"$CRASHLYTICS_UPLOAD_SYMBOLS\" ]; then\n  CRASHLYTICS_UPLOAD_SYMBOLS=\"${PODS_ROOT}/FirebaseCrashlytics/Crashlytics/upload-symbols\"\nfi\n\nif [ -x \"$CRASHLYTICS_UPLOAD_SYMBOLS\" ]; then\n  \"$CRASHLYTICS_UPLOAD_SYMBOLS\" -gsp \"${PROJECT_DIR}/Runner/GoogleService-Info.plist\" -p ios \"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\"\nelse\n  echo \"warning: Firebase Crashlytics upload-symbols not found under ${PODS_ROOT}/FirebaseCrashlytics; skipping dSYM upload.\"\nfi\n";
 		};
 		F1985C9985849BC3EB891C48 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
