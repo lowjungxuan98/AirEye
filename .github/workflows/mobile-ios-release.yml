@@ -234,6 +234,32 @@ jobs:
             --dart-define=FIREBASE_DATABASE_URL="$FIREBASE_DATABASE_URL" \
             --dart-define=FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET"
 
+      - name: Upload iOS dSYMs to Crashlytics
+        if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
+        working-directory: mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          firebase_ios_sdk_version="$(awk '/- FirebaseCrashlytics \(/ { gsub(/[()]/, "", $3); print $3; exit }' ios/Podfile.lock)"
+          if [[ -z "$firebase_ios_sdk_version" ]]; then
+            echo "Could not determine FirebaseCrashlytics version from ios/Podfile.lock."
+            exit 1
+          fi
+
+          upload_symbols="$RUNNER_TEMP/firebase-crashlytics-upload-symbols"
+          curl --fail --location --silent --show-error \
+            --output "$upload_symbols" \
+            "https://raw.githubusercontent.com/firebase/firebase-ios-sdk/CocoaPods-${firebase_ios_sdk_version}/Crashlytics/upload-symbols"
+          chmod +x "$upload_symbols"
+
+          dsym_dir="build/ios/archive/Runner.xcarchive/dSYMs"
+          if [[ ! -d "$dsym_dir" ]]; then
+            echo "Expected dSYM directory not found: $dsym_dir"
+            exit 1
+          fi
+
+          "$upload_symbols" -gsp ios/Runner/GoogleService-Info.plist -p ios "$dsym_dir"
+
       - name: Upload IPA artifact
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
         uses: actions/upload-artifact@v7

@@ -425,7 +425,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/FirebaseCrashlytics/run\"\n";
+			shellScript = "if [ -x \"${PODS_ROOT}/FirebaseCrashlytics/run\" ]; then\n  \"${PODS_ROOT}/FirebaseCrashlytics/run\"\nelse\n  echo \"warning: ${PODS_ROOT}/FirebaseCrashlytics/run not found; CI uploads dSYMs after archive.\"\nfi\n";
 		};
 		F1985C9985849BC3EB891C48 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
