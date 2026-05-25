@@ -240,7 +240,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          firebase_ios_sdk_version="$(awk '/- FirebaseCrashlytics \(/ { gsub(/[()]/, "", $3); print $3; exit }' ios/Podfile.lock)"
+          firebase_ios_sdk_version="$(awk '/^  - FirebaseCrashlytics \([0-9]/ { gsub(/[():]/, "", $3); print $3; exit }' ios/Podfile.lock)"
           if [[ -z "$firebase_ios_sdk_version" ]]; then
             echo "Could not determine FirebaseCrashlytics version from ios/Podfile.lock."
             exit 1
