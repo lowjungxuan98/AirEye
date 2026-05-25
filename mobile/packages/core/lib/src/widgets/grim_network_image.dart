@@ -1,28 +1,40 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-class GrimCachedZoomableImage extends StatefulWidget {
-  const GrimCachedZoomableImage({super.key, required this.imageUrl, this.zoom = false, this.isNew = false, this.fit = BoxFit.cover, this.backgroundColor = Colors.black});
+class GrimNetworkImage extends StatefulWidget {
+  const GrimNetworkImage({
+    super.key,
+    required this.imageUrl,
+    this.zoom = false,
+    this.isNew = false,
+    this.fit = BoxFit.cover,
+    this.backgroundColor = Colors.black,
+  });
 
   final String imageUrl;
   final bool zoom;
-
-  /// `new` is a reserved keyword; use `isNew`.
   final bool isNew;
-
   final BoxFit fit;
   final Color backgroundColor;
 
   @override
-  State<GrimCachedZoomableImage> createState() => _GrimCachedZoomableImageState();
+  State<GrimNetworkImage> createState() => _GrimNetworkImageState();
 }
 
-class _GrimCachedZoomableImageState extends State<GrimCachedZoomableImage> {
+class _GrimNetworkImageState extends State<GrimNetworkImage> {
   final _transformController = TransformationController();
+
+  @override
+  void didUpdateWidget(covariant GrimNetworkImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      NetworkImage(oldWidget.imageUrl).evict();
+    }
+  }
 
   @override
   void dispose() {
     _transformController.dispose();
+    NetworkImage(widget.imageUrl).evict();
     super.dispose();
   }
 
@@ -38,12 +50,28 @@ class _GrimCachedZoomableImageState extends State<GrimCachedZoomableImage> {
 
   @override
   Widget build(BuildContext context) {
-    Widget child = CachedNetworkImage(imageUrl: widget.imageUrl, fit: widget.fit, placeholder: (context, url) => _placeholder(), errorWidget: (context, url, error) => _error());
+    Widget child = Image.network(
+      widget.imageUrl,
+      fit: widget.fit,
+      filterQuality: FilterQuality.low,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (wasSynchronouslyLoaded || frame != null) return child;
+        return _placeholder();
+      },
+      errorBuilder: (context, error, stackTrace) => _error(),
+    );
 
     if (widget.zoom) {
       child = GestureDetector(
         onDoubleTap: () => _transformController.value = Matrix4.identity(),
-        child: InteractiveViewer(transformationController: _transformController, clipBehavior: Clip.none, boundaryMargin: const EdgeInsets.all(80), minScale: 1, maxScale: 4, child: child),
+        child: InteractiveViewer(
+          transformationController: _transformController,
+          clipBehavior: Clip.none,
+          boundaryMargin: const EdgeInsets.all(80),
+          minScale: 1,
+          maxScale: 4,
+          child: child,
+        ),
       );
     }
 

@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:gal/gal.dart';
 import 'text_ready_badge.dart';
 import 'processing_pulse.dart';
+import 'receiver_grid_image.dart';
 
 class GridItem extends StatefulWidget {
   const GridItem({required this.item, required this.imageUrl, this.isRegenerating = false, this.onRegenerate, super.key});
@@ -66,7 +67,7 @@ class _GridItemState extends State<GridItem> {
                 error: widget.item.errorMessage?.trim(),
                 onDownload: _download,
                 onRegenerate: widget.isRegenerating ? null : widget.onRegenerate,
-                child: GrimCachedZoomableImage(imageUrl: widget.imageUrl),
+                child: ReceiverGridImage(imageUrl: widget.imageUrl),
               ),
             ),
             if (progress != null)

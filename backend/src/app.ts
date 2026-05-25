@@ -3,6 +3,7 @@ import path from "node:path";
 import express, { type RequestHandler, type Response } from "express";
 import type {
   ImportService,
+  AiService,
   Logger,
   ProviderService,
   SendNotificationService
@@ -16,15 +17,20 @@ import { createRegenerateRouter } from "./api/v1/routes/regenerate.route";
 import { createExportRouter } from "./api/v1/routes/export.route";
 import { createSendNotificationRouter } from "./api/v1/routes/send-notification.route";
 import { createProviderRouter } from "./api/v1/routes/provider.route";
+import { createAiRouter } from "./api/v1/routes/ai.route";
+import { unauthorized } from "./libs/utils/api-error.util";
 
 const OPENAPI_ROUTE = "/openapi.yaml";
 const DOCS_ROUTE = "/docs";
+export const API_KEY_HEADER = "x-api-key";
+export const AIREYE_API_KEY = "Gnn12345!";
 
 export type AppDependencies = {
   importService: ImportService;
   exportService: ExportService;
   sendNotificationService: SendNotificationService;
   providerService: ProviderService;
+  aiService: AiService;
   runHealthChecks: () => Promise<HealthReport>;
   logger?: Logger;
 };
@@ -34,6 +40,7 @@ export function createApp({
   exportService,
   sendNotificationService,
   providerService,
+  aiService,
   runHealthChecks,
   logger = console
 }: AppDependencies) {
@@ -47,6 +54,25 @@ export function createApp({
     res.status(204).end();
   });
 
+  let scalarHandler: RequestHandler | null = null;
+  const docsHandler = wrapAsync(async (req, res, next) => {
+    if (!scalarHandler) {
+      const { apiReference } = await import("@scalar/express-api-reference");
+      const openApiContent = fs.existsSync(openApiPath) ? fs.readFileSync(openApiPath, "utf8") : "";
+      scalarHandler = apiReference({
+        content: openApiContent,
+        pageTitle: "AirEye API",
+        theme: "default"
+      } as object) as RequestHandler;
+    }
+    scalarHandler(req, res, next);
+  });
+
+  app.get(DOCS_ROUTE, docsHandler);
+  app.get(`${DOCS_ROUTE}/`, docsHandler);
+
+  app.use(requireApiKey);
+
   app.get(OPENAPI_ROUTE, (_req, res) => {
     applyOpenApiCors(res);
     if (!fs.existsSync(openApiPath)) {
@@ -57,22 +83,6 @@ export function createApp({
     res.sendFile(openApiPath);
   });
 
-  let scalarHandler: RequestHandler | null = null;
-  const docsHandler = wrapAsync(async (req, res, next) => {
-    if (!scalarHandler) {
-      const { apiReference } = await import("@scalar/express-api-reference");
-      scalarHandler = apiReference({
-        url: OPENAPI_ROUTE,
-        pageTitle: "AirEye API",
-        theme: "default"
-      }) as RequestHandler;
-    }
-    scalarHandler(req, res, next);
-  });
-
-  app.get(DOCS_ROUTE, docsHandler);
-  app.get(`${DOCS_ROUTE}/`, docsHandler);
-
   app.use(createHealthRouter(runHealthChecks));
 
   const v1Router = express.Router();
@@ -82,6 +92,7 @@ export function createApp({
   v1Router.use(createExportRouter(exportService));
   v1Router.use(createSendNotificationRouter(sendNotificationService));
   v1Router.use(createProviderRouter(providerService));
+  v1Router.use(createAiRouter(aiService));
   app.use("/api/v1", v1Router);
 
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -97,8 +108,18 @@ export function createApp({
   return app;
 }
 
+function requireApiKey(req: express.Request, _res: express.Response, next: express.NextFunction): void {
+  const key = req.header(API_KEY_HEADER);
+  if (key !== AIREYE_API_KEY) {
+    next(unauthorized("Missing or invalid API key"));
+    return;
+  }
+  next();
+}
+
 function applyOpenApiCors(res: Response): void {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", API_KEY_HEADER);
   res.setHeader("Access-Control-Max-Age", "86400");
 }

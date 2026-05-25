@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 import 'base_url.dart';
+import '../env.dart';
 
 class AirEyeClient {
   AirEyeClient._(this.dio);
@@ -32,7 +33,11 @@ class AirEyeClient {
     final dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        headers: <String, dynamic>{'accept': 'application/json', ...?defaultHeaders},
+        headers: <String, dynamic>{
+          'accept': 'application/json',
+          'x-api-key': Env.apiKey,
+          ...?defaultHeaders,
+        },
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 30),
         sendTimeout: const Duration(seconds: 30),

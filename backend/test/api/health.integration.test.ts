@@ -1,13 +1,13 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { buildTestApp, stableDegradedHealth, stableOkHealth } from "../test-utils";
+import { AIREYE_API_KEY, API_KEY_HEADER, buildTestApp, stableDegradedHealth, stableOkHealth } from "../test-utils";
 
 describe("GET /api/v1/health (HTTP integration)", () => {
   it("returns 200 and a health report when checks pass", async () => {
     const app = buildTestApp({
       runHealthChecks: async () => stableOkHealth()
     });
-    const res = await request(app).get("/api/v1/health").expect(200);
+    const res = await request(app).get("/api/v1/health").set(API_KEY_HEADER, AIREYE_API_KEY).expect(200);
     expect(res.body).toMatchObject({
       version: expect.any(String),
       ok: true,
@@ -24,7 +24,7 @@ describe("GET /api/v1/health (HTTP integration)", () => {
           firebase: { ok: false, latencyMs: 1, error: "unavailable" }
         })
     });
-    const res = await request(app).get("/api/v1/health").expect(503);
+    const res = await request(app).get("/api/v1/health").set(API_KEY_HEADER, AIREYE_API_KEY).expect(503);
     expect(res.body).toMatchObject({ ok: false, firebase: { ok: false } });
     expect(res.body.firebase.error).toBeDefined();
   });
@@ -33,6 +33,6 @@ describe("GET /api/v1/health (HTTP integration)", () => {
     const app = buildTestApp({
       runHealthChecks: async () => stableOkHealth()
     });
-    await request(app).get("/health").expect(200);
+    await request(app).get("/health").set(API_KEY_HEADER, AIREYE_API_KEY).expect(200);
   });
 });

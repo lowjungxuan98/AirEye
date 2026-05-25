@@ -18,7 +18,13 @@ class SelectRoleView extends BasePage {
           SelectRoleError(:final message) => Center(
             child: Text(message, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
-          SelectRoleReady(:final provider, :final isUpdatingProvider) => ReadyBody(provider: provider, isUpdatingProvider: isUpdatingProvider, controller: controller),
+          SelectRoleReady(:final provider, :final aiEnabled, :final isUpdatingProvider, :final isUpdatingAi) => ReadyBody(
+            provider: provider,
+            aiEnabled: aiEnabled,
+            isUpdatingProvider: isUpdatingProvider,
+            isUpdatingAi: isUpdatingAi,
+            controller: controller,
+          ),
         },
       ),
     );

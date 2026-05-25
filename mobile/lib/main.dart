@@ -8,6 +8,7 @@ void main() async {
   await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
   await WakelockPlus.enable();
   await initializeFirebase();
+  await AirEyeCrashlyticsManager.init();
 
   // Must be registered before runApp.
   FirebaseMessaging.onBackgroundMessage(airEyeFirebaseMessagingBackgroundHandler);

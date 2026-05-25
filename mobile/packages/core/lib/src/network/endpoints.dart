@@ -13,6 +13,7 @@ class AirEyeEndpoints {
   static const String _sendNotificationPath = '/api/v1/send-notification';
   static const String _exportPath = '/api/v1/export';
   static const String _providerPath = '/api/v1/provider';
+  static const String _aiPath = '/api/v1/ai';
 
   static Future<String> _url(String pathAndQuery) {
     return AirEyeBaseUrl.resolve().then((base) => '$base$pathAndQuery');
@@ -149,6 +150,22 @@ class AirEyeEndpoints {
     final res = await client.put<JsonMap>(url, data: request.toJson(), onError: onError, onFinally: onFinally);
 
     final model = ProviderResponse.fromJson(res.data ?? const <String, dynamic>{});
+    onSuccess?.call(model);
+    return model;
+  }
+
+  static Future<AiResponse> updateAi({
+    required UpdateAiRequest request,
+    void Function(AiResponse response)? onSuccess,
+    void Function(Object error, StackTrace stackTrace)? onError,
+    void Function()? onFinally,
+  }) async {
+    final client = await AirEyeClient.create();
+    final url = await _url(_aiPath);
+
+    final res = await client.put<JsonMap>(url, data: request.toJson(), onError: onError, onFinally: onFinally);
+
+    final model = AiResponse.fromJson(res.data ?? const <String, dynamic>{});
     onSuccess?.call(model);
     return model;
   }

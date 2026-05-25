@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { getDatabase } from "firebase-admin/database";
 import { loadServerEnv } from "../../../../src/libs/configs/env.config";
 import { getFirebaseAdminApp } from "../../../../src/libs/firebase/admin";
-import { FirebaseUploadRepository, getRealtimeDb } from "../../../../src/libs/firebase/realtime";
+import {
+  FirebaseAiFlagRepository,
+  FirebaseUploadRepository,
+  getRealtimeDb
+} from "../../../../src/libs/firebase/realtime";
 import type { AirEyeUpload } from "../../../../src/api/v1/model/import.model";
 
 function testUploadId(): string {
@@ -16,6 +20,33 @@ describe("getRealtimeDb", () => {
     const db = getRealtimeDb(app);
     expect(getDatabase(app)).toBe(db);
     expect(typeof db.ref).toBe("function");
+  });
+});
+
+describe("FirebaseAiFlagRepository", () => {
+  it("reads and writes the namespace AI flag", async () => {
+    const env = loadServerEnv();
+    const app = getFirebaseAdminApp(env);
+    const db = getRealtimeDb(app);
+    const namespace = "development";
+    const repo = new FirebaseAiFlagRepository(db, namespace);
+    const path = `${namespace}/ai`;
+    const previousSnapshot = await db.ref(path).once("value");
+    const previousValue = previousSnapshot.val();
+
+    try {
+      await repo.setAiEnabled(false);
+      await expect(repo.getAiEnabled()).resolves.toBe(false);
+
+      await repo.setAiEnabled(true);
+      await expect(repo.getAiEnabled()).resolves.toBe(true);
+    } finally {
+      if (previousSnapshot.exists()) {
+        await db.ref(path).set(previousValue);
+      } else {
+        await db.ref(path).remove();
+      }
+    }
   });
 });
 

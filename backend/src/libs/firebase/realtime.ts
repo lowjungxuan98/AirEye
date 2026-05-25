@@ -3,7 +3,7 @@ import { getDatabase } from "firebase-admin/database";
 import type { App } from "firebase-admin/app";
 import { sortByCreatedAtDesc } from "../utils/sort-by-created-at.util";
 import type { AirEyeUpload, AirEyeUploadRow } from "../../api/v1/model/import.model";
-import type { UploadRepository } from "../../api/v1/model/services.model";
+import type { AiFlagRepository, UploadRepository } from "../../api/v1/model/services.model";
 import type {
   ProviderState,
   ProviderStateRepository
@@ -11,6 +11,7 @@ import type {
 
 const UPLOADS_PATH = "uploads";
 const PROVIDER_STATE_PATH = "provider_state";
+const AI_FLAG_PATH = "ai";
 
 export type RealtimeNamespace = "development" | "production";
 
@@ -82,6 +83,23 @@ export class FirebaseProviderStateRepository implements ProviderStateRepository 
 
   async setProviderState(state: ProviderState): Promise<void> {
     await this.database.ref(nsPath(this.namespace, PROVIDER_STATE_PATH)).set(state);
+  }
+}
+
+export class FirebaseAiFlagRepository implements AiFlagRepository {
+  constructor(
+    private readonly database: Database,
+    private readonly namespace: RealtimeNamespace
+  ) {}
+
+  async getAiEnabled(): Promise<boolean | null> {
+    const snapshot = await this.database.ref(nsPath(this.namespace, AI_FLAG_PATH)).once("value");
+    const value = snapshot.val() as unknown;
+    return typeof value === "boolean" ? value : null;
+  }
+
+  async setAiEnabled(ai: boolean): Promise<void> {
+    await this.database.ref(nsPath(this.namespace, AI_FLAG_PATH)).set(ai);
   }
 }
 
