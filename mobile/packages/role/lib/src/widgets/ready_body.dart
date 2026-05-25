@@ -4,10 +4,12 @@ import 'provider_section.dart';
 import 'role_card.dart';
 
 class ReadyBody extends StatelessWidget {
-  const ReadyBody({super.key, required this.provider, required this.isUpdatingProvider, required this.controller});
+  const ReadyBody({super.key, required this.provider, required this.aiEnabled, required this.isUpdatingProvider, required this.isUpdatingAi, required this.controller});
 
   final ProviderResponse provider;
+  final bool aiEnabled;
   final bool isUpdatingProvider;
+  final bool isUpdatingAi;
   final SelectRoleController controller;
 
   @override
@@ -39,7 +41,7 @@ class ReadyBody extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        ProviderSection(provider: provider, isLoading: isUpdatingProvider, controller: controller),
+                        ProviderSection(provider: provider, aiEnabled: aiEnabled, isLoadingProvider: isUpdatingProvider, isLoadingAi: isUpdatingAi, controller: controller),
                       ],
                     ),
                     const SizedBox(height: 40),

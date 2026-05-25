@@ -1,7 +1,12 @@
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../src/libs/utils/api-error.util";
-import { buildTestApp, createImportServiceWithStubbedPipeline } from "../test-utils";
+import {
+  AIREYE_API_KEY,
+  API_KEY_HEADER,
+  buildTestApp,
+  createImportServiceWithStubbedPipeline
+} from "../test-utils";
 import { InMemoryUploadRepository } from "../in-memory-upload-repository";
 
 function parseSseDataLines(body: string): unknown[] {
@@ -32,6 +37,7 @@ describe("POST /api/v1/regenerate (HTTP integration)", () => {
 
     const res = await request(app)
       .post("/api/v1/regenerate")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
       .send({ imageUrl: "https://storage.example.test/uploads/upl_1-abc.jpg", text: "old" })
       .expect(200);
 
@@ -63,6 +69,7 @@ describe("POST /api/v1/regenerate (HTTP integration)", () => {
 
     const res = await request(app)
       .post("/api/v1/regenerate")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
       .send({
         imageUrl: "https://storage.example.test/uploads/upl_integration-abc.jpg",
         text: "old"
@@ -92,7 +99,11 @@ describe("POST /api/v1/regenerate (HTTP integration)", () => {
 
   it("returns 400 INVALID_REQUEST when body is invalid", async () => {
     const app = buildTestApp();
-    const res = await request(app).post("/api/v1/regenerate").send({ imageUrl: "" }).expect(400);
+    const res = await request(app)
+      .post("/api/v1/regenerate")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
+      .send({ imageUrl: "" })
+      .expect(400);
     expect(res.body).toEqual({
       error: { code: "INVALID_REQUEST", message: "imageUrl must be a non-empty string" }
     });
@@ -109,6 +120,7 @@ describe("POST /api/v1/regenerate (HTTP integration)", () => {
     });
     const res = await request(app)
       .post("/api/v1/regenerate")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
       .send({ imageUrl: "https://storage.example.test/uploads/upl_missing-abc.jpg", text: "" })
       .expect(404);
     expect(res.body).toEqual({

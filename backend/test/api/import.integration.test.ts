@@ -1,7 +1,12 @@
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../src/libs/utils/api-error.util";
-import { buildTestApp, createImportServiceWithStubbedPipeline } from "../test-utils";
+import {
+  AIREYE_API_KEY,
+  API_KEY_HEADER,
+  buildTestApp,
+  createImportServiceWithStubbedPipeline
+} from "../test-utils";
 import { InMemoryUploadRepository } from "../in-memory-upload-repository";
 
 function parseSseDataLines(body: string): unknown[] {
@@ -31,6 +36,7 @@ describe("POST /api/v1/import (HTTP integration)", () => {
     });
     const res = await request(app)
       .post("/api/v1/import")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
       .attach("image", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), {
         filename: "pixel.png",
         contentType: "image/png"
@@ -61,6 +67,7 @@ describe("POST /api/v1/import (HTTP integration)", () => {
     });
     await request(app)
       .post("/api/v1/import")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
       .attach("image", Buffer.from([0xff, 0xd8, 0xff]), {
         filename: "photo.jpg",
         contentType: "application/octet-stream"
@@ -77,6 +84,7 @@ describe("POST /api/v1/import (HTTP integration)", () => {
     const app = buildTestApp({ importService });
     const res = await request(app)
       .post("/api/v1/import")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
       .attach("image", Buffer.from("fake-jpeg"), { filename: "x.jpg", contentType: "image/jpeg" })
       .expect(200);
 
@@ -113,7 +121,7 @@ describe("POST /api/v1/import (HTTP integration)", () => {
 
   it("returns 400 INVALID_REQUEST when the image field is missing", async () => {
     const app = buildTestApp();
-    const res = await request(app).post("/api/v1/import").expect(400);
+    const res = await request(app).post("/api/v1/import").set(API_KEY_HEADER, AIREYE_API_KEY).expect(400);
     expect(res.body).toEqual({
       error: { code: "INVALID_REQUEST", message: "image is required" }
     });
@@ -123,6 +131,7 @@ describe("POST /api/v1/import (HTTP integration)", () => {
     const app = buildTestApp();
     const res = await request(app)
       .post("/api/v1/import")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
       .attach("image", Buffer.from("%PDF-1.4"), { filename: "x.pdf", contentType: "application/pdf" })
       .expect(415);
     expect(res.body).toEqual({
@@ -141,6 +150,7 @@ describe("POST /api/v1/import (HTTP integration)", () => {
     });
     const res = await request(app)
       .post("/api/v1/import")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
       .attach("image", Buffer.from([0xff, 0xd8, 0xff]), { filename: "m.jpg", contentType: "image/jpeg" })
       .expect(409);
     expect(res.body).toEqual({

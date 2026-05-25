@@ -12,6 +12,9 @@ abstract class BasePage extends ConsumerWidget {
 
 abstract class BaseStatefulPage extends ConsumerStatefulWidget {
   const BaseStatefulPage({super.key});
+
+  @override
+  BasePageState createState();
 }
 
 abstract class BasePageState<T extends BaseStatefulPage> extends ConsumerState<T> {}

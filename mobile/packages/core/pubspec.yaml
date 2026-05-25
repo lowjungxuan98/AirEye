@@ -7,7 +7,6 @@ environment:
   flutter: ">=3.41.0"
 
 dependencies:
-  cached_network_image: ^3.4.1
   camera: ^0.12.0+1
   camera_android_camerax: ^0.7.2
   cross_file: ^0.3.5+2
@@ -15,6 +14,7 @@ dependencies:
   device_info_plus: ^13.1.0
   dio: ^5.9.2
   firebase_core: ^4.7.0
+  firebase_crashlytics: ^5.2.2
   firebase_messaging: ^16.2.0
   flutter:
     sdk: flutter

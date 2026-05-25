@@ -1,6 +1,7 @@
-import { createApp } from "../src/app";
+import { AIREYE_API_KEY, API_KEY_HEADER, createApp } from "../src/app";
 import type {
   ImportServiceDependencies,
+  AiService,
   Logger,
   ProviderService,
   SendNotificationService
@@ -8,6 +9,7 @@ import type {
 import type { HealthReport } from "../src/api/v1/model/health.model";
 import type { ImportService } from "../src/api/v1/model/services.model";
 import { ExportService } from "../src/api/v1/services/export.service";
+import { AiService as AiServiceImpl } from "../src/api/v1/services/ai.service";
 import { ImportService as ImportServiceImpl } from "../src/api/v1/services/import.service";
 import { invalidProvider } from "../src/libs/utils/api-error.util";
 import { InMemoryUploadRepository } from "./in-memory-upload-repository";
@@ -19,6 +21,8 @@ export const silentLogger: Logger = {
   warn: () => {},
   info: () => {}
 };
+
+export { AIREYE_API_KEY, API_KEY_HEADER };
 
 export function stableOkHealth(): HealthReport {
   return {
@@ -43,6 +47,7 @@ export type BuildTestAppInput = {
   exportService?: ExportService;
   sendNotificationService?: SendNotificationService;
   providerService?: ProviderService;
+  aiService?: AiService;
   providerCurrent?: LlmProvider;
   providerAvailable?: LlmProvider[];
   runHealthChecks?: () => Promise<HealthReport>;
@@ -61,6 +66,16 @@ const noopImportService: ImportService = {
 const noopSendNotificationService: SendNotificationService = {
   sendNotification: async () => {}
 };
+
+export function createInMemoryAiFlagRepository(initial: boolean | null = null) {
+  let ai = initial;
+  return {
+    getAiEnabled: async () => ai,
+    setAiEnabled: async (next: boolean) => {
+      ai = next;
+    }
+  };
+}
 
 const inMemoryProviderService = (
   currentProvider: LlmProvider,
@@ -91,12 +106,15 @@ export function buildTestApp(input: BuildTestAppInput = {}) {
   const providerService =
     input.providerService ??
     inMemoryProviderService(providerCurrent, input.providerAvailable ?? [providerCurrent]);
+  const aiService =
+    input.aiService ?? new AiServiceImpl(createInMemoryAiFlagRepository());
   const runHealthChecks = input.runHealthChecks ?? (async () => stableOkHealth());
   return createApp({
     importService,
     exportService,
     sendNotificationService,
     providerService,
+    aiService,
     runHealthChecks,
     logger: input.logger ?? silentLogger
   });
@@ -175,6 +193,7 @@ export function createImportServiceWithStubbedPipeline(
         broadcastCaptureRequest: async () => {},
         broadcastExportRefresh: async () => {}
       },
+    aiFlagRepository: deps?.aiFlagRepository ?? createInMemoryAiFlagRepository(),
     providerState,
     toolReasoning,
     stepExecutor,

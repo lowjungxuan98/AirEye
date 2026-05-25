@@ -12,6 +12,7 @@ info:
     | Send notification | `POST /api/v1/send-notification` |
     | Export | `GET /api/v1/export` |
     | Provider | `GET /api/v1/provider`, `PUT /api/v1/provider` |
+    | AI flag | `PUT /api/v1/ai` |
 
     Prompt text is loaded from Langfuse. The configured tool-reasoning prompt returns ordered workflow steps; each step references another Langfuse prompt and selects either a vision step or reasoning step. Import and regenerate stream the running workflow step, each step output, then a terminal export row or error object.
 
@@ -19,6 +20,9 @@ info:
 
     With the backend running, open `/docs` on the same origin for the embedded Scalar API Reference, or import this file's URL elsewhere.
   version: 0.2.8
+
+security:
+  - ApiKeyAuth: []
 
 servers:
   - url: /
@@ -37,6 +41,8 @@ tags:
     description: Paginated newest-first export rows from Realtime Database
   - name: provider
     description: Runtime LLM provider state stored in Firebase Realtime Database under `provider_state/current_provide`
+  - name: ai
+    description: Runtime AI workflow gate stored in Firebase Realtime Database under `ai`
 
 paths:
   /api/v1/health:
@@ -71,6 +77,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IntegrationHealthReport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/import:
     post:
@@ -79,7 +87,11 @@ paths:
       description: |
         Accepts a single photo capture as `multipart/form-data` with one required file part named `image`.
 
-        The server stores the image in S3/MinIO, writes a pending Realtime Database row, sends a receiver export refresh hint, runs the Langfuse/LiteLLM workflow, updates the same row with normalized output, then sends another export refresh hint.
+        The server reads `{development|production}/ai` from Firebase before starting work. Missing `ai` defaults to `true`.
+
+        When `ai` is `true`, the server stores the image in S3/MinIO, writes a pending Realtime Database row, sends a receiver export refresh hint, runs the Langfuse/LiteLLM workflow, updates the same row with normalized output, then sends another export refresh hint.
+
+        When `ai` is `false`, the server stores the image only, writes the pending row with image storage fields, sends one receiver export refresh hint, emits that image-only terminal row, and skips provider lookup, tool reasoning, and workflow execution.
 
         Each workflow step is prompt-configured through Langfuse. A vision step receives the image URL and prompt text. A reasoning step receives the previous step output and prompt text. The first step output becomes `extractedText`; the final step output becomes `finalText`.
 
@@ -88,7 +100,7 @@ paths:
         1. `{"status":"running_step","data":{"index":0,"prompt":"...","model":"image"}}`
         2. `{"data":{"stepIndex":0,"output":"..."}}`
         3. Additional running/output pairs for later workflow steps
-        4. A terminal export row with `id`, timestamps, image storage fields, `extractedText`, and `finalText`
+        4. A terminal export row with `id`, timestamps, image storage fields, and, when AI ran, `extractedText` and `finalText`
         5. Or a terminal `{"error":{"code":"...","message":"..."}}`
 
         Topic resolution for sender capture requests and receiver import refresh messages is `AIREYE_FCM_TOPIC`, then the AirEye default `aireye_new_result`.
@@ -141,6 +153,8 @@ paths:
                 data: {"id":"upl_abc","createdAt":1745000001000,"updatedAt":1745000001500,"extractedText":"{\"fields\":[{\"label\":\"total\",\"value\":\"42.10\"}]}","finalText":"<section><h2>Summary</h2><p>Total: 42.10</p></section>","imageUrl":"https://minio.example.test/document-images/uploads/upl_abc-a1b2c3d4.jpg","bucket":"document-images","objectKey":"uploads/upl_abc-a1b2c3d4.jpg"}
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "413":
           $ref: "#/components/responses/PayloadTooLarge"
         "415":
@@ -181,8 +195,43 @@ paths:
                 data: {"id":"upl_abc","createdAt":1745000001000,"updatedAt":1745000002500,"extractedText":"normalized fields","finalText":"formatted result","imageUrl":"https://minio.example.test/document-images/uploads/upl_abc-a1b2c3d4.jpg","bucket":"document-images","objectKey":"uploads/upl_abc-a1b2c3d4.jpg"}
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/ai:
+    put:
+      tags: [ai]
+      summary: Set AI workflow flag
+      description: |
+        Stores the boolean AI workflow gate at `{development|production}/ai` in Firebase Realtime Database.
+
+        When the flag is `true` or missing, imports run the full Langfuse/LiteLLM workflow. When the flag is `false`, imports upload the image, create the image-only export row, broadcast one export refresh, and skip all AI provider and workflow calls.
+      operationId: putAi
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiUpdateRequest"
+            example:
+              ai: true
+      responses:
+        "200":
+          description: AI flag after the update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiState"
+              example:
+                ai: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -206,6 +255,8 @@ paths:
                 ok: true
         "500":
           $ref: "#/components/responses/InternalError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/export:
     get:
@@ -240,6 +291,8 @@ paths:
                     imageUrl: https://minio.example.test/document-images/uploads/upl_abc-a1b2c3d4.jpg
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
         "500":
@@ -263,6 +316,8 @@ paths:
           $ref: "#/components/responses/InternalError"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
     put:
       tags: [provider]
       summary: Switch active LLM provider
@@ -284,10 +339,18 @@ paths:
                 $ref: "#/components/schemas/ProviderState"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "500":
           $ref: "#/components/responses/InternalError"
 
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+
   parameters:
     Page:
       name: page
@@ -344,6 +407,16 @@ components:
             error:
               code: UNSUPPORTED_FILE_TYPE
               message: Only image uploads are supported
+    Unauthorized:
+      description: Missing or invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Missing or invalid API key
     InternalError:
       description: Unexpected server error
       content:
@@ -530,6 +603,20 @@ components:
       properties:
         current_provide:
           $ref: "#/components/schemas/LlmProvider"
+
+    AiState:
+      type: object
+      required: [ai]
+      properties:
+        ai:
+          type: boolean
+
+    AiUpdateRequest:
+      type: object
+      required: [ai]
+      properties:
+        ai:
+          type: boolean
 
     ExportListResponse:
       type: object

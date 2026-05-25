@@ -1,6 +1,6 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { buildTestApp } from "../test-utils";
+import { AIREYE_API_KEY, API_KEY_HEADER, buildTestApp } from "../test-utils";
 
 describe("GET /api/v1/provider", () => {
   it("returns the current provider state", async () => {
@@ -9,7 +9,7 @@ describe("GET /api/v1/provider", () => {
       providerAvailable: ["alpha", "future-provider"]
     });
 
-    const res = await request(app).get("/api/v1/provider").expect(200);
+    const res = await request(app).get("/api/v1/provider").set(API_KEY_HEADER, AIREYE_API_KEY).expect(200);
 
     expect(res.body).toEqual({
       current_provide: "alpha",
@@ -27,12 +27,13 @@ describe("PUT /api/v1/provider", () => {
 
     const res = await request(app)
       .put("/api/v1/provider")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
       .send({ current_provide: "beta" })
       .expect(200);
 
     expect(res.body.current_provide).toBe("beta");
 
-    const again = await request(app).get("/api/v1/provider").expect(200);
+    const again = await request(app).get("/api/v1/provider").set(API_KEY_HEADER, AIREYE_API_KEY).expect(200);
     expect(again.body.current_provide).toBe("beta");
   });
 
@@ -44,6 +45,7 @@ describe("PUT /api/v1/provider", () => {
 
     const res = await request(app)
       .put("/api/v1/provider")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
       .send({ provider: "future-provider" })
       .expect(200);
 
@@ -58,6 +60,7 @@ describe("PUT /api/v1/provider", () => {
 
     const res = await request(app)
       .put("/api/v1/provider")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
       .send({ current_provider: "new-route" })
       .expect(200);
 
@@ -70,7 +73,11 @@ describe("PUT /api/v1/provider", () => {
       providerAvailable: ["alpha"]
     });
 
-    const res = await request(app).put("/api/v1/provider").send({ provider: "other" }).expect(400);
+    const res = await request(app)
+      .put("/api/v1/provider")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
+      .send({ provider: "other" })
+      .expect(400);
 
     expect(res.body.error.code).toBe("INVALID_PROVIDER");
   });

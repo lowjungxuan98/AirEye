@@ -3,6 +3,7 @@ import { createHealthRunner } from "./api/v1/services/health.service";
 import { SendNotificationService } from "./api/v1/services/send-notification.service";
 import { ExportService } from "./api/v1/services/export.service";
 import { ImportService } from "./api/v1/services/import.service";
+import { AiService } from "./api/v1/services/ai.service";
 import type { ServerEnv } from "./libs/configs/env.config";
 import { S3ImageStore } from "./libs/s3/client";
 import type { S3Config } from "./libs/s3/type";
@@ -10,6 +11,7 @@ import { DEFAULT_FCM_BROADCAST_TOPIC, FirebaseNotifier } from "./libs/firebase/e
 import { getFirebaseAdminApp } from "./libs/firebase/admin";
 import {
   FirebaseProviderStateRepository,
+  FirebaseAiFlagRepository,
   FirebaseUploadRepository,
   getRealtimeDb,
   type RealtimeNamespace
@@ -32,7 +34,9 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
       : "development";
   const uploadRepository = new FirebaseUploadRepository(realtimeDb, namespace);
   const providerStateRepository = new FirebaseProviderStateRepository(realtimeDb, namespace);
+  const aiFlagRepository = new FirebaseAiFlagRepository(realtimeDb, namespace);
   const exportService = new ExportService(uploadRepository);
+  const aiService = new AiService(aiFlagRepository);
   const notifier = new FirebaseNotifier(
     firebaseApp,
     resolveFcmBroadcastTopic(env, DEFAULT_FCM_BROADCAST_TOPIC)
@@ -71,6 +75,7 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
     uploadRepository,
     imageStorage: new S3ImageStore(s3Config),
     notifier,
+    aiFlagRepository,
     providerState,
     toolReasoning,
     stepExecutor,
@@ -82,6 +87,7 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
     exportService,
     sendNotificationService,
     providerService: providerState,
+    aiService,
     runHealthChecks: createHealthRunner(realtimeDb, env.LLM_BASE_URL, env.LLM_API_KEY, s3Config),
     logger: console
   };

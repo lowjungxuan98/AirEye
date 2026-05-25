@@ -15,6 +15,7 @@ Vendor docs reviewed: 2026-04-19.
 - Firebase Flutter plugins are owned by `mobile/packages/core`.
 - `mobile/lib/main.dart` initializes Firebase once before `runApp(...)`.
 - `mobile/packages/core/lib/src/firebase/init.dart` builds `FirebaseOptions` from Dart defines instead of committing generated client config files.
+- Crashlytics is initialized through `AirEyeCrashlyticsManager` and has collection enabled for debug, profile, and release builds.
 - The repo currently has Android and iOS targets; there is no `mobile/web/` target to configure yet.
 
 ## What FlutterFire setup should own
@@ -63,6 +64,16 @@ flutterfire configure
 
 In this repo, keep generated Firebase config files out of version control and provide Firebase values through Dart defines.
 
+Crashlytics is also owned by core:
+
+```bash
+cd mobile
+flutter pub add firebase_crashlytics
+flutterfire configure
+```
+
+The Android Google Services and Crashlytics Gradle plugins are applied in `mobile/android/settings.gradle.kts` and `mobile/android/app/build.gradle.kts`. iOS includes the Crashlytics symbol upload build phase in `mobile/ios/Runner.xcodeproj/project.pbxproj`.
+
 ## Initialize in AirEye
 
 Initialize Firebase once in `mobile/lib/main.dart` before `runApp(...)`.
@@ -75,6 +86,7 @@ import 'package:core/core.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeFirebase();
+  await AirEyeCrashlyticsManager.init();
   runApp(AppScope(child: MaterialApp(theme: appTheme, home: const SplashScreen())));
 }
 ```
@@ -96,7 +108,9 @@ Local developers should create `mobile/.env.local` through `scripts/mobile_setup
 flutter run --dart-define-from-file=.env.local
 ```
 
-Do not commit generated FlutterFire config files such as `mobile/lib/firebase_options.dart`, `mobile/android/app/google-services.json`, or `mobile/ios/Runner/GoogleService-Info.plist`; recreate them locally or supply values through CI secrets. Firebase client API keys are not Firebase Admin credentials, but leaked keys should still be rotated or restricted in Google Cloud before resolving GitHub alerts. Keep Admin service account JSON, private keys, and FCM server keys out of the mobile app and in backend/server-side configuration only.
+Do not commit generated FlutterFire config files such as `mobile/lib/firebase_options.dart`, `mobile/android/app/google-services.json`, or `mobile/ios/Runner/GoogleService-Info.plist`; recreate them locally or supply values through CI secrets. The native config files are still required by the Android Google Services plugin and the iOS Crashlytics dSYM upload phase, so local release builds should generate them with `flutterfire configure` or download them from Firebase Console. The mobile release workflows generate these ignored files from existing GitHub Actions Firebase secrets before building.
+
+Firebase client API keys are not Firebase Admin credentials, but leaked keys should still be rotated or restricted in Google Cloud before resolving GitHub alerts. Keep Admin service account JSON, private keys, and FCM server keys out of the mobile app and in backend/server-side configuration only.
 
 ### Android debug suffix
 
@@ -129,21 +143,23 @@ Examples relevant to AirEye:
 
 - `firebase_messaging` for push notifications
 - `firebase_database` if the mobile client ever reads Realtime Database directly
-- `firebase_crashlytics` if crash reporting is added
+- `firebase_crashlytics` for crash reporting
 
 ## References
 
 - Add Firebase to your Flutter app: https://firebase.google.com/docs/flutter/setup
 - `firebase_core` package: https://pub.dev/packages/firebase_core
+- `firebase_crashlytics` package: https://pub.dev/packages/firebase_crashlytics
 - `flutterfire_cli` package: https://pub.dev/packages/flutterfire_cli
 - Existing repo Firebase notes: `docs/dependencies/firebase/`
 
 ---
 
-**Updated:** 2026-04-19  
+**Updated:** 2026-05-24  
 **Applies to:** AirEye mobile (`mobile/`, especially `mobile/lib/main.dart`)  
-**Doc version:** 1  
+**Doc version:** 2  
 **Upstream refs:**  
 - https://firebase.google.com/docs/flutter/setup  
 - https://pub.dev/packages/firebase_core  
+- https://pub.dev/packages/firebase_crashlytics  
 - https://pub.dev/packages/flutterfire_cli

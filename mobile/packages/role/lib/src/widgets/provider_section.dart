@@ -2,10 +2,12 @@ import 'package:core/core.dart';
 import '../select_role_controller.dart';
 
 class ProviderSection extends StatelessWidget {
-  const ProviderSection({super.key, required this.provider, required this.isLoading, required this.controller});
+  const ProviderSection({super.key, required this.provider, required this.aiEnabled, required this.isLoadingProvider, required this.isLoadingAi, required this.controller});
 
   final ProviderResponse provider;
-  final bool isLoading;
+  final bool aiEnabled;
+  final bool isLoadingProvider;
+  final bool isLoadingAi;
   final SelectRoleController controller;
 
   @override
@@ -18,7 +20,17 @@ class ProviderSection extends StatelessWidget {
       children: [
         Text('AI PROVIDER', style: textTheme.labelLarge?.copyWith(color: GrimColors.sectionLabel, fontSize: 10, letterSpacing: 1.2)),
         const SizedBox(height: 2),
-        ProviderSelectorWidget(provider: provider, onSelect: controller.updateProvider, isLoading: isLoading),
+        ProviderSelectorWidget(provider: provider, onSelect: controller.updateProvider, isLoading: isLoadingProvider),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isLoadingAi) ...[const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)), const SizedBox(width: 6)],
+            Text('Enable AI', style: textTheme.labelLarge?.copyWith(fontSize: 12, fontWeight: FontWeight.w700)),
+            const SizedBox(width: 8),
+            Switch.adaptive(value: aiEnabled, onChanged: isLoadingAi ? null : controller.updateAi, materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+          ],
+        ),
       ],
     );
   }
