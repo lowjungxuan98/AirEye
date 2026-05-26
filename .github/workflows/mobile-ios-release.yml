@@ -67,6 +67,7 @@ jobs:
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'mobile-v') && steps.mobile_changes.outputs.changed == 'true'
         env:
           AIREYE_API_BASE_URL: ${{ secrets.AIREYE_API_BASE_URL }}
+          AIREYE_API_KEY: ${{ secrets.AIREYE_API_KEY }}
           FIREBASE_IOS_API_KEY: ${{ secrets.FIREBASE_IOS_API_KEY }}
           FIREBASE_IOS_APP_ID: ${{ secrets.FIREBASE_IOS_APP_ID }}
           FIREBASE_IOS_BUNDLE_ID: ${{ secrets.FIREBASE_IOS_BUNDLE_ID }}
@@ -83,7 +84,7 @@ jobs:
         run: |
           set -euo pipefail
           missing=()
-          for name in AIREYE_API_BASE_URL FIREBASE_IOS_API_KEY FIREBASE_IOS_APP_ID FIREBASE_IOS_BUNDLE_ID FIREBASE_PROJECT_ID FIREBASE_MESSAGING_SENDER_ID FIREBASE_DATABASE_URL FIREBASE_STORAGE_BUCKET FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64 IOS_DISTRIBUTION_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64 IOS_KEYCHAIN_PASSWORD; do
+          for name in AIREYE_API_BASE_URL AIREYE_API_KEY FIREBASE_IOS_API_KEY FIREBASE_IOS_APP_ID FIREBASE_IOS_BUNDLE_ID FIREBASE_PROJECT_ID FIREBASE_MESSAGING_SENDER_ID FIREBASE_DATABASE_URL FIREBASE_STORAGE_BUCKET FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64 IOS_DISTRIBUTION_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64 IOS_KEYCHAIN_PASSWORD; do
             if [[ -z "${!name}" ]]; then
               missing+=("$name")
             fi
@@ -213,6 +214,7 @@ jobs:
         working-directory: mobile
         env:
           AIREYE_API_BASE_URL: ${{ secrets.AIREYE_API_BASE_URL }}
+          AIREYE_API_KEY: ${{ secrets.AIREYE_API_KEY }}
           FIREBASE_IOS_API_KEY: ${{ secrets.FIREBASE_IOS_API_KEY }}
           FIREBASE_IOS_APP_ID: ${{ secrets.FIREBASE_IOS_APP_ID }}
           FIREBASE_IOS_BUNDLE_ID: ${{ secrets.FIREBASE_IOS_BUNDLE_ID }}
@@ -226,6 +228,7 @@ jobs:
           flutter build ipa --release \
             --export-options-plist=ios/ExportOptions.plist \
             --dart-define=AIREYE_API_BASE_URL="$AIREYE_API_BASE_URL" \
+            --dart-define=AIREYE_API_KEY="$AIREYE_API_KEY" \
             --dart-define=FIREBASE_IOS_API_KEY="$FIREBASE_IOS_API_KEY" \
             --dart-define=FIREBASE_IOS_APP_ID="$FIREBASE_IOS_APP_ID" \
             --dart-define=FIREBASE_IOS_BUNDLE_ID="$FIREBASE_IOS_BUNDLE_ID" \
