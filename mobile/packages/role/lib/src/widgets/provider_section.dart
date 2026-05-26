@@ -2,12 +2,12 @@ import 'package:core/core.dart';
 import '../select_role_controller.dart';
 
 class ProviderSection extends StatelessWidget {
-  const ProviderSection({super.key, required this.provider, required this.aiEnabled, required this.isLoadingProvider, required this.isLoadingAi, required this.controller});
+  const ProviderSection({super.key, required this.provider, required this.autoAnalyseEnabled, required this.isLoadingProvider, required this.isLoadingAutoAnalyse, required this.controller});
 
   final ProviderResponse provider;
-  final bool aiEnabled;
+  final bool autoAnalyseEnabled;
   final bool isLoadingProvider;
-  final bool isLoadingAi;
+  final bool isLoadingAutoAnalyse;
   final SelectRoleController controller;
 
   @override
@@ -25,10 +25,10 @@ class ProviderSection extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (isLoadingAi) ...[const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)), const SizedBox(width: 6)],
-            Text('Enable AI', style: textTheme.labelLarge?.copyWith(fontSize: 12, fontWeight: FontWeight.w700)),
+            if (isLoadingAutoAnalyse) ...[const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)), const SizedBox(width: 6)],
+            Text('auto_analyse', style: textTheme.labelLarge?.copyWith(color: GrimColors.sectionLabel, fontSize: 12, fontWeight: FontWeight.w700)),
             const SizedBox(width: 8),
-            Switch.adaptive(value: aiEnabled, onChanged: isLoadingAi ? null : controller.updateAi, materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+            Switch.adaptive(value: autoAnalyseEnabled, onChanged: isLoadingAutoAnalyse ? null : controller.updateAutoAnalyse, materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
           ],
         ),
       ],

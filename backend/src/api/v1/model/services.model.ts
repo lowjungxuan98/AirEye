@@ -42,7 +42,7 @@ export type ImportServiceDependencies = {
   uploadRepository: UploadRepository;
   imageStorage: ImageStorage;
   notifier: ResultNotifier;
-  aiFlagRepository: AiFlagRepository;
+  autoAnalyseFlagRepository: AutoAnalyseFlagRepository;
   providerState: Pick<ProviderStateService, "getCurrentProvider">;
   toolReasoning: Pick<ToolReasoning, "decideSteps">;
   stepExecutor: Pick<StepExecutor, "run">;
@@ -62,14 +62,14 @@ export interface SendNotificationService {
   sendNotification(): Promise<void>;
 }
 
-export interface AiFlagRepository {
-  getAiEnabled(): Promise<boolean | null>;
-  setAiEnabled(ai: boolean): Promise<void>;
+export interface AutoAnalyseFlagRepository {
+  getAutoAnalyseEnabled(): Promise<boolean | null>;
+  setAutoAnalyseEnabled(autoAnalyse: boolean): Promise<void>;
 }
 
-export interface AiService {
-  getAiEnabled(): Promise<boolean>;
-  setAiEnabled(ai: boolean): Promise<{ ai: boolean }>;
+export interface AutoAnalyseService {
+  getAutoAnalyseEnabled(): Promise<boolean>;
+  setAutoAnalyseEnabled(autoAnalyse: boolean): Promise<{ auto_analyse: boolean }>;
 }
 
 export interface ProviderService {

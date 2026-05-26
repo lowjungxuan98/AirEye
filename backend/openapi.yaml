@@ -12,14 +12,14 @@ info:
     | Send notification | `POST /api/v1/send-notification` |
     | Export | `GET /api/v1/export` |
     | Provider | `GET /api/v1/provider`, `PUT /api/v1/provider` |
-    | AI flag | `PUT /api/v1/ai` |
+    | Auto analyse flag | `PUT /api/v1/auto-analyse` |
 
     Prompt text is loaded from Langfuse. The configured tool-reasoning prompt returns ordered workflow steps; each step references another Langfuse prompt and selects either a vision step or reasoning step. Import and regenerate stream the running workflow step, each step output, then a terminal export row or error object.
 
     FCM topic messages use `AIREYE_FCM_TOPIC`, or the AirEye default `aireye_new_result` when the environment variable is unset.
 
     With the backend running, open `/docs` on the same origin for the embedded Scalar API Reference, or import this file's URL elsewhere.
-  version: 0.2.8
+  version: 0.2.12
 
 security:
   - ApiKeyAuth: []
@@ -41,8 +41,8 @@ tags:
     description: Paginated newest-first export rows from Realtime Database
   - name: provider
     description: Runtime LLM provider state stored in Firebase Realtime Database under `provider_state/current_provide`
-  - name: ai
-    description: Runtime AI workflow gate stored in Firebase Realtime Database under `ai`
+  - name: auto-analyse
+    description: Runtime import workflow gate stored in Firebase Realtime Database under `auto_analyse`
 
 paths:
   /api/v1/health:
@@ -60,7 +60,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/IntegrationHealthReport"
               example:
-                version: 0.2.8
+                version: 0.2.12
                 ok: true
                 firebase:
                   ok: true
@@ -87,11 +87,11 @@ paths:
       description: |
         Accepts a single photo capture as `multipart/form-data` with one required file part named `image`.
 
-        The server reads `{development|production}/ai` from Firebase before starting work. Missing `ai` defaults to `true`.
+        The server reads `{development|production}/auto_analyse` from Firebase before starting work. Missing `auto_analyse` defaults to `true`.
 
-        When `ai` is `true`, the server stores the image in S3/MinIO, writes a pending Realtime Database row, sends a receiver export refresh hint, runs the Langfuse/LiteLLM workflow, updates the same row with normalized output, then sends another export refresh hint.
+        When `auto_analyse` is `true`, the server stores the image in S3/MinIO, writes a pending Realtime Database row, sends a receiver export refresh hint, runs the Langfuse/LiteLLM workflow, updates the same row with normalized output, then sends another export refresh hint.
 
-        When `ai` is `false`, the server stores the image only, writes the pending row with image storage fields, sends one receiver export refresh hint, emits that image-only terminal row, and skips provider lookup, tool reasoning, and workflow execution.
+        When `auto_analyse` is `false`, the server stores the image only, writes the pending row with image storage fields, sends one receiver export refresh hint, emits that image-only terminal row, and skips provider lookup, tool reasoning, and workflow execution.
 
         Each workflow step is prompt-configured through Langfuse. A vision step receives the image URL and prompt text. A reasoning step receives the previous step output and prompt text. The first step output becomes `extractedText`; the final step output becomes `finalText`.
 
@@ -100,7 +100,7 @@ paths:
         1. `{"status":"running_step","data":{"index":0,"prompt":"...","model":"image"}}`
         2. `{"data":{"stepIndex":0,"output":"..."}}`
         3. Additional running/output pairs for later workflow steps
-        4. A terminal export row with `id`, timestamps, image storage fields, and, when AI ran, `extractedText` and `finalText`
+        4. A terminal export row with `id`, timestamps, image storage fields, and, when auto analyse ran, `extractedText` and `finalText`
         5. Or a terminal `{"error":{"code":"...","message":"..."}}`
 
         Topic resolution for sender capture requests and receiver import refresh messages is `AIREYE_FCM_TOPIC`, then the AirEye default `aireye_new_result`.
@@ -170,6 +170,8 @@ paths:
         Reruns the same prompt-configured workflow for an existing upload row without uploading image bytes again.
 
         The server extracts the upload id from the image object filename, loads the existing row, clears stale output fields, streams workflow step events, and updates the same row with the new normalized output.
+
+        Regenerate does not read the `auto_analyse` flag; it always runs the Langfuse/LiteLLM workflow.
       operationId: postRegenerate
       requestBody:
         required: true
@@ -202,32 +204,32 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/ai:
+  /api/v1/auto-analyse:
     put:
-      tags: [ai]
-      summary: Set AI workflow flag
+      tags: [auto-analyse]
+      summary: Set auto_analyse import workflow flag
       description: |
-        Stores the boolean AI workflow gate at `{development|production}/ai` in Firebase Realtime Database.
+        Stores the boolean import workflow gate at `{development|production}/auto_analyse` in Firebase Realtime Database.
 
-        When the flag is `true` or missing, imports run the full Langfuse/LiteLLM workflow. When the flag is `false`, imports upload the image, create the image-only export row, broadcast one export refresh, and skip all AI provider and workflow calls.
-      operationId: putAi
+        When the flag is `true` or missing, imports run the full Langfuse/LiteLLM workflow. When the flag is `false`, imports upload the image, create the image-only export row, broadcast one export refresh, and skip all provider and workflow calls. Regenerate ignores this flag and always runs the workflow.
+      operationId: putAutoAnalyse
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AiUpdateRequest"
+              $ref: "#/components/schemas/AutoAnalyseUpdateRequest"
             example:
-              ai: true
+              auto_analyse: true
       responses:
         "200":
-          description: AI flag after the update
+          description: auto_analyse flag after the update
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AiState"
+                $ref: "#/components/schemas/AutoAnalyseState"
               example:
-                ai: true
+                auto_analyse: true
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -469,7 +471,7 @@ components:
         version:
           type: string
           description: Backend application version from `backend/package.json`
-          example: 0.2.8
+          example: 0.2.12
         ok:
           type: boolean
         firebase:
@@ -604,18 +606,18 @@ components:
         current_provide:
           $ref: "#/components/schemas/LlmProvider"
 
-    AiState:
+    AutoAnalyseState:
       type: object
-      required: [ai]
+      required: [auto_analyse]
       properties:
-        ai:
+        auto_analyse:
           type: boolean
 
-    AiUpdateRequest:
+    AutoAnalyseUpdateRequest:
       type: object
-      required: [ai]
+      required: [auto_analyse]
       properties:
-        ai:
+        auto_analyse:
           type: boolean
 
     ExportListResponse:

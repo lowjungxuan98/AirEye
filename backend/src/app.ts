@@ -3,7 +3,7 @@ import path from "node:path";
 import express, { type RequestHandler, type Response } from "express";
 import type {
   ImportService,
-  AiService,
+  AutoAnalyseService,
   Logger,
   ProviderService,
   SendNotificationService
@@ -17,7 +17,7 @@ import { createRegenerateRouter } from "./api/v1/routes/regenerate.route";
 import { createExportRouter } from "./api/v1/routes/export.route";
 import { createSendNotificationRouter } from "./api/v1/routes/send-notification.route";
 import { createProviderRouter } from "./api/v1/routes/provider.route";
-import { createAiRouter } from "./api/v1/routes/ai.route";
+import { createAutoAnalyseRouter } from "./api/v1/routes/auto-analyse.route";
 import { unauthorized } from "./libs/utils/api-error.util";
 
 const OPENAPI_ROUTE = "/openapi.yaml";
@@ -30,7 +30,7 @@ export type AppDependencies = {
   exportService: ExportService;
   sendNotificationService: SendNotificationService;
   providerService: ProviderService;
-  aiService: AiService;
+  autoAnalyseService: AutoAnalyseService;
   runHealthChecks: () => Promise<HealthReport>;
   logger?: Logger;
 };
@@ -40,7 +40,7 @@ export function createApp({
   exportService,
   sendNotificationService,
   providerService,
-  aiService,
+  autoAnalyseService,
   runHealthChecks,
   logger = console
 }: AppDependencies) {
@@ -92,7 +92,7 @@ export function createApp({
   v1Router.use(createExportRouter(exportService));
   v1Router.use(createSendNotificationRouter(sendNotificationService));
   v1Router.use(createProviderRouter(providerService));
-  v1Router.use(createAiRouter(aiService));
+  v1Router.use(createAutoAnalyseRouter(autoAnalyseService));
   app.use("/api/v1", v1Router);
 
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

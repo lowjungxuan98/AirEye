@@ -1,7 +1,7 @@
 import { AIREYE_API_KEY, API_KEY_HEADER, createApp } from "../src/app";
 import type {
   ImportServiceDependencies,
-  AiService,
+  AutoAnalyseService,
   Logger,
   ProviderService,
   SendNotificationService
@@ -9,7 +9,7 @@ import type {
 import type { HealthReport } from "../src/api/v1/model/health.model";
 import type { ImportService } from "../src/api/v1/model/services.model";
 import { ExportService } from "../src/api/v1/services/export.service";
-import { AiService as AiServiceImpl } from "../src/api/v1/services/ai.service";
+import { AutoAnalyseService as AutoAnalyseServiceImpl } from "../src/api/v1/services/auto-analyse.service";
 import { ImportService as ImportServiceImpl } from "../src/api/v1/services/import.service";
 import { invalidProvider } from "../src/libs/utils/api-error.util";
 import { InMemoryUploadRepository } from "./in-memory-upload-repository";
@@ -47,7 +47,7 @@ export type BuildTestAppInput = {
   exportService?: ExportService;
   sendNotificationService?: SendNotificationService;
   providerService?: ProviderService;
-  aiService?: AiService;
+  autoAnalyseService?: AutoAnalyseService;
   providerCurrent?: LlmProvider;
   providerAvailable?: LlmProvider[];
   runHealthChecks?: () => Promise<HealthReport>;
@@ -67,12 +67,12 @@ const noopSendNotificationService: SendNotificationService = {
   sendNotification: async () => {}
 };
 
-export function createInMemoryAiFlagRepository(initial: boolean | null = null) {
-  let ai = initial;
+export function createInMemoryAutoAnalyseFlagRepository(initial: boolean | null = null) {
+  let autoAnalyse = initial;
   return {
-    getAiEnabled: async () => ai,
-    setAiEnabled: async (next: boolean) => {
-      ai = next;
+    getAutoAnalyseEnabled: async () => autoAnalyse,
+    setAutoAnalyseEnabled: async (next: boolean) => {
+      autoAnalyse = next;
     }
   };
 }
@@ -106,15 +106,16 @@ export function buildTestApp(input: BuildTestAppInput = {}) {
   const providerService =
     input.providerService ??
     inMemoryProviderService(providerCurrent, input.providerAvailable ?? [providerCurrent]);
-  const aiService =
-    input.aiService ?? new AiServiceImpl(createInMemoryAiFlagRepository());
+  const autoAnalyseService =
+    input.autoAnalyseService ??
+    new AutoAnalyseServiceImpl(createInMemoryAutoAnalyseFlagRepository());
   const runHealthChecks = input.runHealthChecks ?? (async () => stableOkHealth());
   return createApp({
     importService,
     exportService,
     sendNotificationService,
     providerService,
-    aiService,
+    autoAnalyseService,
     runHealthChecks,
     logger: input.logger ?? silentLogger
   });
@@ -193,7 +194,8 @@ export function createImportServiceWithStubbedPipeline(
         broadcastCaptureRequest: async () => {},
         broadcastExportRefresh: async () => {}
       },
-    aiFlagRepository: deps?.aiFlagRepository ?? createInMemoryAiFlagRepository(),
+    autoAnalyseFlagRepository:
+      deps?.autoAnalyseFlagRepository ?? createInMemoryAutoAnalyseFlagRepository(),
     providerState,
     toolReasoning,
     stepExecutor,
