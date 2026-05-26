@@ -19,7 +19,7 @@ info:
     FCM topic messages use `AIREYE_FCM_TOPIC`, or the AirEye default `aireye_new_result` when the environment variable is unset.
 
     With the backend running, open `/docs` on the same origin for the embedded Scalar API Reference, or import this file's URL elsewhere.
-  version: 0.2.12
+  version: 0.2.13
 
 security:
   - ApiKeyAuth: []
@@ -30,7 +30,7 @@ servers:
 
 tags:
   - name: health
-    description: Firebase, LiteLLM, and S3 readiness
+    description: Firebase, LiteLLM, Langfuse, and S3 readiness
   - name: import
     description: Photo capture upload that streams a prompt-configured document image workflow
   - name: regenerate
@@ -50,7 +50,7 @@ paths:
       tags: [health]
       summary: Integration health
       description: |
-        Checks Firebase Realtime Database, LiteLLM model discovery, and S3 bucket readiness.
+        Checks Firebase Realtime Database, LiteLLM model discovery, Langfuse prompt API access, and S3 bucket readiness.
       operationId: getHealth
       responses:
         "200":
@@ -60,7 +60,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/IntegrationHealthReport"
               example:
-                version: 0.2.12
+                version: 0.2.13
                 ok: true
                 firebase:
                   ok: true
@@ -68,6 +68,9 @@ paths:
                 llm:
                   ok: true
                   latencyMs: 156
+                langfuse:
+                  ok: true
+                  latencyMs: 71
                 s3:
                   ok: true
                   latencyMs: 89
@@ -466,17 +469,19 @@ components:
 
     IntegrationHealthReport:
       type: object
-      required: [version, ok, firebase, llm, s3]
+      required: [version, ok, firebase, llm, langfuse, s3]
       properties:
         version:
           type: string
           description: Backend application version from `backend/package.json`
-          example: 0.2.12
+          example: 0.2.13
         ok:
           type: boolean
         firebase:
           $ref: "#/components/schemas/DependencyCheck"
         llm:
+          $ref: "#/components/schemas/DependencyCheck"
+        langfuse:
           $ref: "#/components/schemas/DependencyCheck"
         s3:
           $ref: "#/components/schemas/DependencyCheck"

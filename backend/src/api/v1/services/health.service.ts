@@ -4,6 +4,7 @@ import OpenAI from "openai";
 import { getAppVersion } from "../../../libs/utils/app-version.util";
 import { createS3Client, pingS3 } from "../../../libs/s3/client";
 import type { S3Config } from "../../../libs/s3/type";
+import type { LangfuseClient } from "../../../libs/langfuse/client";
 import type { DependencyCheck, HealthReport } from "../model/health.model";
 
 const HEALTH_REQUEST_TIMEOUT_MS = 10_000;
@@ -12,25 +13,28 @@ export function createHealthRunner(
   database: Database,
   llmBaseUrl: string,
   llmApiKey: string,
+  langfuse: Pick<LangfuseClient, "listPrompts">,
   s3Config: Pick<S3Config, "endpoint" | "accessKeyId" | "secretAccessKey" | "region" | "bucket">
 ) {
   return async (): Promise<HealthReport> => {
     const llmClient = new OpenAI({ apiKey: llmApiKey, baseURL: llmBaseUrl, timeout: HEALTH_REQUEST_TIMEOUT_MS });
     const s3Client = createS3Client(s3Config);
 
-    const [firebase, llm, s3] = await Promise.all([
+    const [firebase, llm, langfuseCheck, s3] = await Promise.all([
       runDependencyCheck(async () => {
         await database.ref("/.info/serverTimeOffset").once("value");
       }),
       runDependencyCheck(() => llmClient.models.list().then(() => {})),
+      runDependencyCheck(() => langfuse.listPrompts({ limit: 1 }).then(() => {})),
       runDependencyCheck(() => pingS3(s3Client, s3Config.bucket))
     ]);
 
     return {
       version: getAppVersion(),
-      ok: firebase.ok && llm.ok && s3.ok,
+      ok: firebase.ok && llm.ok && langfuseCheck.ok && s3.ok,
       firebase,
       llm,
+      langfuse: langfuseCheck,
       s3
     };
   };
