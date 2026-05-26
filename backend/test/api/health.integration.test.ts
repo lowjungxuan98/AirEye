@@ -13,6 +13,7 @@ describe("GET /api/v1/health (HTTP integration)", () => {
       ok: true,
       firebase: { ok: true, latencyMs: expect.any(Number) },
       llm: { ok: true, latencyMs: expect.any(Number) },
+      langfuse: { ok: true, latencyMs: expect.any(Number) },
       s3: { ok: true, latencyMs: expect.any(Number) }
     });
   });

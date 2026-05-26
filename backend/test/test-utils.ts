@@ -30,6 +30,7 @@ export function stableOkHealth(): HealthReport {
     ok: true,
     firebase: { ok: true, latencyMs: 0 },
     llm: { ok: true, latencyMs: 0 },
+    langfuse: { ok: true, latencyMs: 0 },
     s3: { ok: true, latencyMs: 0 }
   };
 }

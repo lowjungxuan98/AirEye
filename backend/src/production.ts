@@ -88,7 +88,7 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
     sendNotificationService,
     providerService: providerState,
     autoAnalyseService,
-    runHealthChecks: createHealthRunner(realtimeDb, env.LLM_BASE_URL, env.LLM_API_KEY, s3Config),
+    runHealthChecks: createHealthRunner(realtimeDb, env.LLM_BASE_URL, env.LLM_API_KEY, langfuse, s3Config),
     logger: console
   };
 }
