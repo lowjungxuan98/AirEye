@@ -33,23 +33,23 @@ class SelectRoleController extends BaseController<SelectRoleState> {
     final current = state;
     if (current is! SelectRoleReady) return;
 
-    state = SelectRoleReady(provider: current.provider, aiEnabled: current.aiEnabled, isUpdatingProvider: true);
+    state = SelectRoleReady(provider: current.provider, autoAnalyseEnabled: current.autoAnalyseEnabled, isUpdatingProvider: true);
     try {
       final response = await AirEyeEndpoints.updateProvider(request: UpdateProviderRequest(provider: provider));
-      state = SelectRoleReady(provider: response, aiEnabled: current.aiEnabled);
+      state = SelectRoleReady(provider: response, autoAnalyseEnabled: current.autoAnalyseEnabled);
     } catch (e) {
       setError(e.toString());
     }
   }
 
-  Future<void> updateAi(bool ai) async {
+  Future<void> updateAutoAnalyse(bool autoAnalyse) async {
     final current = state;
     if (current is! SelectRoleReady) return;
 
-    state = SelectRoleReady(provider: current.provider, aiEnabled: ai, isUpdatingAi: true);
+    state = SelectRoleReady(provider: current.provider, autoAnalyseEnabled: autoAnalyse, isUpdatingAutoAnalyse: true);
     try {
-      final response = await AirEyeEndpoints.updateAi(request: UpdateAiRequest(ai: ai));
-      state = SelectRoleReady(provider: current.provider, aiEnabled: response.ai);
+      final response = await AirEyeEndpoints.updateAutoAnalyse(request: UpdateAutoAnalyseRequest(autoAnalyse: autoAnalyse));
+      state = SelectRoleReady(provider: current.provider, autoAnalyseEnabled: response.autoAnalyse);
     } catch (e) {
       state = current;
       setError(e.toString());

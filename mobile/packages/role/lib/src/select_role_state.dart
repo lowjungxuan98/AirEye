@@ -9,11 +9,11 @@ class SelectRoleLoading extends SelectRoleState {
 }
 
 class SelectRoleReady extends SelectRoleState {
-  const SelectRoleReady({required this.provider, this.aiEnabled = true, this.isUpdatingProvider = false, this.isUpdatingAi = false});
+  const SelectRoleReady({required this.provider, this.autoAnalyseEnabled = true, this.isUpdatingProvider = false, this.isUpdatingAutoAnalyse = false});
   final ProviderResponse provider;
-  final bool aiEnabled;
+  final bool autoAnalyseEnabled;
   final bool isUpdatingProvider;
-  final bool isUpdatingAi;
+  final bool isUpdatingAutoAnalyse;
 }
 
 class SelectRoleError extends SelectRoleState {

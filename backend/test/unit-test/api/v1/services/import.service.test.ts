@@ -21,10 +21,10 @@ function makeNotifier() {
   };
 }
 
-function makeAiFlagRepository(ai: boolean | null = null) {
+function makeAutoAnalyseFlagRepository(autoAnalyse: boolean | null = null) {
   return {
-    getAiEnabled: vi.fn(async () => ai),
-    setAiEnabled: vi.fn(async () => {})
+    getAutoAnalyseEnabled: vi.fn(async () => autoAnalyse),
+    setAutoAnalyseEnabled: vi.fn(async () => {})
   };
 }
 
@@ -66,7 +66,7 @@ describe("ImportService streamImport", () => {
       uploadRepository,
       imageStorage,
       notifier,
-      aiFlagRepository: makeAiFlagRepository(),
+      autoAnalyseFlagRepository: makeAutoAnalyseFlagRepository(),
       providerState,
       toolReasoning,
       stepExecutor,
@@ -122,7 +122,7 @@ describe("ImportService streamImport", () => {
       uploadRepository,
       imageStorage: makeImageStorage(),
       notifier: makeNotifier(),
-      aiFlagRepository: makeAiFlagRepository(),
+      autoAnalyseFlagRepository: makeAutoAnalyseFlagRepository(),
       providerState: { getCurrentProvider: async () => "test-provider" },
       toolReasoning: {
         decideSteps: async () => [{ prompt: "only", model: "image" }]
@@ -147,7 +147,7 @@ describe("ImportService streamImport", () => {
     expect(final.finalText).toBe("the-only-output");
   });
 
-  it("uploads and emits an image-only terminal row when AI is disabled", async () => {
+  it("uploads and emits an image-only terminal row when auto_analyse is disabled", async () => {
     const uploadRepository = new InMemoryUploadRepository();
     const providerState = { getCurrentProvider: vi.fn() };
     const toolReasoning = { decideSteps: vi.fn() };
@@ -160,13 +160,13 @@ describe("ImportService streamImport", () => {
       uploadRepository,
       imageStorage,
       notifier,
-      aiFlagRepository: makeAiFlagRepository(false),
+      autoAnalyseFlagRepository: makeAutoAnalyseFlagRepository(false),
       providerState,
       toolReasoning,
       stepExecutor,
       logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
       now: () => 123,
-      generateUploadId: () => "upl_ai_off"
+      generateUploadId: () => "upl_auto_analyse_off"
     });
 
     await service.streamImport(
@@ -176,7 +176,7 @@ describe("ImportService streamImport", () => {
 
     expect(emit).toHaveBeenCalledOnce();
     expect(emit).toHaveBeenCalledWith({
-      id: "upl_ai_off",
+      id: "upl_auto_analyse_off",
       createdAt: 123,
       updatedAt: 123,
       imageUrl: "https://img",
@@ -188,9 +188,9 @@ describe("ImportService streamImport", () => {
     expect(stepExecutor.run).not.toHaveBeenCalled();
     expect(notifier.broadcastExportRefresh).toHaveBeenCalledOnce();
 
-    const row = await uploadRepository.getUpload("upl_ai_off");
+    const row = await uploadRepository.getUpload("upl_auto_analyse_off");
     expect(row).toMatchObject({
-      id: "upl_ai_off",
+      id: "upl_auto_analyse_off",
       createdAt: 123,
       updatedAt: 123,
       imageUrl: "https://img",
@@ -201,18 +201,18 @@ describe("ImportService streamImport", () => {
     expect(row?.finalText).toBeUndefined();
   });
 
-  it("fails before upload when the AI flag cannot be read", async () => {
+  it("fails before upload when the auto_analyse flag cannot be read", async () => {
     const imageStorage = makeImageStorage();
     const uploadRepository = new InMemoryUploadRepository();
     const service = new ImportService({
       uploadRepository,
       imageStorage,
       notifier: makeNotifier(),
-      aiFlagRepository: {
-        getAiEnabled: vi.fn(async () => {
+      autoAnalyseFlagRepository: {
+        getAutoAnalyseEnabled: vi.fn(async () => {
           throw new Error("firebase unavailable");
         }),
-        setAiEnabled: vi.fn()
+        setAutoAnalyseEnabled: vi.fn()
       },
       providerState: { getCurrentProvider: vi.fn() },
       toolReasoning: { decideSteps: vi.fn() },
@@ -238,7 +238,7 @@ describe("ImportService streamImport", () => {
       uploadRepository,
       imageStorage: makeImageStorage(),
       notifier,
-      aiFlagRepository: makeAiFlagRepository(),
+      autoAnalyseFlagRepository: makeAutoAnalyseFlagRepository(),
       providerState: { getCurrentProvider: async () => "test-provider" },
       toolReasoning: {
         decideSteps: async () => {
@@ -273,7 +273,7 @@ describe("ImportService streamImport", () => {
       uploadRepository,
       imageStorage: makeImageStorage(),
       notifier: makeNotifier(),
-      aiFlagRepository: makeAiFlagRepository(),
+      autoAnalyseFlagRepository: makeAutoAnalyseFlagRepository(),
       providerState: { getCurrentProvider: async () => "test-provider" },
       toolReasoning: {
         decideSteps: async () => {
@@ -307,7 +307,7 @@ describe("ImportService streamImport", () => {
       uploadRepository,
       imageStorage,
       notifier,
-      aiFlagRepository: makeAiFlagRepository(),
+      autoAnalyseFlagRepository: makeAutoAnalyseFlagRepository(),
       providerState: { getCurrentProvider: vi.fn() },
       toolReasoning,
       stepExecutor,
@@ -360,13 +360,14 @@ describe("ImportService streamRegenerate", () => {
     };
     const notifier = makeNotifier();
     const emit = vi.fn();
+    const autoAnalyseFlagRepository = makeAutoAnalyseFlagRepository(false);
     let now = 100;
 
     const service = new ImportService({
       uploadRepository,
       imageStorage,
       notifier,
-      aiFlagRepository: makeAiFlagRepository(),
+      autoAnalyseFlagRepository,
       providerState,
       toolReasoning,
       stepExecutor,
@@ -380,6 +381,7 @@ describe("ImportService streamRegenerate", () => {
     );
 
     expect(imageStorage.uploadImage).not.toHaveBeenCalled();
+    expect(autoAnalyseFlagRepository.getAutoAnalyseEnabled).not.toHaveBeenCalled();
     expect(toolReasoning.decideSteps).toHaveBeenCalledWith("test-provider", existingImageUrl);
     expect(stepExecutor.run).toHaveBeenCalledWith(
       expect.objectContaining({ imageUrl: existingImageUrl, steps })
@@ -420,7 +422,7 @@ describe("ImportService streamRegenerate", () => {
       uploadRepository: new InMemoryUploadRepository(),
       imageStorage: { uploadImage: vi.fn() },
       notifier: makeNotifier(),
-      aiFlagRepository: makeAiFlagRepository(),
+      autoAnalyseFlagRepository: makeAutoAnalyseFlagRepository(),
       providerState: { getCurrentProvider: vi.fn() },
       toolReasoning: { decideSteps: vi.fn() },
       stepExecutor: { run: vi.fn() },
@@ -440,7 +442,7 @@ describe("ImportService streamRegenerate", () => {
       uploadRepository: new InMemoryUploadRepository(),
       imageStorage: { uploadImage: vi.fn() },
       notifier: makeNotifier(),
-      aiFlagRepository: makeAiFlagRepository(),
+      autoAnalyseFlagRepository: makeAutoAnalyseFlagRepository(),
       providerState: { getCurrentProvider: vi.fn() },
       toolReasoning: { decideSteps: vi.fn() },
       stepExecutor: { run: vi.fn() },

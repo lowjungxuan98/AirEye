@@ -32,8 +32,8 @@ export class ImportService implements ImportServiceContract {
    * SSE final row (or SSE error after RTDB error write).
    */
   async streamImport(request: ImportRequest, emit: ImportStreamEmitter): Promise<void> {
-    const { uploadRepository, imageStorage, notifier, aiFlagRepository } = this.deps;
-    const aiEnabled = (await aiFlagRepository.getAiEnabled()) ?? true;
+    const { uploadRepository, imageStorage, notifier, autoAnalyseFlagRepository } = this.deps;
+    const autoAnalyseEnabled = (await autoAnalyseFlagRepository.getAutoAnalyseEnabled()) ?? true;
     const uploadId = this.newId();
     const createdAt = this.now();
 
@@ -64,7 +64,7 @@ export class ImportService implements ImportServiceContract {
         this.logger.error("failed to send initial FCM export refresh", error);
       }
 
-      if (!aiEnabled) {
+      if (!autoAnalyseEnabled) {
         emit({
           id: uploadId,
           createdAt,
