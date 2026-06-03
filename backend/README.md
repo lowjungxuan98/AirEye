@@ -31,6 +31,7 @@ Required environment variables:
 - `S3_BUCKET_PRODUCTION`
 - `S3_BUCKET_TESTING`
 - `S3_PRESIGN_TTL_SECONDS`
+- `REDIS_URL` - Redis connection URL for the BullMQ import/regenerate serialization queue
 - Firebase Admin credentials: set either `GOOGLE_APPLICATION_CREDENTIALS` or `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64`
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_DATABASE_URL`
@@ -60,7 +61,7 @@ The FCM topic resolves from `AIREYE_FCM_TOPIC`, then falls back to the AirEye de
 - `GET /api/v1/export` - returns paginated newest-first export rows
 - `GET /api/v1/provider`, `PUT /api/v1/provider` - reads or switches the active LiteLLM provider
 
-Workflow prompts are managed in Langfuse, not local prompt files or HTTP prompt routes. The tool-reasoning prompt returns ordered workflow steps. Each workflow step references a Langfuse prompt and chooses either a vision step or reasoning step.
+Workflow prompts are managed in Langfuse, not local prompt files or HTTP prompt routes. The tool-reasoning prompt returns ordered workflow steps. Each workflow step references a Langfuse prompt and chooses either a vision step or reasoning step. Import and regenerate work is serialized through BullMQ on Redis while the existing SSE request stays open.
 
 ### Docs
 
@@ -88,6 +89,6 @@ docker run --rm -p 3001:3001 --env-file .env aireye-backend:local
 
 ---
 
-**Updated:** 2026-05-23
-**Applies to:** AirEye backend (`backend/package.json` -> version `0.2.8`)
-**Doc version:** 9
+**Updated:** 2026-06-03
+**Applies to:** AirEye backend (`backend/package.json` -> version `0.2.14`)
+**Doc version:** 10

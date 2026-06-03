@@ -26,8 +26,9 @@ Production public URL: `https://lowjungxuan.dpdns.org/backend/api/v1/health`. Th
 
 - `multipart/form-data`, required field `image`.
 - `200` with `Content-Type: text/event-stream`.
+- Import and regenerate share one Redis-backed BullMQ FIFO queue. If a request waits behind active workflow work, its first SSE line is `{"status":"queued","data":{"position":<jobsAhead>}}`.
 - Flow: S3/MinIO image upload -> Realtime Database pending row -> FCM `export_refresh` -> Langfuse tool-reasoning plan -> LiteLLM workflow steps -> Realtime Database final update -> FCM `export_refresh`.
-- Each SSE `data:` line is JSON: `running_step` events, workflow step output events, then either the success row (`id`, `createdAt`, `updatedAt`, `extractedText`, `finalText`, `imageUrl`, `bucket`, `objectKey`) or terminal `{"error":{"code","message"}}`.
+- Each SSE `data:` line is JSON: optional `queued`, `running_step` events, workflow step output events, then either the success row (`id`, `createdAt`, `updatedAt`, `extractedText`, `finalText`, `imageUrl`, `bucket`, `objectKey`) or terminal `{"error":{"code","message"}}`.
 - Langfuse is the prompt source. There are no prompt HTTP routes.
 
 Typical errors: `400`, `413`, `415`, `500`.
@@ -36,7 +37,7 @@ Typical errors: `400`, `413`, `415`, `500`.
 
 - JSON body with `imageUrl` and `text`.
 - Reruns the same prompt-configured workflow for an existing upload row.
-- Streams the same SSE payload shapes as import and updates the existing export row.
+- Streams the same SSE payload shapes as import, waits in the same BullMQ FIFO queue, and updates the existing export row.
 
 ## `GET /api/v1/export`
 
@@ -51,6 +52,6 @@ Typical errors: `400`, `413`, `415`, `500`.
 
 ---
 
-**Updated:** 2026-05-23
-**Applies to:** AirEye backend API (`backend/openapi.yaml`, `backend/package.json` -> version `0.2.8`)
-**Doc version:** 6
+**Updated:** 2026-06-03
+**Applies to:** AirEye backend API (`backend/openapi.yaml`, `backend/package.json` -> version `0.2.14`)
+**Doc version:** 7

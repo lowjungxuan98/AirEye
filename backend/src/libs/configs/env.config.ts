@@ -10,6 +10,7 @@ export type ServerEnv = {
   S3_BUCKET_PRODUCTION: string;
   S3_BUCKET_TESTING: string;
   S3_PRESIGN_TTL_SECONDS: number;
+  REDIS_URL: string;
   GOOGLE_APPLICATION_CREDENTIALS?: string;
   FIREBASE_SERVICE_ACCOUNT_JSON_BASE64?: string;
   FIREBASE_PROJECT_ID: string;
@@ -49,6 +50,7 @@ export function loadServerEnv(): ServerEnv {
     S3_BUCKET_PRODUCTION: readRequiredEnv("S3_BUCKET_PRODUCTION"),
     S3_BUCKET_TESTING: readRequiredEnv("S3_BUCKET_TESTING"),
     S3_PRESIGN_TTL_SECONDS: readRequiredIntEnv("S3_PRESIGN_TTL_SECONDS"),
+    REDIS_URL: readRequiredEnv("REDIS_URL"),
     ...loadFirebaseCredentialsEnv(),
     FIREBASE_PROJECT_ID: readRequiredEnv("FIREBASE_PROJECT_ID"),
     FIREBASE_DATABASE_URL: readRequiredEnv("FIREBASE_DATABASE_URL"),

@@ -22,6 +22,7 @@ import { LiteLlmClient } from "./libs/litellm/client";
 import { ProviderStateService } from "./libs/litellm/provider-state";
 import { ToolReasoning } from "./libs/workflow/tool-reasoning";
 import { StepExecutor } from "./libs/workflow/step-executor";
+import { BullMqImportWorkflowQueue } from "./api/v1/services/import-workflow.queue";
 
 const DEFAULT_LANGFUSE_LABEL = "production";
 
@@ -79,7 +80,13 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
     providerState,
     toolReasoning,
     stepExecutor,
-    logger: console
+    logger: console,
+    workflowQueueFactory: (processor) =>
+      new BullMqImportWorkflowQueue({
+        redisUrl: env.REDIS_URL,
+        processor,
+        logger: console
+      })
   });
 
   return {
