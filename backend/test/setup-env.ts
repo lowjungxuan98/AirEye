@@ -8,4 +8,5 @@ import { resolve } from "node:path";
 
 config({ path: resolve(process.cwd(), ".env") });
 
+process.env.REDIS_URL ??= "redis://127.0.0.1:6379";
 process.env.NODE_ENV = "test";

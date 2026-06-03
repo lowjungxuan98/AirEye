@@ -49,9 +49,28 @@ export type ImportServiceDependencies = {
   logger?: Logger;
   now?: () => number;
   generateUploadId?: () => string;
+  workflowQueueFactory?: ImportWorkflowQueueFactory;
 };
 
 export type ImportStreamEmitter = (data: ImportStreamSseData) => void;
+
+export type ImportWorkflowJob =
+  | { kind: "import"; request: ImportRequest }
+  | { kind: "regenerate"; request: RegenerateRequest };
+
+export type ImportWorkflowProcessor = (
+  job: ImportWorkflowJob,
+  emit: ImportStreamEmitter
+) => Promise<void>;
+
+export interface ImportWorkflowQueue {
+  enqueue(job: ImportWorkflowJob, emit: ImportStreamEmitter): Promise<void>;
+  close?(): Promise<void>;
+}
+
+export type ImportWorkflowQueueFactory = (
+  processor: ImportWorkflowProcessor
+) => ImportWorkflowQueue;
 
 export interface ImportService {
   streamImport(request: ImportRequest, emit: ImportStreamEmitter): Promise<void>;

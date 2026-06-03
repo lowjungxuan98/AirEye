@@ -16,6 +16,7 @@ const requiredBase = {
   S3_BUCKET_DEVELOPMENT: "aireye-development",
   S3_BUCKET_PRODUCTION: "aireye-production",
   S3_BUCKET_TESTING: "testing",
+  REDIS_URL: "redis://127.0.0.1:6379",
   GOOGLE_APPLICATION_CREDENTIALS: "/path/cred.json",
   FIREBASE_PROJECT_ID: "proj",
   FIREBASE_DATABASE_URL: "https://proj.firebaseio.com",
@@ -106,6 +107,7 @@ describe("loadServerEnv", () => {
 
   it("loads LiteLLM and Langfuse settings from env", () => {
     const env = loadServerEnv();
+    expect(env.REDIS_URL).toBe("redis://127.0.0.1:6379");
     expect(env.LLM_BASE_URL).toBe("https://litellm.example.test/v1");
     expect(env.LLM_API_KEY).toBe("sk-test");
     expect(env.LANGFUSE_BASE_URL).toBe("https://langfuse.example.test");

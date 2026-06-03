@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import type {
   ImportService as ImportServiceContract,
   ImportServiceDependencies,
+  ImportWorkflowJob,
+  ImportWorkflowQueue,
   ImportStreamEmitter,
   Logger
 } from "../model/services.model";
@@ -13,8 +15,10 @@ import {
   toErrorPayload,
   uploadNotFound
 } from "../../../libs/utils/api-error.util";
+import { InProcessImportWorkflowQueue } from "./import-workflow.queue";
 
 export class ImportService implements ImportServiceContract {
+  private readonly workflowQueue: ImportWorkflowQueue;
   private readonly logger: Logger;
   private readonly now: () => number;
   private readonly newId: () => string;
@@ -23,6 +27,9 @@ export class ImportService implements ImportServiceContract {
     this.logger = deps.logger ?? console;
     this.now = deps.now ?? (() => Date.now());
     this.newId = deps.generateUploadId ?? (() => `upl_${randomUUID().replace(/-/g, "")}`);
+    this.workflowQueue =
+      deps.workflowQueueFactory?.((job, emit) => this.processQueuedWorkflow(job, emit)) ??
+      new InProcessImportWorkflowQueue((job, emit) => this.processQueuedWorkflow(job, emit));
   }
 
   /**
@@ -32,6 +39,26 @@ export class ImportService implements ImportServiceContract {
    * SSE final row (or SSE error after RTDB error write).
    */
   async streamImport(request: ImportRequest, emit: ImportStreamEmitter): Promise<void> {
+    await this.workflowQueue.enqueue({ kind: "import", request }, emit);
+  }
+
+  async streamRegenerate(request: RegenerateRequest, emit: ImportStreamEmitter): Promise<void> {
+    await this.workflowQueue.enqueue({ kind: "regenerate", request }, emit);
+  }
+
+  private async processQueuedWorkflow(
+    job: ImportWorkflowJob,
+    emit: ImportStreamEmitter
+  ): Promise<void> {
+    if (job.kind === "import") {
+      await this.streamImportNow(job.request, emit);
+      return;
+    }
+
+    await this.streamRegenerateNow(job.request, emit);
+  }
+
+  private async streamImportNow(request: ImportRequest, emit: ImportStreamEmitter): Promise<void> {
     const { uploadRepository, imageStorage, notifier, autoAnalyseFlagRepository } = this.deps;
     const autoAnalyseEnabled = (await autoAnalyseFlagRepository.getAutoAnalyseEnabled()) ?? true;
     const uploadId = this.newId();
@@ -121,7 +148,10 @@ export class ImportService implements ImportServiceContract {
     }
   }
 
-  async streamRegenerate(request: RegenerateRequest, emit: ImportStreamEmitter): Promise<void> {
+  private async streamRegenerateNow(
+    request: RegenerateRequest,
+    emit: ImportStreamEmitter
+  ): Promise<void> {
     const { uploadRepository, notifier } = this.deps;
     const startedAt = this.now();
     const uploadId = extractUploadIdFromImageUrl(request.imageUrl);

@@ -14,12 +14,12 @@ info:
     | Provider | `GET /api/v1/provider`, `PUT /api/v1/provider` |
     | Auto analyse flag | `PUT /api/v1/auto-analyse` |
 
-    Prompt text is loaded from Langfuse. The configured tool-reasoning prompt returns ordered workflow steps; each step references another Langfuse prompt and selects either a vision step or reasoning step. Import and regenerate stream the running workflow step, each step output, then a terminal export row or error object.
+    Prompt text is loaded from Langfuse. The configured tool-reasoning prompt returns ordered workflow steps; each step references another Langfuse prompt and selects either a vision step or reasoning step. Import and regenerate are serialized through a Redis-backed BullMQ queue and stream queued status, running workflow steps, each step output, then a terminal export row or error object.
 
     FCM topic messages use `AIREYE_FCM_TOPIC`, or the AirEye default `aireye_new_result` when the environment variable is unset.
 
     With the backend running, open `/docs` on the same origin for the embedded Scalar API Reference, or import this file's URL elsewhere.
-  version: 0.2.13
+  version: 0.2.14
 
 security:
   - ApiKeyAuth: []
@@ -60,7 +60,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/IntegrationHealthReport"
               example:
-                version: 0.2.13
+                version: 0.2.14
                 ok: true
                 firebase:
                   ok: true
@@ -98,13 +98,16 @@ paths:
 
         Each workflow step is prompt-configured through Langfuse. A vision step receives the image URL and prompt text. A reasoning step receives the previous step output and prompt text. The first step output becomes `extractedText`; the final step output becomes `finalText`.
 
+        Import and regenerate share a Redis-backed BullMQ FIFO queue. If another workflow is active, the request keeps this SSE connection open and first emits `{"status":"queued","data":{"position":1}}`, where `position` is the number of jobs ahead at enqueue time. The first active request emits no queued event.
+
         The response is Server-Sent Events. Each event is one `data:` line containing JSON:
 
-        1. `{"status":"running_step","data":{"index":0,"prompt":"...","model":"image"}}`
-        2. `{"data":{"stepIndex":0,"output":"..."}}`
-        3. Additional running/output pairs for later workflow steps
-        4. A terminal export row with `id`, timestamps, image storage fields, and, when auto analyse ran, `extractedText` and `finalText`
-        5. Or a terminal `{"error":{"code":"...","message":"..."}}`
+        1. Optional `{"status":"queued","data":{"position":1}}` when the request is waiting
+        2. `{"status":"running_step","data":{"index":0,"prompt":"...","model":"image"}}`
+        3. `{"data":{"stepIndex":0,"output":"..."}}`
+        4. Additional running/output pairs for later workflow steps
+        5. A terminal export row with `id`, timestamps, image storage fields, and, when auto analyse ran, `extractedText` and `finalText`
+        6. Or a terminal `{"error":{"code":"...","message":"..."}}`
 
         Topic resolution for sender capture requests and receiver import refresh messages is `AIREYE_FCM_TOPIC`, then the AirEye default `aireye_new_result`.
       operationId: postImport
@@ -173,6 +176,8 @@ paths:
         Reruns the same prompt-configured workflow for an existing upload row without uploading image bytes again.
 
         The server extracts the upload id from the image object filename, loads the existing row, clears stale output fields, streams workflow step events, and updates the same row with the new normalized output.
+
+        Regenerate shares the same Redis-backed BullMQ FIFO queue as import. A request waiting behind active workflow work first emits `{"status":"queued","data":{"position":1}}` on the existing SSE connection.
 
         Regenerate does not read the `auto_analyse` flag; it always runs the Langfuse/LiteLLM workflow.
       operationId: postRegenerate
@@ -474,7 +479,7 @@ components:
         version:
           type: string
           description: Backend application version from `backend/package.json`
-          example: 0.2.13
+          example: 0.2.14
         ok:
           type: boolean
         firebase:
@@ -485,6 +490,22 @@ components:
           $ref: "#/components/schemas/DependencyCheck"
         s3:
           $ref: "#/components/schemas/DependencyCheck"
+
+    ImportStreamQueued:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [queued]
+        data:
+          type: object
+          required: [position]
+          properties:
+            position:
+              type: integer
+              minimum: 1
+              description: One-based count of jobs ahead at enqueue time.
 
     ImportStreamRunningStep:
       type: object
@@ -564,6 +585,7 @@ components:
 
     ImportStreamSseData:
       oneOf:
+        - $ref: "#/components/schemas/ImportStreamQueued"
         - $ref: "#/components/schemas/ImportStreamRunningStep"
         - $ref: "#/components/schemas/ImportStreamStepOutput"
         - $ref: "#/components/schemas/ImportStreamResult"

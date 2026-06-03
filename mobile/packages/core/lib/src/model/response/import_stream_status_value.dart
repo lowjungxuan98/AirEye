@@ -1,4 +1,6 @@
 enum ImportStreamStatusValue {
+  queued('queued'),
+  runningStep('running_step'),
   extractingText('extracting_text'),
   analyzingText('analyzing_text'),
   formatGuard('format_guard');
