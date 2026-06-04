@@ -1,6 +1,6 @@
 {
   "name": "backend",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "private": true,
   "description": "AirEye backend (Express + TypeScript)",
   "engines": {
@@ -30,7 +30,8 @@
     "express": "^5.2.1",
     "firebase-admin": "^13.10.0",
     "multer": "^2.1.1",
-    "openai": "^6.39.0"
+    "openai": "^6.39.0",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

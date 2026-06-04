@@ -27,7 +27,7 @@ Implemented in this repo:
 - Android has the Google Services Gradle plugin applied, declares `android.permission.POST_NOTIFICATIONS`, and declares `aireye_results` as Firebase Messaging's default notification channel.
 - The backend sends high-priority Android topic messages through `FirebaseNotifier` on topic `aireye_new_result` unless `AIREYE_FCM_TOPIC` overrides it.
 - `mobile/packages/receiver` calls `POST /api/v1/send-notification` from the receiver grid action.
-- `mobile/packages/sender` listens for foreground `kind: capture_request` messages targeted to `sender`, takes a camera photo, and calls the import stream API.
+- `mobile/packages/sender` listens for foreground `kind: capture_request` messages targeted to `sender`, takes a camera photo, and calls the import API.
 
 Still missing or not verifiable from the repo:
 

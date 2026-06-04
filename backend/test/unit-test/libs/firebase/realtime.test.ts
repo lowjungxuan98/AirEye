@@ -61,12 +61,24 @@ describe("FirebaseUploadRepository", () => {
     const path = `${namespace}/uploads/${id}`;
 
     try {
-      const base: AirEyeUpload = { createdAt: Date.now(), updatedAt: Date.now() };
+      const base: AirEyeUpload = {
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        imageUrl: "https://storage.example.test/uploads/firebase-regression.jpg"
+      };
       await repo.createPendingUpload(id, base);
-      await expect(repo.getUpload(id)).resolves.toMatchObject({ id, createdAt: base.createdAt });
+      await expect(repo.getUpload(id)).resolves.toMatchObject({
+        id,
+        createdAt: base.createdAt,
+        imageUrl: base.imageUrl
+      });
 
       await repo.updateUpload(id, { finalText: "integration" });
-      await expect(repo.getUpload(id)).resolves.toMatchObject({ id, finalText: "integration" });
+      await expect(repo.getUpload(id)).resolves.toMatchObject({
+        id,
+        finalText: "integration",
+        imageUrl: base.imageUrl
+      });
 
       const rows = await repo.listUploads(50);
       expect(rows.length).toBeGreaterThan(0);

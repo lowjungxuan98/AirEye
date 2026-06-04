@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'grim_text_content.dart';
 
 class GrimTextSheet extends StatefulWidget {
-  const GrimTextSheet({super.key, required this.text, this.error, this.minSize = 0.12, this.initialSize = 0.18, this.maxSize = 0.7, this.onClose});
+  const GrimTextSheet({super.key, required this.text, this.error, this.minSize = 0.12, this.initialSize = 0.18, this.maxSize = 0.7, this.onClose, this.fontSize});
 
   final String text;
   final String? error;
@@ -11,6 +11,7 @@ class GrimTextSheet extends StatefulWidget {
   final double initialSize;
   final double maxSize;
   final VoidCallback? onClose;
+  final double? fontSize;
 
   @override
   State<GrimTextSheet> createState() => _GrimTextSheetState();
@@ -75,7 +76,7 @@ class _GrimTextSheetState extends State<GrimTextSheet> {
               ),
               const SizedBox(height: 8),
               Expanded(
-                child: GrimTextContent(controller: scrollController, text: widget.text, error: widget.error),
+                child: GrimTextContent(controller: scrollController, text: widget.text, error: widget.error, fontSize: widget.fontSize),
               ),
             ],
           ),

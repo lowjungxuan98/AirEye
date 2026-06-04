@@ -9,31 +9,31 @@ import {
 } from "../test-utils";
 import { InMemoryUploadRepository } from "../in-memory-upload-repository";
 
-function parseSseDataLines(body: string): unknown[] {
-  return body
-    .split(/\n\n/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => {
-      const line = block.startsWith("data: ") ? block.slice(6) : block;
-      return JSON.parse(line) as unknown;
-    });
+async function waitFor(predicate: () => boolean | Promise<boolean>): Promise<void> {
+  for (let i = 0; i < 100; i += 1) {
+    if (await predicate()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  throw new Error("Timed out waiting for condition");
 }
 
 describe("POST /api/v1/import (HTTP integration)", () => {
-  it("returns 200 text/event-stream and forwards emits from ImportService", async () => {
-    const streamImport = vi.fn(async (_req, emit) => {
-      emit({ status: "extracting_text" });
-      emit({ status: "analyzing_text" });
-      emit({ status: "format_guard" });
-      emit({ id: "upl_1", createdAt: 1, updatedAt: 2, finalText: "ok" });
-    });
+  it("returns 202 application/json and forwards multipart data to ImportService", async () => {
+    const queueImport = vi.fn(async () => ({
+      status: "queued" as const,
+      jobId: "job_1",
+      uploadId: "upl_1"
+    }));
     const app = buildTestApp({
       importService: {
-        streamImport,
-        streamRegenerate: async () => {}
+        queueImport,
+        queueRegenerate: async () => ({ status: "queued", jobId: "unused", uploadId: "unused" })
       }
     });
+
     const res = await request(app)
       .post("/api/v1/import")
       .set(API_KEY_HEADER, AIREYE_API_KEY)
@@ -41,30 +41,29 @@ describe("POST /api/v1/import (HTTP integration)", () => {
         filename: "pixel.png",
         contentType: "image/png"
       })
-      .expect(200);
-    expect(res.headers["content-type"]).toMatch(/text\/event-stream/);
-    expect(parseSseDataLines(res.text)).toEqual([
-      { status: "extracting_text" },
-      { status: "analyzing_text" },
-      { status: "format_guard" },
-      { id: "upl_1", createdAt: 1, updatedAt: 2, finalText: "ok" }
-    ]);
-    expect(streamImport).toHaveBeenCalledTimes(1);
-    const arg = streamImport.mock.calls[0]![0];
+      .expect(202);
+
+    expect(res.headers["content-type"]).toMatch(/application\/json/);
+    expect(res.body).toEqual({ status: "queued", jobId: "job_1", uploadId: "upl_1" });
+    expect(queueImport).toHaveBeenCalledTimes(1);
+    const arg = queueImport.mock.calls[0]![0];
     expect(arg.imageMimeType).toBe("image/png");
     expect(Buffer.isBuffer(arg.imageBuffer)).toBe(true);
   });
 
   it("accepts .jpg when the client sends application/octet-stream (infers image/jpeg)", async () => {
-    const streamImport = vi.fn(async (_req, emit) => {
-      emit({ id: "upl_mime", createdAt: 0, updatedAt: 0, finalText: "ok" });
-    });
+    const queueImport = vi.fn(async () => ({
+      status: "queued" as const,
+      jobId: "job_mime",
+      uploadId: "upl_mime"
+    }));
     const app = buildTestApp({
       importService: {
-        streamImport,
-        streamRegenerate: async () => {}
+        queueImport,
+        queueRegenerate: async () => ({ status: "queued", jobId: "unused", uploadId: "unused" })
       }
     });
+
     await request(app)
       .post("/api/v1/import")
       .set(API_KEY_HEADER, AIREYE_API_KEY)
@@ -72,34 +71,39 @@ describe("POST /api/v1/import (HTTP integration)", () => {
         filename: "photo.jpg",
         contentType: "application/octet-stream"
       })
-      .expect(200);
-    expect(streamImport).toHaveBeenCalledTimes(1);
-    const arg = streamImport.mock.calls[0]![0];
+      .expect(202);
+    expect(queueImport).toHaveBeenCalledTimes(1);
+    const arg = queueImport.mock.calls[0]![0];
     expect(arg.imageMimeType).toBe("image/jpeg");
   });
 
-  it("wires multipart into ImportService with stubbed pipeline deps (no vendors)", async () => {
+  it("wires multipart into ImportService with stubbed background pipeline deps (no vendors)", async () => {
     const repo = new InMemoryUploadRepository();
     const importService = createImportServiceWithStubbedPipeline({ uploadRepository: repo });
     const app = buildTestApp({ importService });
+
     const res = await request(app)
       .post("/api/v1/import")
       .set(API_KEY_HEADER, AIREYE_API_KEY)
-      .attach("image", Buffer.from("fake-jpeg"), { filename: "x.jpg", contentType: "image/jpeg" })
-      .expect(200);
+      .attach("image", Buffer.from("fake-jpeg"), {
+        filename: "x.jpg",
+        contentType: "image/jpeg"
+      })
+      .expect(202);
 
-    const events = parseSseDataLines(res.text);
-    expect(events[0]).toEqual({
-      status: "running_step",
-      data: { index: 0, prompt: "vision-prompt", model: "image" }
+    expect(res.body).toEqual({
+      status: "queued",
+      jobId: expect.any(String),
+      uploadId: "integration_upload_id"
     });
-    expect(events[1]).toEqual({ data: { stepIndex: 0, output: "extracted" } });
-    expect(events[2]).toEqual({
-      status: "running_step",
-      data: { index: 1, prompt: "reasoning-prompt", model: "reasoning" }
+
+    await waitFor(async () => {
+      const row = await repo.getUpload("integration_upload_id");
+      return row?.finalText === "reasoned:extracted";
     });
-    expect(events[3]).toEqual({ data: { stepIndex: 1, output: "reasoned:extracted" } });
-    expect(events[4]).toMatchObject({
+
+    const row = await repo.getUpload("integration_upload_id");
+    expect(row).toMatchObject({
       id: "integration_upload_id",
       createdAt: 4242,
       updatedAt: 4242,
@@ -109,19 +113,14 @@ describe("POST /api/v1/import (HTTP integration)", () => {
       objectKey: expect.any(String),
       imageUrl: expect.any(String)
     });
-
-    const row = await repo.getUpload("integration_upload_id");
-    expect(row).toMatchObject({
-      id: "integration_upload_id",
-      createdAt: 4242,
-      updatedAt: 4242,
-      finalText: "reasoned:extracted"
-    });
   });
 
   it("returns 400 INVALID_REQUEST when the image field is missing", async () => {
     const app = buildTestApp();
-    const res = await request(app).post("/api/v1/import").set(API_KEY_HEADER, AIREYE_API_KEY).expect(400);
+    const res = await request(app)
+      .post("/api/v1/import")
+      .set(API_KEY_HEADER, AIREYE_API_KEY)
+      .expect(400);
     expect(res.body).toEqual({
       error: { code: "INVALID_REQUEST", message: "image is required" }
     });
@@ -132,26 +131,32 @@ describe("POST /api/v1/import (HTTP integration)", () => {
     const res = await request(app)
       .post("/api/v1/import")
       .set(API_KEY_HEADER, AIREYE_API_KEY)
-      .attach("image", Buffer.from("%PDF-1.4"), { filename: "x.pdf", contentType: "application/pdf" })
+      .attach("image", Buffer.from("%PDF-1.4"), {
+        filename: "x.pdf",
+        contentType: "application/pdf"
+      })
       .expect(415);
     expect(res.body).toEqual({
       error: { code: "UNSUPPORTED_FILE_TYPE", message: "Only image uploads are supported" }
     });
   });
 
-  it("maps ApiError from streamImport through the global error handler when no bytes were sent", async () => {
+  it("maps ApiError from queueImport through the global error handler", async () => {
     const app = buildTestApp({
       importService: {
-        streamImport: async () => {
+        queueImport: async () => {
           throw new ApiError(409, "CONFLICT", "upload id collision");
         },
-        streamRegenerate: async () => {}
+        queueRegenerate: async () => ({ status: "queued", jobId: "unused", uploadId: "unused" })
       }
     });
     const res = await request(app)
       .post("/api/v1/import")
       .set(API_KEY_HEADER, AIREYE_API_KEY)
-      .attach("image", Buffer.from([0xff, 0xd8, 0xff]), { filename: "m.jpg", contentType: "image/jpeg" })
+      .attach("image", Buffer.from([0xff, 0xd8, 0xff]), {
+        filename: "m.jpg",
+        contentType: "image/jpeg"
+      })
       .expect(409);
     expect(res.body).toEqual({
       error: { code: "CONFLICT", message: "upload id collision" }

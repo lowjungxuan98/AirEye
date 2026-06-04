@@ -4,17 +4,18 @@ import type {
   ImportServiceDependencies,
   ImportWorkflowJob,
   ImportWorkflowQueue,
-  ImportStreamEmitter,
   Logger
 } from "../model/services.model";
-import type { ImportRequest } from "../model/import.model";
+import type { ImportRequest, UploadedWorkflowImage } from "../model/import.model";
 import type { RegenerateRequest } from "../model/regenerate.model";
 import {
   API_ERROR_MESSAGES,
+  internalError,
   invalidRequest,
   toErrorPayload,
   uploadNotFound
 } from "../../../libs/utils/api-error.util";
+import { normalizeImportImage } from "../../../libs/utils/import-image-normalizer.util";
 import { InProcessImportWorkflowQueue } from "./import-workflow.queue";
 
 export class ImportService implements ImportServiceContract {
@@ -28,234 +29,216 @@ export class ImportService implements ImportServiceContract {
     this.now = deps.now ?? (() => Date.now());
     this.newId = deps.generateUploadId ?? (() => `upl_${randomUUID().replace(/-/g, "")}`);
     this.workflowQueue =
-      deps.workflowQueueFactory?.((job, emit) => this.processQueuedWorkflow(job, emit)) ??
-      new InProcessImportWorkflowQueue((job, emit) => this.processQueuedWorkflow(job, emit));
+      deps.workflowQueueFactory?.((job) => this.processQueuedWorkflow(job)) ??
+      new InProcessImportWorkflowQueue((job) => this.processQueuedWorkflow(job), this.logger);
   }
 
-  /**
-   * Order: image storage → RTDB initial record + FCM export refresh →
-   * tool-reasoning decides ordered steps → SSE `running_step` + step output per step →
-   * Realtime Database (update) → FCM export refresh →
-   * SSE final row (or SSE error after RTDB error write).
-   */
-  async streamImport(request: ImportRequest, emit: ImportStreamEmitter): Promise<void> {
-    await this.workflowQueue.enqueue({ kind: "import", request }, emit);
-  }
-
-  async streamRegenerate(request: RegenerateRequest, emit: ImportStreamEmitter): Promise<void> {
-    await this.workflowQueue.enqueue({ kind: "regenerate", request }, emit);
-  }
-
-  private async processQueuedWorkflow(
-    job: ImportWorkflowJob,
-    emit: ImportStreamEmitter
-  ): Promise<void> {
-    if (job.kind === "import") {
-      await this.streamImportNow(job.request, emit);
-      return;
-    }
-
-    await this.streamRegenerateNow(job.request, emit);
-  }
-
-  private async streamImportNow(request: ImportRequest, emit: ImportStreamEmitter): Promise<void> {
-    const { uploadRepository, imageStorage, notifier, autoAnalyseFlagRepository } = this.deps;
-    const autoAnalyseEnabled = (await autoAnalyseFlagRepository.getAutoAnalyseEnabled()) ?? true;
+  async queueImport(request: ImportRequest) {
+    const { uploadRepository, imageStorage } = this.deps;
     const uploadId = this.newId();
     const createdAt = this.now();
+    const normalizedImage = await normalizeImportImage(
+      request.imageBuffer,
+      request.imageMimeType
+    );
+
+    const image = await imageStorage.uploadImage(
+      normalizedImage.imageBuffer,
+      uploadId,
+      normalizedImage.imageMimeType
+    );
+    if (!image) {
+      throw internalError(API_ERROR_MESSAGES.uploadFailed);
+    }
+
+    await uploadRepository.createPendingUpload(uploadId, {
+      createdAt,
+      updatedAt: createdAt,
+      imageUrl: image.imageUrl,
+      bucket: image.bucket,
+      objectKey: image.objectKey
+    });
+
+    await this.broadcastExportRefresh("failed to send initial FCM export refresh");
 
     try {
-      const image = await imageStorage.uploadImage(
-        request.imageBuffer,
-        uploadId,
-        request.imageMimeType
-      );
-      if (!image) {
-        emit({
-          error: toErrorPayload(new Error(API_ERROR_MESSAGES.uploadFailed))
-        });
-        return;
-      }
-
-      await uploadRepository.createPendingUpload(uploadId, {
-        createdAt,
-        updatedAt: createdAt,
-        imageUrl: image.imageUrl,
-        bucket: image.bucket,
-        objectKey: image.objectKey
-      });
-
-      try {
-        await notifier.broadcastExportRefresh();
-      } catch (error) {
-        this.logger.error("failed to send initial FCM export refresh", error);
-      }
-
-      if (!autoAnalyseEnabled) {
-        emit({
-          id: uploadId,
-          createdAt,
-          updatedAt: createdAt,
+      const { jobId } = await this.workflowQueue.enqueue({
+        kind: "import",
+        upload: {
+          uploadId,
           imageUrl: image.imageUrl,
           bucket: image.bucket,
           objectKey: image.objectKey
-        });
-        return;
-      }
-
-      const { extractedText, finalText } = await this.runLlmPipeline(image.imageUrl, emit);
-      const updatedAt = this.now();
-
-      await uploadRepository.updateUpload(uploadId, {
-        updatedAt,
-        extractedText,
-        finalText
+        }
       });
-
-      try {
-        await notifier.broadcastExportRefresh();
-      } catch (error) {
-        this.logger.error("failed to send FCM topic broadcast", error);
-      }
-
-      emit({
-        id: uploadId,
-        createdAt,
-        updatedAt,
-        extractedText,
-        finalText,
-        imageUrl: image.imageUrl,
-        bucket: image.bucket,
-        objectKey: image.objectKey
-      });
+      return { status: "queued" as const, jobId, uploadId };
     } catch (error) {
-      try {
-        await uploadRepository.createPendingUpload(uploadId, {
-          createdAt,
-          updatedAt: this.now(),
-          errorMessage:
-            error instanceof Error && error.message.trim()
-              ? error.message.trim().slice(0, 200)
-              : "Processing failed"
-        });
-      } catch (persistError) {
-        this.logger.error("failed to persist pipeline error", persistError);
-      }
-
-      this.logger.error("import pipeline failed", error);
-      const { code, message } = this.toStreamError(error);
-      emit({ error: { code, message } });
+      await this.persistFailure(uploadId, error, "failed to persist import enqueue failure");
+      await this.broadcastExportRefresh("failed to send import enqueue failure FCM export refresh");
+      throw error;
     }
   }
 
-  private async streamRegenerateNow(
-    request: RegenerateRequest,
-    emit: ImportStreamEmitter
-  ): Promise<void> {
-    const { uploadRepository, notifier } = this.deps;
-    const startedAt = this.now();
+  async queueRegenerate(request: RegenerateRequest) {
+    const { uploadRepository } = this.deps;
     const uploadId = extractUploadIdFromImageUrl(request.imageUrl);
     const existing = await uploadRepository.getUpload(uploadId);
     if (!existing) {
       throw uploadNotFound();
     }
 
+    const upload: UploadedWorkflowImage = {
+      uploadId,
+      imageUrl: existing.imageUrl?.trim() || request.imageUrl,
+      bucket: existing.bucket,
+      objectKey: existing.objectKey
+    };
+
     try {
-      await uploadRepository.updateUpload(uploadId, {
-        updatedAt: startedAt,
+      const { jobId } = await this.workflowQueue.enqueue({
+        kind: "regenerate",
+        upload,
+        request
+      });
+      return { status: "queued" as const, jobId, uploadId };
+    } catch (error) {
+      await this.persistFailure(uploadId, error, "failed to persist regenerate enqueue failure");
+      await this.broadcastExportRefresh(
+        "failed to send regenerate enqueue failure FCM export refresh"
+      );
+      throw error;
+    }
+  }
+
+  private async processQueuedWorkflow(job: ImportWorkflowJob): Promise<void> {
+    if (job.kind === "import") {
+      await this.processQueuedImport(job.upload);
+      return;
+    }
+
+    await this.processQueuedRegenerate(job.upload, job.request);
+  }
+
+  private async processQueuedImport(upload: UploadedWorkflowImage): Promise<void> {
+    const { autoAnalyseFlagRepository } = this.deps;
+
+    try {
+      const autoAnalyseEnabled = (await autoAnalyseFlagRepository.getAutoAnalyseEnabled()) ?? true;
+      if (!autoAnalyseEnabled) {
+        return;
+      }
+
+      const { extractedText, finalText } = await this.runLlmPipeline(upload.imageUrl);
+      await this.deps.uploadRepository.updateUpload(upload.uploadId, {
+        updatedAt: this.now(),
+        extractedText,
+        finalText,
+        errorMessage: ""
+      });
+
+      await this.broadcastExportRefresh("failed to send FCM topic broadcast");
+    } catch (error) {
+      await this.persistWorkflowFailure(upload.uploadId, error, "failed to persist pipeline error");
+      await this.broadcastExportRefresh("failed to send import failure FCM export refresh");
+      this.logger.error("import pipeline failed", error);
+    }
+  }
+
+  private async processQueuedRegenerate(
+    upload: UploadedWorkflowImage,
+    _request: RegenerateRequest
+  ): Promise<void> {
+    const { uploadRepository } = this.deps;
+
+    try {
+      const existing = await uploadRepository.getUpload(upload.uploadId);
+      if (!existing) {
+        throw uploadNotFound();
+      }
+
+      await uploadRepository.updateUpload(upload.uploadId, {
+        updatedAt: this.now(),
         extractedText: "",
         finalText: "",
         errorMessage: ""
       });
 
-      try {
-        await notifier.broadcastExportRefresh();
-      } catch (error) {
-        this.logger.error("failed to send regenerate initial FCM export refresh", error);
-      }
+      await this.broadcastExportRefresh("failed to send regenerate initial FCM export refresh");
 
-      const { extractedText, finalText } = await this.runLlmPipeline(request.imageUrl, emit);
-      const updatedAt = this.now();
-
-      await uploadRepository.updateUpload(uploadId, {
-        updatedAt,
+      const { extractedText, finalText } = await this.runLlmPipeline(upload.imageUrl);
+      await uploadRepository.updateUpload(upload.uploadId, {
+        updatedAt: this.now(),
         extractedText,
         finalText,
         errorMessage: ""
       });
 
-      try {
-        await notifier.broadcastExportRefresh();
-      } catch (error) {
-        this.logger.error("failed to send regenerate FCM topic broadcast", error);
-      }
-
-      emit({
-        id: uploadId,
-        createdAt: existing.createdAt,
-        updatedAt,
-        extractedText,
-        finalText,
-        imageUrl: existing.imageUrl,
-        bucket: existing.bucket,
-        objectKey: existing.objectKey
-      });
+      await this.broadcastExportRefresh("failed to send regenerate FCM topic broadcast");
     } catch (error) {
-      try {
-        await uploadRepository.updateUpload(uploadId, {
-          updatedAt: this.now(),
-          errorMessage:
-            error instanceof Error && error.message.trim()
-              ? error.message.trim().slice(0, 200)
-              : "Processing failed"
-        });
-      } catch (persistError) {
-        this.logger.error("failed to persist regenerate pipeline error", persistError);
-      }
-
-      try {
-        await notifier.broadcastExportRefresh();
-      } catch (notifyError) {
-        this.logger.error("failed to send regenerate failure FCM export refresh", notifyError);
-      }
-
+      await this.persistWorkflowFailure(
+        upload.uploadId,
+        error,
+        "failed to persist regenerate pipeline error"
+      );
+      await this.broadcastExportRefresh("failed to send regenerate failure FCM export refresh");
       this.logger.error("regenerate pipeline failed", error);
-      const { code, message } = this.toStreamError(error);
-      emit({ error: { code, message } });
     }
   }
 
-  private async runLlmPipeline(
-    imageUrl: string,
-    emit: ImportStreamEmitter
-  ): Promise<{ extractedText: string; finalText: string }> {
+  private async runLlmPipeline(imageUrl: string): Promise<{
+    extractedText: string;
+    finalText: string;
+  }> {
     const { providerState, toolReasoning, stepExecutor } = this.deps;
 
     const provider = await providerState.getCurrentProvider();
     const steps = await toolReasoning.decideSteps(provider, imageUrl);
-
-    const outputs = await stepExecutor.run({
-      provider,
-      imageUrl,
-      steps,
-      onStepStart: (index, step) =>
-        emit({
-          status: "running_step",
-          data: { index, prompt: step.prompt, model: step.model }
-        }),
-      onStepEnd: (stepIndex, output) => emit({ data: { stepIndex, output } })
-    });
+    const outputs = await stepExecutor.run({ provider, imageUrl, steps });
 
     const extractedText = outputs[0] ?? "";
     const finalText = outputs[outputs.length - 1] ?? "";
     return { extractedText, finalText };
   }
 
-  private toStreamError(error: unknown): { code: string; message: string } {
-    return toErrorPayload(error);
+  private async persistFailure(uploadId: string, error: unknown, logMessage: string): Promise<void> {
+    try {
+      await this.deps.uploadRepository.updateUpload(uploadId, {
+        updatedAt: this.now(),
+        errorMessage: this.errorMessage(error)
+      });
+    } catch (persistError) {
+      this.logger.error(logMessage, persistError);
+    }
+  }
+
+  private async persistWorkflowFailure(
+    uploadId: string,
+    error: unknown,
+    logMessage: string
+  ): Promise<void> {
+    try {
+      await this.deps.uploadRepository.updateUpload(uploadId, {
+        updatedAt: this.now(),
+        finalText: this.errorMessage(error)
+      });
+    } catch (persistError) {
+      this.logger.error(logMessage, persistError);
+    }
+  }
+
+  private async broadcastExportRefresh(logMessage: string): Promise<void> {
+    try {
+      await this.deps.notifier.broadcastExportRefresh();
+    } catch (error) {
+      this.logger.error(logMessage, error);
+    }
+  }
+
+  private errorMessage(error: unknown): string {
+    const payload = toErrorPayload(error);
+    return payload.message || "Processing failed";
   }
 }
-
 
 function extractUploadIdFromImageUrl(imageUrl: string): string {
   let pathname = imageUrl;

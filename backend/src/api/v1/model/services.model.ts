@@ -2,7 +2,8 @@ import type {
   AirEyeUpload,
   AirEyeUploadRow,
   ImportRequest,
-  ImportStreamSseData
+  QueuedWorkflowResponse,
+  UploadedWorkflowImage
 } from "./import.model";
 import type { RegenerateRequest } from "./regenerate.model";
 import type { LlmProvider } from "../../../libs/configs/env.config";
@@ -52,19 +53,14 @@ export type ImportServiceDependencies = {
   workflowQueueFactory?: ImportWorkflowQueueFactory;
 };
 
-export type ImportStreamEmitter = (data: ImportStreamSseData) => void;
-
 export type ImportWorkflowJob =
-  | { kind: "import"; request: ImportRequest }
-  | { kind: "regenerate"; request: RegenerateRequest };
+  | { kind: "import"; upload: UploadedWorkflowImage }
+  | { kind: "regenerate"; upload: UploadedWorkflowImage; request: RegenerateRequest };
 
-export type ImportWorkflowProcessor = (
-  job: ImportWorkflowJob,
-  emit: ImportStreamEmitter
-) => Promise<void>;
+export type ImportWorkflowProcessor = (job: ImportWorkflowJob) => Promise<void>;
 
 export interface ImportWorkflowQueue {
-  enqueue(job: ImportWorkflowJob, emit: ImportStreamEmitter): Promise<void>;
+  enqueue(job: ImportWorkflowJob): Promise<{ jobId: string }>;
   close?(): Promise<void>;
 }
 
@@ -73,8 +69,8 @@ export type ImportWorkflowQueueFactory = (
 ) => ImportWorkflowQueue;
 
 export interface ImportService {
-  streamImport(request: ImportRequest, emit: ImportStreamEmitter): Promise<void>;
-  streamRegenerate(request: RegenerateRequest, emit: ImportStreamEmitter): Promise<void>;
+  queueImport(request: ImportRequest): Promise<QueuedWorkflowResponse>;
+  queueRegenerate(request: RegenerateRequest): Promise<QueuedWorkflowResponse>;
 }
 
 export interface SendNotificationService {

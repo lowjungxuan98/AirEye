@@ -4,7 +4,7 @@ import 'package:flutter_html/flutter_html.dart';
 import '../theme/grim_colors.dart';
 
 class GrimTextContent extends StatelessWidget {
-  const GrimTextContent({super.key, required this.text, this.error, this.controller, this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 24)});
+  const GrimTextContent({super.key, required this.text, this.error, this.controller, this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 24), this.fontSize});
 
   static const _blockedHtmlTags = {'script', 'style', 'iframe', 'object', 'embed'};
 
@@ -12,10 +12,11 @@ class GrimTextContent extends StatelessWidget {
   final String? error;
   final ScrollController? controller;
   final EdgeInsetsGeometry padding;
+  final double? fontSize;
 
   Map<String, Style> _htmlStyles(ThemeData theme) {
     return {
-      '*': Style(color: GrimColors.onSurface, lineHeight: const LineHeight(1.35)),
+      '*': Style(color: GrimColors.onSurface, fontSize: fontSize == null ? null : FontSize(fontSize!), lineHeight: const LineHeight(1.35)),
       'html': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
       'body': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
       'p': Style(margin: Margins.only(bottom: 8)),
@@ -33,7 +34,13 @@ class GrimTextContent extends StatelessWidget {
       controller: controller,
       padding: padding,
       children: [
-        if (error case final err?) ...[Text(err, style: TextStyle(color: theme.colorScheme.error, height: 1.35)), const SizedBox(height: 12)],
+        if (error case final err?) ...[
+          Text(
+            err,
+            style: TextStyle(color: theme.colorScheme.error, fontSize: fontSize, height: 1.35),
+          ),
+          const SizedBox(height: 12),
+        ],
         Html(data: text, shrinkWrap: true, doNotRenderTheseTags: _blockedHtmlTags, style: _htmlStyles(theme)),
       ],
     );
