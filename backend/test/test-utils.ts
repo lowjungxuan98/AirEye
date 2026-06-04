@@ -56,11 +56,11 @@ export type BuildTestAppInput = {
 };
 
 const noopImportService: ImportService = {
-  streamImport: async (_request, emit) => {
-    emit({ error: { code: "INTERNAL_ERROR", message: "Import not configured in this test shell" } });
+  queueImport: async () => {
+    throw new Error("Import not configured in this test shell");
   },
-  streamRegenerate: async (_request, emit) => {
-    emit({ error: { code: "INTERNAL_ERROR", message: "Regenerate not configured in this test shell" } });
+  queueRegenerate: async () => {
+    throw new Error("Regenerate not configured in this test shell");
   }
 };
 

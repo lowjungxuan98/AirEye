@@ -165,7 +165,7 @@ This is especially useful for:
 - `AirEyeBaseUrl.resolve()` detects simulator/emulator versus physical device for debug URLs.
 - Release builds use `AIREYE_API_BASE_URL` for `/api/v1/*` routes. Production uses the public prefix `https://lowjungxuan.dpdns.org/backend/api`.
 - If the sender camera flow uploads captured images, pass file paths from the camera package into Dio; do not hold large binary payloads in Riverpod state unless necessary.
-- The `POST /api/v1/import` route is documented as server-sent events on success in `docs/specification.md`; if the mobile app consumes that streaming response, validate whether plain Dio is enough for the final UX or whether that route should gain a mobile-friendly polling or non-SSE alternative.
+- The `POST /api/v1/import` route returns `202 application/json` with queued workflow metadata. Mobile should treat that as upload success and rely on FCM/export refresh for final results.
 
 ## References
 

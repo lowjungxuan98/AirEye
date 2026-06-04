@@ -18,6 +18,7 @@ class _ImageDetailViewState extends BasePageState<ImageDetailView> {
   static const double _initialImageFraction = 0.6;
   static const double _minPaneFraction = 0.25;
   static const double _dividerWidth = 16;
+  static const double _detailTextFontSize = 16;
 
   double _landscapeImageFraction = _initialImageFraction;
 
@@ -121,7 +122,7 @@ class _ImageDetailViewState extends BasePageState<ImageDetailView> {
                   ),
                 ),
               ),
-              GrimTextSheet(text: displayText, error: displayError),
+              GrimTextSheet(text: displayText, error: displayError, fontSize: _detailTextFontSize),
             ],
           );
         },
@@ -193,7 +194,7 @@ class _LandscapeTextPanel extends StatelessWidget {
             ),
             const Divider(color: GrimColors.outline, height: 1),
             Expanded(
-              child: GrimTextContent(text: text, error: error, padding: const EdgeInsets.fromLTRB(16, 16, 16, 24)),
+              child: GrimTextContent(text: text, error: error, padding: const EdgeInsets.fromLTRB(16, 16, 16, 24), fontSize: _ImageDetailViewState._detailTextFontSize),
             ),
           ],
         ),

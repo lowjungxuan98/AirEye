@@ -8,10 +8,7 @@ import 'sender_state.dart';
 class SenderController extends BaseController<SenderState> {
   static const _logTag = 'SenderController';
 
-  final cameraController = CameraOrchestratorController(
-    mode: CameraMode.screenText,
-    autoCaptureEnabled: false,
-  );
+  final cameraController = CameraOrchestratorController(mode: CameraMode.screenText, autoCaptureEnabled: false);
 
   var _isHandlingCaptureRequest = false;
   var _isDisposed = false;
@@ -103,27 +100,21 @@ class SenderController extends BaseController<SenderState> {
         throw StateError('Captured image missing at ${capture.imagePath}');
       }
 
-      final response = await AirEyeEndpoints.import(
-        image: await MultipartFile.fromFile(
-          capture.imagePath,
-          filename: _imageFilename(capture.imagePath),
-        ),
-      );
-
-      if (response case ImportStreamSseError(:final value)) {
-        throw StateError(value.error.message);
-      }
+      final response = await AirEyeEndpoints.import(image: await MultipartFile.fromFile(capture.imagePath, filename: _imageFilename(capture.imagePath)));
 
       dev.log(
-        'capture_request image uploaded from ${capture.imagePath} '
+        'capture_request image queued from ${capture.imagePath} '
         '(${capture.width}x${capture.height}, ${capture.fileSize}B, '
-        'reason=${capture.captureReason}, backend=${cameraController.backend})',
+        'reason=${capture.captureReason}, backend=${cameraController.backend}, '
+        'jobId=${response.jobId}, uploadId=${response.uploadId})',
         name: _logTag,
       );
       _setState(const SenderReady());
 
       // Best-effort: delete temp file once uploaded.
-      try { await file.delete(); } catch (_) {}
+      try {
+        await file.delete();
+      } catch (_) {}
     } catch (error, stackTrace) {
       dev.log('capture_request upload failed', name: _logTag, error: error, stackTrace: stackTrace);
       _setState(SenderError(error.toString()));

@@ -7,19 +7,19 @@ info:
     | Area | Base path |
     |------|-----------|
     | Health | `GET /api/v1/health` |
-    | Import | `POST /api/v1/import` - `multipart/form-data`, required file field `image` (`text/event-stream`) |
-    | Regenerate | `POST /api/v1/regenerate` - JSON body for rerunning an existing export row (`text/event-stream`) |
+    | Import | `POST /api/v1/import` - `multipart/form-data`, required file field `image` (`202 application/json`) |
+    | Regenerate | `POST /api/v1/regenerate` - JSON body for rerunning an existing export row (`202 application/json`) |
     | Send notification | `POST /api/v1/send-notification` |
     | Export | `GET /api/v1/export` |
     | Provider | `GET /api/v1/provider`, `PUT /api/v1/provider` |
     | Auto analyse flag | `PUT /api/v1/auto-analyse` |
 
-    Prompt text is loaded from Langfuse. The configured tool-reasoning prompt returns ordered workflow steps; each step references another Langfuse prompt and selects either a vision step or reasoning step. Import and regenerate are serialized through a Redis-backed BullMQ queue and stream queued status, running workflow steps, each step output, then a terminal export row or error object.
+    Prompt text is loaded from Langfuse. The configured tool-reasoning prompt returns ordered workflow steps; each step references another Langfuse prompt and selects either a vision step or reasoning step. Import and regenerate are accepted as queued jobs, serialized through a Redis-backed BullMQ queue, and publish final state through export rows plus FCM refresh hints.
 
     FCM topic messages use `AIREYE_FCM_TOPIC`, or the AirEye default `aireye_new_result` when the environment variable is unset.
 
     With the backend running, open `/docs` on the same origin for the embedded Scalar API Reference, or import this file's URL elsewhere.
-  version: 0.2.14
+  version: 0.2.15
 
 security:
   - ApiKeyAuth: []
@@ -32,7 +32,7 @@ tags:
   - name: health
     description: Firebase, LiteLLM, Langfuse, and S3 readiness
   - name: import
-    description: Photo capture upload that streams a prompt-configured document image workflow
+    description: Photo capture upload that queues a prompt-configured document image workflow
   - name: regenerate
     description: Rerun the prompt-configured workflow for an existing export row
   - name: send-notification
@@ -60,7 +60,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/IntegrationHealthReport"
               example:
-                version: 0.2.14
+                version: 0.2.15
                 ok: true
                 firebase:
                   ok: true
@@ -92,22 +92,13 @@ paths:
 
         The server reads `{development|production}/auto_analyse` from Firebase before starting work. Missing `auto_analyse` defaults to `true`.
 
-        When `auto_analyse` is `true`, the server stores the image in S3/MinIO, writes a pending Realtime Database row, sends a receiver export refresh hint, runs the Langfuse/LiteLLM workflow, updates the same row with normalized output, then sends another export refresh hint.
+        When `auto_analyse` is `true`, the server stores the image in S3/MinIO, writes a pending Realtime Database row, sends a receiver export refresh hint, enqueues the background Langfuse/LiteLLM workflow, returns `202`, then the worker updates the same row with normalized output and sends another export refresh hint.
 
-        When `auto_analyse` is `false`, the server stores the image only, writes the pending row with image storage fields, sends one receiver export refresh hint, emits that image-only terminal row, and skips provider lookup, tool reasoning, and workflow execution.
+        When `auto_analyse` is `false`, the server still enqueues the job after storing the image and writing the pending row; the worker treats that image-only row as terminal and skips provider lookup, tool reasoning, and workflow execution.
 
         Each workflow step is prompt-configured through Langfuse. A vision step receives the image URL and prompt text. A reasoning step receives the previous step output and prompt text. The first step output becomes `extractedText`; the final step output becomes `finalText`.
 
-        Import and regenerate share a Redis-backed BullMQ FIFO queue. If another workflow is active, the request keeps this SSE connection open and first emits `{"status":"queued","data":{"position":1}}`, where `position` is the number of jobs ahead at enqueue time. The first active request emits no queued event.
-
-        The response is Server-Sent Events. Each event is one `data:` line containing JSON:
-
-        1. Optional `{"status":"queued","data":{"position":1}}` when the request is waiting
-        2. `{"status":"running_step","data":{"index":0,"prompt":"...","model":"image"}}`
-        3. `{"data":{"stepIndex":0,"output":"..."}}`
-        4. Additional running/output pairs for later workflow steps
-        5. A terminal export row with `id`, timestamps, image storage fields, and, when auto analyse ran, `extractedText` and `finalText`
-        6. Or a terminal `{"error":{"code":"...","message":"..."}}`
+        Import and regenerate share a Redis-backed BullMQ FIFO queue with concurrency one. The response confirms only that image storage, pending row creation, and queue submission succeeded. The queue job references stored image metadata (`uploadId`, `imageUrl`, `bucket`, `objectKey`), not image bytes. Clients should observe completion or failure by refreshing `GET /api/v1/export` after FCM `export_refresh`.
 
         Topic resolution for sender capture requests and receiver import refresh messages is `AIREYE_FCM_TOPIC`, then the AirEye default `aireye_new_result`.
       operationId: postImport
@@ -124,39 +115,16 @@ paths:
                   format: binary
                   description: Binary document image. Use one image MIME type per file part.
       responses:
-        "200":
-          description: SSE stream containing workflow step events and the terminal result
-          headers:
-            Cache-Control:
-              description: Clients must not cache the live stream as a static document.
-              schema:
-                type: string
-                example: no-cache
-            Connection:
-              description: Keep the TCP connection open for the duration of the stream.
-              schema:
-                type: string
-                example: keep-alive
-            X-Accel-Buffering:
-              description: Hint for nginx to disable response buffering so chunks flush promptly.
-              schema:
-                type: string
-                example: "no"
+        "202":
+          description: Image accepted and queued for background processing
           content:
-            text/event-stream:
+            application/json:
               schema:
-                type: string
-                description: UTF-8 Server-Sent Events body. Split on blank lines; each `data:` line carries one JSON value.
-              example: |
-                data: {"status":"running_step","data":{"index":0,"prompt":"extract-document-fields","model":"image"}}
-
-                data: {"data":{"stepIndex":0,"output":"{\"fields\":[{\"label\":\"total\",\"value\":\"42.10\"}]}"}}
-
-                data: {"status":"running_step","data":{"index":1,"prompt":"format-export-row","model":"reasoning"}}
-
-                data: {"data":{"stepIndex":1,"output":"<section><h2>Summary</h2><p>Total: 42.10</p></section>"}}
-
-                data: {"id":"upl_abc","createdAt":1745000001000,"updatedAt":1745000001500,"extractedText":"{\"fields\":[{\"label\":\"total\",\"value\":\"42.10\"}]}","finalText":"<section><h2>Summary</h2><p>Total: 42.10</p></section>","imageUrl":"https://minio.example.test/document-images/uploads/upl_abc-a1b2c3d4.jpg","bucket":"document-images","objectKey":"uploads/upl_abc-a1b2c3d4.jpg"}
+                $ref: "#/components/schemas/QueuedWorkflowResponse"
+              example:
+                status: queued
+                jobId: 550e8400-e29b-41d4-a716-446655440000
+                uploadId: upl_abc
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -175,9 +143,9 @@ paths:
       description: |
         Reruns the same prompt-configured workflow for an existing upload row without uploading image bytes again.
 
-        The server extracts the upload id from the image object filename, loads the existing row, clears stale output fields, streams workflow step events, and updates the same row with the new normalized output.
+        The server extracts the upload id from the image object filename, loads the existing row, enqueues a background job, and returns `202`. The worker clears stale output fields, broadcasts a refresh, reruns the workflow, updates the same row with the new normalized output, and broadcasts another refresh.
 
-        Regenerate shares the same Redis-backed BullMQ FIFO queue as import. A request waiting behind active workflow work first emits `{"status":"queued","data":{"position":1}}` on the existing SSE connection.
+        Regenerate shares the same Redis-backed BullMQ FIFO queue as import. The queued job references stored image metadata from the existing row.
 
         Regenerate does not read the `auto_analyse` flag; it always runs the Langfuse/LiteLLM workflow.
       operationId: postRegenerate
@@ -191,18 +159,16 @@ paths:
               imageUrl: https://minio.example.test/document-images/uploads/upl_abc-a1b2c3d4.jpg
               text: "<section><h2>Summary</h2><p>Total: 42.10</p></section>"
       responses:
-        "200":
-          description: SSE stream containing workflow step events and the terminal result
+        "202":
+          description: Regenerate accepted and queued for background processing
           content:
-            text/event-stream:
+            application/json:
               schema:
-                type: string
-              example: |
-                data: {"status":"running_step","data":{"index":0,"prompt":"extract-document-fields","model":"image"}}
-
-                data: {"data":{"stepIndex":0,"output":"normalized fields"}}
-
-                data: {"id":"upl_abc","createdAt":1745000001000,"updatedAt":1745000002500,"extractedText":"normalized fields","finalText":"formatted result","imageUrl":"https://minio.example.test/document-images/uploads/upl_abc-a1b2c3d4.jpg","bucket":"document-images","objectKey":"uploads/upl_abc-a1b2c3d4.jpg"}
+                $ref: "#/components/schemas/QueuedWorkflowResponse"
+              example:
+                status: queued
+                jobId: 550e8400-e29b-41d4-a716-446655440000
+                uploadId: upl_abc
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -479,7 +445,7 @@ components:
         version:
           type: string
           description: Backend application version from `backend/package.json`
-          example: 0.2.14
+          example: 0.2.15
         ok:
           type: boolean
         firebase:
@@ -491,105 +457,19 @@ components:
         s3:
           $ref: "#/components/schemas/DependencyCheck"
 
-    ImportStreamQueued:
+    QueuedWorkflowResponse:
       type: object
-      required: [status, data]
+      required: [status, jobId, uploadId]
       properties:
         status:
           type: string
           enum: [queued]
-        data:
-          type: object
-          required: [position]
-          properties:
-            position:
-              type: integer
-              minimum: 1
-              description: One-based count of jobs ahead at enqueue time.
-
-    ImportStreamRunningStep:
-      type: object
-      required: [status, data]
-      properties:
-        status:
+        jobId:
           type: string
-          enum: [running_step]
-        data:
-          type: object
-          required: [index, prompt, model]
-          properties:
-            index:
-              type: integer
-              minimum: 0
-            prompt:
-              type: string
-              description: Langfuse prompt name for this workflow step
-            model:
-              type: string
-              enum: [image, reasoning]
-
-    ImportStreamStepOutput:
-      type: object
-      required: [data]
-      properties:
-        data:
-          type: object
-          required: [stepIndex, output]
-          properties:
-            stepIndex:
-              type: integer
-              minimum: 0
-            output:
-              type: string
-
-    ImportStreamResult:
-      type: object
-      required: [id, createdAt, updatedAt]
-      description: Terminal event that mirrors the Realtime Database row under `uploads/{id}`.
-      properties:
-        id:
+          description: Backend queue job id.
+        uploadId:
           type: string
-          example: upl_8741170b50a14381a696e87f07dca6b5
-        createdAt:
-          type: integer
-          format: int64
-        updatedAt:
-          type: integer
-          format: int64
-        extractedText:
-          type: string
-          description: First workflow step output
-        finalText:
-          type: string
-          description: Final workflow step output; usually a formatted result
-        imageUrl:
-          type: string
-          format: uri
-        bucket:
-          type: string
-        objectKey:
-          type: string
-
-    ImportStreamTerminalError:
-      type: object
-      required: [error]
-      properties:
-        error:
-          type: object
-          required: [code, message]
-          properties:
-            code:
-              type: string
-            message:
-              type: string
-
-    ImportStreamSseData:
-      oneOf:
-        - $ref: "#/components/schemas/ImportStreamQueued"
-        - $ref: "#/components/schemas/ImportStreamRunningStep"
-        - $ref: "#/components/schemas/ImportStreamStepOutput"
-        - $ref: "#/components/schemas/ImportStreamResult"
-        - $ref: "#/components/schemas/ImportStreamTerminalError"
+          description: Realtime Database/export row id.
 
     RegenerateRequest:
       type: object

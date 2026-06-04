@@ -25,10 +25,10 @@ Production public URL: `https://lowjungxuan.dpdns.org/backend/api/v1/health`. Th
 ## `POST /api/v1/import`
 
 - `multipart/form-data`, required field `image`.
-- `200` with `Content-Type: text/event-stream`.
-- Import and regenerate share one Redis-backed BullMQ FIFO queue. If a request waits behind active workflow work, its first SSE line is `{"status":"queued","data":{"position":<jobsAhead>}}`.
-- Flow: S3/MinIO image upload -> Realtime Database pending row -> FCM `export_refresh` -> Langfuse tool-reasoning plan -> LiteLLM workflow steps -> Realtime Database final update -> FCM `export_refresh`.
-- Each SSE `data:` line is JSON: optional `queued`, `running_step` events, workflow step output events, then either the success row (`id`, `createdAt`, `updatedAt`, `extractedText`, `finalText`, `imageUrl`, `bucket`, `objectKey`) or terminal `{"error":{"code","message"}}`.
+- `202` with `{ "status": "queued", "jobId": "...", "uploadId": "upl_..." }`.
+- Import and regenerate share one Redis-backed BullMQ FIFO queue with concurrency one.
+- Flow: S3/MinIO image upload -> Realtime Database pending row -> FCM `export_refresh` -> queue background job -> `202` response -> worker runs Langfuse tool-reasoning/LiteLLM workflow -> Realtime Database final update or `errorMessage` -> FCM `export_refresh`.
+- Queue jobs reference stored image metadata (`uploadId`, `imageUrl`, `bucket`, `objectKey`), not image bytes.
 - Langfuse is the prompt source. There are no prompt HTTP routes.
 
 Typical errors: `400`, `413`, `415`, `500`.
@@ -37,7 +37,7 @@ Typical errors: `400`, `413`, `415`, `500`.
 
 - JSON body with `imageUrl` and `text`.
 - Reruns the same prompt-configured workflow for an existing upload row.
-- Streams the same SSE payload shapes as import, waits in the same BullMQ FIFO queue, and updates the existing export row.
+- Returns `202` queued JSON, waits in the same BullMQ FIFO queue, and updates the existing export row in the background.
 
 ## `GET /api/v1/export`
 

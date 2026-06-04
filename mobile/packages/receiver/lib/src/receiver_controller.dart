@@ -93,15 +93,9 @@ class ReceiverController extends BaseController<ReceiverState> {
     state = current.copyWith(regeneratingIds: {...current.regeneratingIds, imageUrl});
 
     try {
-      final response = await AirEyeEndpoints.regenerate(
+      await AirEyeEndpoints.regenerate(
         request: RegenerateRequest(imageUrl: imageUrl, text: item.finalText?.trim() ?? ''),
       );
-
-      if (response case ImportStreamSseError(:final value)) {
-        throw StateError(value.error.message);
-      }
-
-      await refresh();
     } catch (_) {
       await refresh();
     } finally {

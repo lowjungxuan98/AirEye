@@ -2,31 +2,16 @@ import type { Request, Response } from "express";
 import {
   API_ERROR_MESSAGES,
   fieldMustBeNonEmptyString,
-  internalError,
   invalidRequest
 } from "../../../libs/utils/api-error.util";
-import { writeSseData } from "../../../libs/utils/sse.util";
 import type { RegenerateRequest } from "../model/regenerate.model";
 import type { ImportService } from "../model/services.model";
 
 export function createRegenerateHandler(importService: ImportService) {
   return async (req: Request, res: Response) => {
     const request = parseRegenerateRequest(req.body);
-
-    try {
-      await importService.streamRegenerate(request, (data) => writeSseData(res, data));
-      if (!res.headersSent) {
-        throw internalError(API_ERROR_MESSAGES.regenerateNoStreamOutput);
-      }
-    } catch (error) {
-      if (!res.headersSent) {
-        throw error;
-      }
-    } finally {
-      if (res.headersSent) {
-        res.end();
-      }
-    }
+    const response = await importService.queueRegenerate(request);
+    res.status(202).json(response);
   };
 }
 

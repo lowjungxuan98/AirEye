@@ -9,29 +9,28 @@ import {
 } from "../test-utils";
 import { InMemoryUploadRepository } from "../in-memory-upload-repository";
 
-function parseSseDataLines(body: string): unknown[] {
-  return body
-    .split(/\n\n/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => {
-      const line = block.startsWith("data: ") ? block.slice(6) : block;
-      return JSON.parse(line) as unknown;
-    });
+async function waitFor(predicate: () => boolean | Promise<boolean>): Promise<void> {
+  for (let i = 0; i < 100; i += 1) {
+    if (await predicate()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  throw new Error("Timed out waiting for condition");
 }
 
 describe("POST /api/v1/regenerate (HTTP integration)", () => {
-  it("returns 200 text/event-stream and forwards emits from ImportService", async () => {
-    const streamRegenerate = vi.fn(async (_req, emit) => {
-      emit({ status: "extracting_text" });
-      emit({ status: "analyzing_text" });
-      emit({ status: "format_guard" });
-      emit({ id: "upl_1", createdAt: 1, updatedAt: 2, finalText: "ok" });
-    });
+  it("returns 202 application/json and forwards JSON to ImportService", async () => {
+    const queueRegenerate = vi.fn(async () => ({
+      status: "queued" as const,
+      jobId: "job_1",
+      uploadId: "upl_1"
+    }));
     const app = buildTestApp({
       importService: {
-        streamImport: async () => {},
-        streamRegenerate
+        queueImport: async () => ({ status: "queued", jobId: "unused", uploadId: "unused" }),
+        queueRegenerate
       }
     });
 
@@ -39,22 +38,17 @@ describe("POST /api/v1/regenerate (HTTP integration)", () => {
       .post("/api/v1/regenerate")
       .set(API_KEY_HEADER, AIREYE_API_KEY)
       .send({ imageUrl: "https://storage.example.test/uploads/upl_1-abc.jpg", text: "old" })
-      .expect(200);
+      .expect(202);
 
-    expect(res.headers["content-type"]).toMatch(/text\/event-stream/);
-    expect(parseSseDataLines(res.text)).toEqual([
-      { status: "extracting_text" },
-      { status: "analyzing_text" },
-      { status: "format_guard" },
-      { id: "upl_1", createdAt: 1, updatedAt: 2, finalText: "ok" }
-    ]);
-    expect(streamRegenerate).toHaveBeenCalledWith(
-      { imageUrl: "https://storage.example.test/uploads/upl_1-abc.jpg", text: "old" },
-      expect.any(Function)
-    );
+    expect(res.headers["content-type"]).toMatch(/application\/json/);
+    expect(res.body).toEqual({ status: "queued", jobId: "job_1", uploadId: "upl_1" });
+    expect(queueRegenerate).toHaveBeenCalledWith({
+      imageUrl: "https://storage.example.test/uploads/upl_1-abc.jpg",
+      text: "old"
+    });
   });
 
-  it("wires JSON into ImportService with stubbed pipeline deps", async () => {
+  it("wires JSON into ImportService with stubbed background pipeline deps", async () => {
     const repo = new InMemoryUploadRepository();
     await repo.createPendingUpload("upl_integration", {
       createdAt: 100,
@@ -74,20 +68,20 @@ describe("POST /api/v1/regenerate (HTTP integration)", () => {
         imageUrl: "https://storage.example.test/uploads/upl_integration-abc.jpg",
         text: "old"
       })
-      .expect(200);
+      .expect(202);
 
-    const events = parseSseDataLines(res.text);
-    expect(events[0]).toEqual({
-      status: "running_step",
-      data: { index: 0, prompt: "vision-prompt", model: "image" }
+    expect(res.body).toEqual({
+      status: "queued",
+      jobId: expect.any(String),
+      uploadId: "upl_integration"
     });
-    expect(events[1]).toEqual({ data: { stepIndex: 0, output: "extracted" } });
-    expect(events[2]).toEqual({
-      status: "running_step",
-      data: { index: 1, prompt: "reasoning-prompt", model: "reasoning" }
+
+    await waitFor(async () => {
+      const row = await repo.getUpload("upl_integration");
+      return row?.finalText === "reasoned:extracted";
     });
-    expect(events[3]).toEqual({ data: { stepIndex: 1, output: "reasoned:extracted" } });
-    expect(events[4]).toMatchObject({
+
+    expect(await repo.getUpload("upl_integration")).toMatchObject({
       id: "upl_integration",
       createdAt: 100,
       finalText: "reasoned:extracted",
@@ -109,11 +103,11 @@ describe("POST /api/v1/regenerate (HTTP integration)", () => {
     });
   });
 
-  it("maps ApiError from streamRegenerate through the global error handler when no bytes were sent", async () => {
+  it("maps ApiError from queueRegenerate through the global error handler", async () => {
     const app = buildTestApp({
       importService: {
-        streamImport: async () => {},
-        streamRegenerate: async () => {
+        queueImport: async () => ({ status: "queued", jobId: "unused", uploadId: "unused" }),
+        queueRegenerate: async () => {
           throw new ApiError(404, "NOT_FOUND", "upload not found");
         }
       }

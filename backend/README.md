@@ -56,12 +56,12 @@ The FCM topic resolves from `AIREYE_FCM_TOPIC`, then falls back to the AirEye de
 - `GET /openapi.yaml` - OpenAPI 3 spec
 - `GET /api/v1/health` - Firebase, LiteLLM, and S3 readiness
 - `POST /api/v1/send-notification` - sends a silent sender capture request through FCM
-- `POST /api/v1/import` - accepts one multipart `image` file, stores it, runs the prompt-configured workflow, and streams SSE events until a terminal export row or error
-- `POST /api/v1/regenerate` - reruns the workflow for an existing image URL and export row
+- `POST /api/v1/import` - accepts one multipart `image` file, stores it, creates a pending export row, and returns a queued job id
+- `POST /api/v1/regenerate` - queues the workflow for an existing image URL and export row
 - `GET /api/v1/export` - returns paginated newest-first export rows
 - `GET /api/v1/provider`, `PUT /api/v1/provider` - reads or switches the active LiteLLM provider
 
-Workflow prompts are managed in Langfuse, not local prompt files or HTTP prompt routes. The tool-reasoning prompt returns ordered workflow steps. Each workflow step references a Langfuse prompt and chooses either a vision step or reasoning step. Import and regenerate work is serialized through BullMQ on Redis while the existing SSE request stays open.
+Workflow prompts are managed in Langfuse, not local prompt files or HTTP prompt routes. The tool-reasoning prompt returns ordered workflow steps. Each workflow step references a Langfuse prompt and chooses either a vision step or reasoning step. Import and regenerate work is serialized through BullMQ on Redis after the HTTP request returns `202`.
 
 ### Docs
 

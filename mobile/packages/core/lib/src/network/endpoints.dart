@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 
 import '../model/model.dart';
@@ -67,13 +65,12 @@ class AirEyeEndpoints {
     return model;
   }
 
-  static Future<ImportStreamSseData> import({
+  static Future<QueuedWorkflowResponse> import({
     required MultipartFile image,
-    void Function(ImportStreamSseData response)? onSuccess,
+    void Function(QueuedWorkflowResponse response)? onSuccess,
     void Function(Object error, StackTrace stackTrace)? onError,
     void Function()? onFinally,
     ProgressCallback? onSendProgress,
-    ProgressCallback? onReceiveProgress,
     CancelToken? cancelToken,
     Options? options,
   }) async {
@@ -82,47 +79,27 @@ class AirEyeEndpoints {
 
     final formData = FormData.fromMap({'image': image});
 
-    final res = await client.post<String>(
-      url,
-      data: formData,
-      options: (options ?? Options()).copyWith(responseType: ResponseType.plain),
-      cancelToken: cancelToken,
-      onSendProgress: onSendProgress,
-      onReceiveProgress: onReceiveProgress,
-      onError: onError,
-      onFinally: onFinally,
-    );
+    final res = await client.post<JsonMap>(url, data: formData, options: options, cancelToken: cancelToken, onSendProgress: onSendProgress, onError: onError, onFinally: onFinally);
 
-    final payload = _lastSseDataPayload(res.data ?? '');
-    final model = ImportStreamSseData.fromJson(jsonDecode(payload) as JsonMap);
+    final model = QueuedWorkflowResponse.fromJson(res.data ?? const <String, dynamic>{});
     onSuccess?.call(model);
     return model;
   }
 
-  static Future<ImportStreamSseData> regenerate({
+  static Future<QueuedWorkflowResponse> regenerate({
     required RegenerateRequest request,
-    void Function(ImportStreamSseData response)? onSuccess,
+    void Function(QueuedWorkflowResponse response)? onSuccess,
     void Function(Object error, StackTrace stackTrace)? onError,
     void Function()? onFinally,
-    ProgressCallback? onReceiveProgress,
     CancelToken? cancelToken,
     Options? options,
   }) async {
     final client = await AirEyeClient.create();
     final url = await _url(_regeneratePath);
 
-    final res = await client.post<String>(
-      url,
-      data: request.toJson(),
-      options: (options ?? Options()).copyWith(responseType: ResponseType.plain),
-      cancelToken: cancelToken,
-      onReceiveProgress: onReceiveProgress,
-      onError: onError,
-      onFinally: onFinally,
-    );
+    final res = await client.post<JsonMap>(url, data: request.toJson(), options: options, cancelToken: cancelToken, onError: onError, onFinally: onFinally);
 
-    final payload = _lastSseDataPayload(res.data ?? '');
-    final model = ImportStreamSseData.fromJson(jsonDecode(payload) as JsonMap);
+    final model = QueuedWorkflowResponse.fromJson(res.data ?? const <String, dynamic>{});
     onSuccess?.call(model);
     return model;
   }
@@ -168,18 +145,5 @@ class AirEyeEndpoints {
     final model = AutoAnalyseResponse.fromJson(res.data ?? const <String, dynamic>{});
     onSuccess?.call(model);
     return model;
-  }
-
-  static String _lastSseDataPayload(String body) {
-    // SSE format: blocks separated by blank line; each block can have `data: ...`.
-    // We take the last `data:` line we can find.
-    final lines = body.split('\n');
-    for (var i = lines.length - 1; i >= 0; i--) {
-      final line = lines[i].trimRight();
-      if (line.startsWith('data:')) {
-        return line.substring('data:'.length).trim();
-      }
-    }
-    throw StateError('No SSE data line found in import response.');
   }
 }

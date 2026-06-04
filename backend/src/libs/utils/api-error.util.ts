@@ -5,8 +5,6 @@ export const API_ERROR_MESSAGES = {
   invalidMultipartRequest: "Invalid multipart request",
   imageTooLarge: "image exceeds the 500 MB limit",
   imageRequired: "image is required",
-  importNoStreamOutput: "Import produced no stream output",
-  regenerateNoStreamOutput: "Regenerate produced no stream output",
   expectedJsonObjectBody: "Expected a JSON object body",
   textMustBeString: "text must be a string",
   imageUrlMissingUploadObjectName: "imageUrl must contain an upload object name",
@@ -15,6 +13,7 @@ export const API_ERROR_MESSAGES = {
   invalidProvider:
     "Expected provider to be one of the LiteLLM providers with both -image and -reasoning routes",
   unsupportedImageUpload: "Only image uploads are supported",
+  imageReductionFailed: "image could not be reduced below the 10 MB storage limit",
   invalidPage: "page must be a positive integer",
   invalidLimit: "limit must be a positive integer"
 } as const;

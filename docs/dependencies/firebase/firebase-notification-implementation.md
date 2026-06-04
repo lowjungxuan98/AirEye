@@ -22,8 +22,8 @@ The configured topic resolves from `AIREYE_FCM_TOPIC`, then falls back to the Ai
 |---------|----------|------|------|----------------------|---------|
 | `POST /api/v1/send-notification` | `capture_request` | `silent` | `sender` | No | Sender camera should capture and call import. |
 | Pending row written during `POST /api/v1/import` | `export_refresh` | `silent` | `receiver` | No | Receiver should call its existing export endpoint function. |
-| Successful final row update during `POST /api/v1/import` | `export_refresh` | `silent` | `receiver` | No | Receiver should call its existing export endpoint function again. |
-| `POST /api/v1/regenerate` row refreshes | `export_refresh` | `silent` | `receiver` | No | Receiver should refresh export rows. |
+| Successful final row update by the import worker | `export_refresh` | `silent` | `receiver` | No | Receiver should call its existing export endpoint function again. |
+| Regenerate worker row refreshes | `export_refresh` | `silent` | `receiver` | No | Receiver should refresh export rows. |
 
 Every payload includes string data values for:
 

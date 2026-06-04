@@ -1,5 +1,3 @@
-import type { StepModel } from "../../../libs/workflow/tool-reasoning";
-
 export type AirEyeUpload = {
   createdAt: number;
   updatedAt: number;
@@ -13,35 +11,18 @@ export type AirEyeUpload = {
 
 export type AirEyeUploadRow = AirEyeUpload & { id: string };
 
-/** SSE `data:` payload emitted when a request is waiting behind active workflow work. */
-export type ImportStreamQueuedBody = {
+export type UploadedWorkflowImage = {
+  uploadId: string;
+  imageUrl: string;
+  bucket?: string;
+  objectKey?: string;
+};
+
+export type QueuedWorkflowResponse = {
   status: "queued";
-  data: { position: number };
+  jobId: string;
+  uploadId: string;
 };
-
-/** SSE `data:` payload emitted when a workflow step is about to execute. */
-export type ImportStreamRunningStepBody = {
-  status: "running_step";
-  data: { index: number; prompt: string; model: StepModel };
-};
-
-/** SSE `data:` payload emitted when a workflow step finishes. */
-export type ImportStreamStepOutputBody = {
-  data: { stepIndex: number; output: string };
-};
-
-export type ImportStreamErrorBody = {
-  error: { code: string; message: string };
-};
-
-/** Payloads written as SSE `data:` lines for `POST /api/v1/import`. */
-export type ImportStreamSseData =
-  | ImportStreamQueuedBody
-  | ImportStreamRunningStepBody
-  | ImportStreamStepOutputBody
-  | AirEyeUploadRow
-  | ImportStreamErrorBody
-  | object;
 
 export type ImportRequest = {
   imageBuffer: Buffer;
