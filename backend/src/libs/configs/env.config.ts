@@ -17,20 +17,10 @@ export type ServerEnv = {
   FIREBASE_DATABASE_URL: string;
   LLM_BASE_URL: string;
   LLM_API_KEY: string;
-  /** Optional URL of a Scalar-hosted API Reference; local spec is always `GET /openapi.yaml`. */
+  GENAI_BASE_URL: string;
+  GENAI_API_KEY: string;
   SCALAR_DOCS_URL?: string;
-  /**
-   * FCM topic for sender capture requests and receiver import refresh signals.
-   */
   AIREYE_FCM_TOPIC?: string;
-  /** Langfuse base URL (e.g. `https://cloud.langfuse.com`). */
-  LANGFUSE_BASE_URL: string;
-  LANGFUSE_PUBLIC_KEY: string;
-  LANGFUSE_SECRET_KEY: string;
-  /** Label used to fetch Langfuse prompts (default `production`). */
-  LANGFUSE_LABEL?: string;
-  /** Name of the Langfuse prompt that returns the workflow plan (default `tool-reasoning`). */
-  TOOL_REASONING_PROMPT_NAME?: string;
 };
 
 export function loadServerEnv(): ServerEnv {
@@ -56,13 +46,10 @@ export function loadServerEnv(): ServerEnv {
     FIREBASE_DATABASE_URL: readRequiredEnv("FIREBASE_DATABASE_URL"),
     LLM_BASE_URL: readRequiredEnv("LITELLM_BASE_URL"),
     LLM_API_KEY: readRequiredEnv("LITELLM_API_KEY"),
+    GENAI_BASE_URL: readRequiredEnv("GENAI_BASE_URL"),
+    GENAI_API_KEY: readRequiredEnv("GENAI_API_KEY"),
     SCALAR_DOCS_URL: readOptionalEnv("SCALAR_DOCS_URL"),
-    AIREYE_FCM_TOPIC: readOptionalEnv("AIREYE_FCM_TOPIC"),
-    LANGFUSE_BASE_URL: readRequiredEnv("LANGFUSE_BASE_URL"),
-    LANGFUSE_PUBLIC_KEY: readRequiredEnv("LANGFUSE_PUBLIC_KEY"),
-    LANGFUSE_SECRET_KEY: readRequiredEnv("LANGFUSE_SECRET_KEY"),
-    LANGFUSE_LABEL: readOptionalEnv("LANGFUSE_LABEL"),
-    TOOL_REASONING_PROMPT_NAME: readOptionalEnv("TOOL_REASONING_PROMPT_NAME")
+    AIREYE_FCM_TOPIC: readOptionalEnv("AIREYE_FCM_TOPIC")
   };
 }
 

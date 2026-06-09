@@ -10,7 +10,6 @@ function report(partial: Partial<HealthReport> & Pick<HealthReport, "ok">): Heal
     ok: partial.ok,
     firebase: partial.firebase ?? dep,
     llm: partial.llm ?? dep,
-    langfuse: partial.langfuse ?? dep,
     s3: partial.s3 ?? dep
   };
 }

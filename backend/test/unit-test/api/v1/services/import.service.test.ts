@@ -10,7 +10,6 @@ import type {
   ImportWorkflowJob,
   ImportWorkflowProcessor
 } from "../../../../../src/api/v1/model/services.model";
-import type { WorkflowStep } from "../../../../../src/libs/workflow/type";
 
 function makeImageStorage() {
   return {
@@ -84,8 +83,9 @@ function makeService({
   notifier = makeNotifier(),
   autoAnalyseFlagRepository = makeAutoAnalyseFlagRepository(),
   providerState = { getCurrentProvider: vi.fn(async () => "test-provider") },
-  toolReasoning = { decideSteps: vi.fn(async () => [{ prompt: "vision", model: "image" }]) },
-  stepExecutor = { run: vi.fn(async () => ["extracted", "final"]) },
+  workflowRunner = {
+    run: vi.fn(async () => ({ extractedText: "extracted", finalText: "final" }))
+  },
   logger = { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
   now = () => 99,
   generateUploadId = () => "upl_testid",
@@ -97,8 +97,7 @@ function makeService({
     notifier,
     autoAnalyseFlagRepository,
     providerState,
-    toolReasoning,
-    stepExecutor,
+    workflowRunner,
     logger,
     service: new ImportService({
       uploadRepository,
@@ -106,8 +105,7 @@ function makeService({
       notifier,
       autoAnalyseFlagRepository,
       providerState,
-      toolReasoning,
-      stepExecutor,
+      workflowRunner,
       logger,
       now,
       generateUploadId,
@@ -121,7 +119,7 @@ describe("ImportService queueImport", () => {
     const manualQueue = createManualQueue();
     const imageStorage = makeImageStorage();
     const notifier = makeNotifier();
-    const { service, uploadRepository, toolReasoning } = makeService({
+    const { service, uploadRepository, workflowRunner } = makeService({
       imageStorage,
       notifier,
       workflowQueueFactory: manualQueue.factory
@@ -159,7 +157,7 @@ describe("ImportService queueImport", () => {
       }
     ]);
     expect(JSON.stringify(manualQueue.jobs[0])).not.toContain("imageBuffer");
-    expect(toolReasoning.decideSteps).not.toHaveBeenCalled();
+    expect(workflowRunner.run).not.toHaveBeenCalled();
   });
 
   it("throws before creating a row when storage upload fails", async () => {
@@ -204,17 +202,13 @@ describe("ImportService queueImport", () => {
 describe("ImportService import worker", () => {
   it("runs the workflow later and updates extractedText/finalText", async () => {
     const manualQueue = createManualQueue();
-    const steps: WorkflowStep[] = [
-      { prompt: "vision", model: "image" },
-      { prompt: "format", model: "reasoning" }
-    ];
-    const toolReasoning = { decideSteps: vi.fn(async () => steps) };
-    const stepExecutor = { run: vi.fn(async () => ["extracted", "final"]) };
+    const workflowRunner = {
+      run: vi.fn(async () => ({ extractedText: "extracted", finalText: "final" }))
+    };
     const notifier = makeNotifier();
     const { service, uploadRepository, providerState } = makeService({
       notifier,
-      toolReasoning,
-      stepExecutor,
+      workflowRunner,
       workflowQueueFactory: manualQueue.factory
     });
 
@@ -222,14 +216,10 @@ describe("ImportService import worker", () => {
     await manualQueue.run();
 
     expect(providerState.getCurrentProvider).toHaveBeenCalledOnce();
-    expect(toolReasoning.decideSteps).toHaveBeenCalledWith(
-      "test-provider",
-      "https://storage.example.test/uploads/upl_testid.jpg"
-    );
-    expect(stepExecutor.run).toHaveBeenCalledWith({
+    expect(workflowRunner.run).toHaveBeenCalledWith({
       provider: "test-provider",
       imageUrl: "https://storage.example.test/uploads/upl_testid.jpg",
-      steps
+      kind: "import"
     });
     expect(await uploadRepository.getUpload("upl_testid")).toMatchObject({
       extractedText: "extracted",
@@ -241,7 +231,7 @@ describe("ImportService import worker", () => {
 
   it("leaves the image-only pending row as terminal when auto_analyse is disabled", async () => {
     const manualQueue = createManualQueue();
-    const { service, uploadRepository, providerState, toolReasoning, stepExecutor, notifier } =
+    const { service, uploadRepository, providerState, workflowRunner, notifier } =
       makeService({
         autoAnalyseFlagRepository: makeAutoAnalyseFlagRepository(false),
         workflowQueueFactory: manualQueue.factory
@@ -255,8 +245,7 @@ describe("ImportService import worker", () => {
     expect(row?.extractedText).toBeUndefined();
     expect(row?.finalText).toBeUndefined();
     expect(providerState.getCurrentProvider).not.toHaveBeenCalled();
-    expect(toolReasoning.decideSteps).not.toHaveBeenCalled();
-    expect(stepExecutor.run).not.toHaveBeenCalled();
+    expect(workflowRunner.run).not.toHaveBeenCalled();
     expect(notifier.broadcastExportRefresh).toHaveBeenCalledOnce();
   });
 
@@ -267,9 +256,9 @@ describe("ImportService import worker", () => {
     const { service, uploadRepository } = makeService({
       notifier,
       logger,
-      toolReasoning: {
-        decideSteps: vi.fn(async () => {
-          throw new Error("tool reasoning failed");
+      workflowRunner: {
+        run: vi.fn(async () => {
+          throw new Error("workflow failed");
         })
       },
       workflowQueueFactory: manualQueue.factory
@@ -284,7 +273,7 @@ describe("ImportService import worker", () => {
       imageUrl: "https://storage.example.test/uploads/upl_testid.jpg",
       bucket: "b",
       objectKey: "uploads/upl_testid.jpg",
-      finalText: "tool reasoning failed"
+      finalText: "workflow failed"
     });
     expect(row?.errorMessage).toBeUndefined();
     expect(updateUpload).toHaveBeenCalledOnce();
@@ -299,8 +288,8 @@ describe("ImportService import worker", () => {
   it("persists ApiError messages from workflow failures", async () => {
     const manualQueue = createManualQueue();
     const { service, uploadRepository } = makeService({
-      toolReasoning: {
-        decideSteps: vi.fn(async () => {
+      workflowRunner: {
+        run: vi.fn(async () => {
           throw new ApiError(503, "UPSTREAM", "nim down");
         })
       },
@@ -428,10 +417,14 @@ describe("ImportService regenerate worker", () => {
       objectKey: "uploads/upl_existing-abc.jpg"
     });
     const notifier = makeNotifier();
+    const workflowRunner = {
+      run: vi.fn(async () => ({ extractedText: "extracted", finalText: "final" }))
+    };
     let now = 100;
-    const { service, stepExecutor, toolReasoning } = makeService({
+    const { service, providerState } = makeService({
       uploadRepository,
       notifier,
+      workflowRunner,
       now: () => now++,
       workflowQueueFactory: manualQueue.factory
     });
@@ -442,11 +435,12 @@ describe("ImportService regenerate worker", () => {
     });
     await manualQueue.run();
 
-    expect(toolReasoning.decideSteps).toHaveBeenCalledWith(
-      "test-provider",
-      "https://storage.example.test/uploads/upl_existing-abc.jpg"
-    );
-    expect(stepExecutor.run).toHaveBeenCalled();
+    expect(workflowRunner.run).toHaveBeenCalledWith({
+      provider: "test-provider",
+      imageUrl: "https://storage.example.test/uploads/upl_existing-abc.jpg",
+      kind: "regenerate"
+    });
+    expect(providerState.getCurrentProvider).toHaveBeenCalledOnce();
     expect(await uploadRepository.getUpload("upl_existing")).toMatchObject({
       createdAt: 10,
       updatedAt: 101,
@@ -477,7 +471,7 @@ describe("ImportService regenerate worker", () => {
       uploadRepository,
       notifier,
       logger,
-      stepExecutor: {
+      workflowRunner: {
         run: vi.fn(async () => {
           throw new Error("step failed");
         })

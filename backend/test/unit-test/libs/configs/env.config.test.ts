@@ -22,9 +22,8 @@ const requiredBase = {
   FIREBASE_DATABASE_URL: "https://proj.firebaseio.com",
   LITELLM_BASE_URL: "https://litellm.example.test/v1",
   LITELLM_API_KEY: "sk-test",
-  LANGFUSE_BASE_URL: "https://langfuse.example.test",
-  LANGFUSE_PUBLIC_KEY: "pk-test",
-  LANGFUSE_SECRET_KEY: "sk-langfuse-test"
+  GENAI_BASE_URL: "http://genai:8000",
+  GENAI_API_KEY: "genai-key"
 } as const;
 
 describe("loadServerEnv", () => {
@@ -67,15 +66,14 @@ describe("loadServerEnv", () => {
     expect(() => loadServerEnv()).toThrow(/Missing required env var LITELLM_BASE_URL/);
   });
 
-  it.each([
-    "LANGFUSE_BASE_URL",
-    "LANGFUSE_PUBLIC_KEY",
-    "LANGFUSE_SECRET_KEY"
-  ] as const)("throws when %s is missing", (name) => {
-    vi.stubEnv(name, "");
-    delete process.env[name];
-    expect(() => loadServerEnv()).toThrow(new RegExp(`Missing required env var ${name}`));
-  });
+  it.each(["GENAI_BASE_URL", "GENAI_API_KEY"] as const)(
+    "throws when %s is missing",
+    (name) => {
+      vi.stubEnv(name, "");
+      delete process.env[name];
+      expect(() => loadServerEnv()).toThrow(new RegExp(`Missing required env var ${name}`));
+    }
+  );
 
   it("accepts Firebase credentials from base64 when the local file path is unset", () => {
     vi.stubEnv("GOOGLE_APPLICATION_CREDENTIALS", "");
@@ -105,27 +103,22 @@ describe("loadServerEnv", () => {
     expect(() => loadServerEnv()).toThrow(/Missing Firebase credentials env/);
   });
 
-  it("loads LiteLLM and Langfuse settings from env", () => {
+  it("loads LiteLLM and genai settings from env", () => {
     const env = loadServerEnv();
     expect(env.REDIS_URL).toBe("redis://127.0.0.1:6379");
     expect(env.LLM_BASE_URL).toBe("https://litellm.example.test/v1");
     expect(env.LLM_API_KEY).toBe("sk-test");
-    expect(env.LANGFUSE_BASE_URL).toBe("https://langfuse.example.test");
-    expect(env.LANGFUSE_PUBLIC_KEY).toBe("pk-test");
-    expect(env.LANGFUSE_SECRET_KEY).toBe("sk-langfuse-test");
+    expect(env.GENAI_BASE_URL).toBe("http://genai:8000");
+    expect(env.GENAI_API_KEY).toBe("genai-key");
   });
 
   it("returns optional vars when set and undefined when blank", () => {
     vi.stubEnv("SCALAR_DOCS_URL", " https://docs.example ");
     vi.stubEnv("AIREYE_FCM_TOPIC", "");
     delete process.env.AIREYE_FCM_TOPIC;
-    vi.stubEnv("LANGFUSE_LABEL", "staging");
-    vi.stubEnv("TOOL_REASONING_PROMPT_NAME", "tool-reasoning-v2");
     const env = loadServerEnv();
     expect(env.SCALAR_DOCS_URL).toBe("https://docs.example");
     expect(env.AIREYE_FCM_TOPIC).toBeUndefined();
-    expect(env.LANGFUSE_LABEL).toBe("staging");
-    expect(env.TOOL_REASONING_PROMPT_NAME).toBe("tool-reasoning-v2");
   });
 
   it("uses only the AirEye FCM topic before falling back to the AirEye default", () => {

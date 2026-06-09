@@ -8,8 +8,6 @@ import type {
 import type { RegenerateRequest } from "./regenerate.model";
 import type { LlmProvider } from "../../../libs/configs/env.config";
 import type { ProviderStateService } from "../../../libs/litellm/provider-state";
-import type { ToolReasoning } from "../../../libs/workflow/tool-reasoning";
-import type { StepExecutor } from "../../../libs/workflow/step-executor";
 
 export type UploadedImage = {
   imageUrl: string;
@@ -39,14 +37,29 @@ export interface ResultNotifier {
 
 export type Logger = Pick<Console, "error" | "warn" | "info">;
 
+export type WorkflowRunInput = {
+  provider: LlmProvider;
+  imageUrl: string;
+  kind?: "import" | "regenerate";
+};
+
+export type WorkflowRunResult = {
+  extractedText: string;
+  finalText: string;
+  steps?: Array<{ prompt: string; model: "image" | "reasoning" }>;
+};
+
+export interface WorkflowRunner {
+  run(input: WorkflowRunInput): Promise<WorkflowRunResult>;
+}
+
 export type ImportServiceDependencies = {
   uploadRepository: UploadRepository;
   imageStorage: ImageStorage;
   notifier: ResultNotifier;
   autoAnalyseFlagRepository: AutoAnalyseFlagRepository;
   providerState: Pick<ProviderStateService, "getCurrentProvider">;
-  toolReasoning: Pick<ToolReasoning, "decideSteps">;
-  stepExecutor: Pick<StepExecutor, "run">;
+  workflowRunner: WorkflowRunner;
   logger?: Logger;
   now?: () => number;
   generateUploadId?: () => string;

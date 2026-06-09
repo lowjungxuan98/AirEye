@@ -1,12 +1,3 @@
-import type { ModelStage } from "./constants";
-
-/**
- * LiteLLM OpenAI-compatible proxy endpoints.
- *
- * The chat completions endpoint (`/chat/completions`) is consumed via the OpenAI
- * SDK and never built by hand. Anything that needs a hand-built URL lives here.
- */
-
 /** `GET /models` query string used for provider discovery. */
 export const MODEL_DISCOVERY_QUERY =
   "return_wildcard_routes=false&include_model_access_groups=false&only_model_access_groups=false&include_metadata=false";
@@ -18,6 +9,3 @@ export function buildModelsUrl(baseUrl: string): string {
   return `${baseUrl.replace(/\/+$/, "")}/models?${MODEL_DISCOVERY_QUERY}`;
 }
 
-export function buildModelId(provider: string, stage: ModelStage): string {
-  return `${provider}-${stage}`;
-}

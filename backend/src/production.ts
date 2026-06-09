@@ -17,14 +17,10 @@ import {
   type RealtimeNamespace
 } from "./libs/firebase/realtime";
 import { resolveFcmBroadcastTopic, resolveS3Bucket } from "./libs/configs/env.config";
-import { LangfuseClient } from "./libs/langfuse/client";
 import { LiteLlmClient } from "./libs/litellm/client";
 import { ProviderStateService } from "./libs/litellm/provider-state";
-import { ToolReasoning } from "./libs/workflow/tool-reasoning";
-import { StepExecutor } from "./libs/workflow/step-executor";
+import { AgentWorkflowClient } from "./libs/agent/client";
 import { BullMqImportWorkflowQueue } from "./api/v1/services/import-workflow.queue";
-
-const DEFAULT_LANGFUSE_LABEL = "production";
 
 export function createProductionDependencies(env: ServerEnv): AppDependencies {
   const firebaseApp = getFirebaseAdminApp(env);
@@ -52,25 +48,15 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
     presignTtlSeconds: env.S3_PRESIGN_TTL_SECONDS
   };
 
-  const langfuseLabel = env.LANGFUSE_LABEL ?? DEFAULT_LANGFUSE_LABEL;
-  const langfuse = new LangfuseClient({
-    baseUrl: env.LANGFUSE_BASE_URL,
-    publicKey: env.LANGFUSE_PUBLIC_KEY,
-    secretKey: env.LANGFUSE_SECRET_KEY,
-    defaultLabel: langfuseLabel
-  });
   const litellm = new LiteLlmClient({ baseUrl: env.LLM_BASE_URL, apiKey: env.LLM_API_KEY });
   const providerState = new ProviderStateService({
     litellm,
     stateRepository: providerStateRepository
   });
-  const toolReasoning = new ToolReasoning({
-    langfuse,
-    litellm,
-    toolPromptName: env.TOOL_REASONING_PROMPT_NAME,
-    label: langfuseLabel
+  const workflowRunner = new AgentWorkflowClient({
+    baseUrl: env.GENAI_BASE_URL,
+    apiKey: env.GENAI_API_KEY
   });
-  const stepExecutor = new StepExecutor({ langfuse, litellm, label: langfuseLabel });
 
   const importService = new ImportService({
     uploadRepository,
@@ -78,8 +64,7 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
     notifier,
     autoAnalyseFlagRepository,
     providerState,
-    toolReasoning,
-    stepExecutor,
+    workflowRunner,
     logger: console,
     workflowQueueFactory: (processor) =>
       new BullMqImportWorkflowQueue({
@@ -95,7 +80,7 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
     sendNotificationService,
     providerService: providerState,
     autoAnalyseService,
-    runHealthChecks: createHealthRunner(realtimeDb, env.LLM_BASE_URL, env.LLM_API_KEY, langfuse, s3Config),
+    runHealthChecks: createHealthRunner(realtimeDb, env.LLM_BASE_URL, env.LLM_API_KEY, s3Config),
     logger: console
   };
 }

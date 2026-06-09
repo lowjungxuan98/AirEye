@@ -128,7 +128,7 @@ export class ImportService implements ImportServiceContract {
         return;
       }
 
-      const { extractedText, finalText } = await this.runLlmPipeline(upload.imageUrl);
+      const { extractedText, finalText } = await this.runLlmPipeline(upload.imageUrl, "import");
       await this.deps.uploadRepository.updateUpload(upload.uploadId, {
         updatedAt: this.now(),
         extractedText,
@@ -165,7 +165,7 @@ export class ImportService implements ImportServiceContract {
 
       await this.broadcastExportRefresh("failed to send regenerate initial FCM export refresh");
 
-      const { extractedText, finalText } = await this.runLlmPipeline(upload.imageUrl);
+      const { extractedText, finalText } = await this.runLlmPipeline(upload.imageUrl, "regenerate");
       await uploadRepository.updateUpload(upload.uploadId, {
         updatedAt: this.now(),
         extractedText,
@@ -185,18 +185,13 @@ export class ImportService implements ImportServiceContract {
     }
   }
 
-  private async runLlmPipeline(imageUrl: string): Promise<{
+  private async runLlmPipeline(imageUrl: string, kind: "import" | "regenerate" = "import"): Promise<{
     extractedText: string;
     finalText: string;
   }> {
-    const { providerState, toolReasoning, stepExecutor } = this.deps;
-
+    const { providerState, workflowRunner } = this.deps;
     const provider = await providerState.getCurrentProvider();
-    const steps = await toolReasoning.decideSteps(provider, imageUrl);
-    const outputs = await stepExecutor.run({ provider, imageUrl, steps });
-
-    const extractedText = outputs[0] ?? "";
-    const finalText = outputs[outputs.length - 1] ?? "";
+    const { extractedText, finalText } = await workflowRunner.run({ provider, imageUrl, kind });
     return { extractedText, finalText };
   }
 

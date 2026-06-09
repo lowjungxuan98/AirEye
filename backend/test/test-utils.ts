@@ -14,7 +14,6 @@ import { ImportService as ImportServiceImpl } from "../src/api/v1/services/impor
 import { invalidProvider } from "../src/libs/utils/api-error.util";
 import { InMemoryUploadRepository } from "./in-memory-upload-repository";
 import type { LlmProvider } from "../src/libs/configs/env.config";
-import type { WorkflowStep } from "../src/libs/workflow/type";
 
 export const silentLogger: Logger = {
   error: () => {},
@@ -30,7 +29,6 @@ export function stableOkHealth(): HealthReport {
     ok: true,
     firebase: { ok: true, latencyMs: 0 },
     llm: { ok: true, latencyMs: 0 },
-    langfuse: { ok: true, latencyMs: 0 },
     s3: { ok: true, latencyMs: 0 }
   };
 }
@@ -122,18 +120,10 @@ export function buildTestApp(input: BuildTestAppInput = {}) {
   });
 }
 
-export type StubbedPipelineOverrides = {
-  steps?: WorkflowStep[];
-  /** Output returned by every vision step (or per-call overrides keyed by prompt name). */
-  visionOutput?: string | ((prompt: string) => string);
-  reasoningOutput?: string | ((prompt: string, input: string) => string);
-  provider?: LlmProvider;
-};
-
 /** Real {@link ImportServiceImpl} with stubbed pipeline deps and no vendor I/O. */
 export function createImportServiceWithStubbedPipeline(
   deps?: Partial<ImportServiceDependencies>,
-  overrides: StubbedPipelineOverrides = {}
+  overrides: { provider?: LlmProvider; extractedText?: string; finalText?: string } = {}
 ) {
   const uploadRepository = deps?.uploadRepository ?? new InMemoryUploadRepository();
   const imageStorage =
@@ -146,46 +136,8 @@ export function createImportServiceWithStubbedPipeline(
       })
     };
   const provider = overrides.provider ?? "test-provider";
-  const defaultSteps: WorkflowStep[] = overrides.steps ?? [
-    { prompt: "vision-prompt", model: "image" },
-    { prompt: "reasoning-prompt", model: "reasoning" }
-  ];
-  const providerState = deps?.providerState ?? {
-    getCurrentProvider: async () => provider
-  };
-  const toolReasoning = deps?.toolReasoning ?? {
-    decideSteps: async () => defaultSteps
-  };
-  const visionOutputFn =
-    typeof overrides.visionOutput === "function"
-      ? overrides.visionOutput
-      : (_prompt: string) =>
-          typeof overrides.visionOutput === "string" ? overrides.visionOutput : "extracted";
-  const reasoningOutputFn =
-    typeof overrides.reasoningOutput === "function"
-      ? overrides.reasoningOutput
-      : (_prompt: string, input: string) =>
-          typeof overrides.reasoningOutput === "string"
-            ? overrides.reasoningOutput
-            : `reasoned:${input}`;
-  const stepExecutor =
-    deps?.stepExecutor ??
-    {
-      run: async ({ steps, imageUrl, onStepStart, onStepEnd }) => {
-        const outputs: string[] = [];
-        for (let i = 0; i < steps.length; i += 1) {
-          const step = steps[i]!;
-          onStepStart?.(i, step);
-          const output =
-            step.model === "image"
-              ? visionOutputFn(step.prompt)
-              : reasoningOutputFn(step.prompt, outputs[i - 1] ?? imageUrl);
-          outputs.push(output);
-          onStepEnd?.(i, output);
-        }
-        return outputs;
-      }
-    };
+  const extractedText = overrides.extractedText ?? "extracted";
+  const finalText = overrides.finalText ?? `reasoned:${extractedText}`;
   return new ImportServiceImpl({
     uploadRepository,
     imageStorage,
@@ -197,9 +149,9 @@ export function createImportServiceWithStubbedPipeline(
       },
     autoAnalyseFlagRepository:
       deps?.autoAnalyseFlagRepository ?? createInMemoryAutoAnalyseFlagRepository(),
-    providerState,
-    toolReasoning,
-    stepExecutor,
+    providerState: deps?.providerState ?? { getCurrentProvider: async () => provider },
+    workflowRunner:
+      deps?.workflowRunner ?? { run: async () => ({ extractedText, finalText }) },
     logger: deps?.logger ?? silentLogger,
     now: deps?.now ?? (() => 4242),
     generateUploadId: deps?.generateUploadId ?? (() => "integration_upload_id")
