@@ -860,27 +860,6 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
-  server:
-    dependency: "direct main"
-    description:
-      path: "../server"
-      relative: true
-    source: path
-    version: "0.0.1"
-  server_form:
-    dependency: transitive
-    description:
-      path: "../server_form"
-      relative: true
-    source: path
-    version: "0.0.1"
-  session_list:
-    dependency: transitive
-    description:
-      path: "../session_list"
-      relative: true
-    source: path
-    version: "0.0.1"
   shelf:
     dependency: transitive
     description:
@@ -990,13 +969,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.2"
-  terminal:
-    dependency: transitive
-    description:
-      path: "../terminal"
-      relative: true
-    source: path
-    version: "0.0.1"
   test:
     dependency: "direct overridden"
     description:

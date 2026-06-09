@@ -1,7 +1,6 @@
 import 'package:core/core.dart';
 import 'package:receiver/receiver.dart';
 import 'package:sender/sender.dart';
-import 'package:server/server.dart';
 import 'select_role_state.dart';
 
 class SelectRoleController extends BaseController<SelectRoleState> {
@@ -65,12 +64,6 @@ class SelectRoleController extends BaseController<SelectRoleState> {
   void navigateToReceiver(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReceiverView()));
-    });
-  }
-
-  void navigateToServer(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ServerView()));
     });
   }
 }

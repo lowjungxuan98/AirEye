@@ -48,8 +48,6 @@ class ReadyBody extends StatelessWidget {
                     RoleCard(icon: Icons.photo_camera_outlined, title: 'Sender', onTap: () => controller.navigateToSender(context)),
                     const SizedBox(height: 12),
                     RoleCard(icon: Icons.phone_android_outlined, title: 'Receiver', onTap: () => controller.navigateToReceiver(context)),
-                    const SizedBox(height: 12),
-                    RoleCard(icon: Icons.dns_outlined, title: 'Server', onTap: () => controller.navigateToServer(context)),
                     const Spacer(),
                     const SizedBox(height: 24),
                     const Center(child: AppVersionLabel()),
