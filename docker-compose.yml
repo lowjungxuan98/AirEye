@@ -1,0 +1,49 @@
+# Local development stack: backend (TS) + genai (Python LangGraph) + Redis + Qdrant.
+# Copy the env templates first:  cp backend/.env.example backend/.env  &&  cp genai/.env.example genai/.env
+# Then:  docker compose up --build
+# Seed RAG once Qdrant + genai are up:  docker compose run --rm genai python -m ingest.ingest
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+
+  genai:
+    build: ./genai
+    env_file:
+      - ./genai/.env
+    environment:
+      # Override per-service hosts for the compose network.
+      - QDRANT_URL=http://qdrant:6333
+      - PORT=8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - qdrant
+
+  backend:
+    build: ./backend
+    env_file:
+      - ./backend/.env
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - GENAI_BASE_URL=http://genai:8000
+      - WORKFLOW_ENGINE=genai
+    ports:
+      - "3001:3001"
+    depends_on:
+      - redis
+      - genai
+
+volumes:
+  qdrant_storage:
