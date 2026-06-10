@@ -29,6 +29,3 @@ export 'src/widgets/grim_text_content.dart';
 export 'src/widgets/provider_selector.dart';
 export 'src/widgets/app_version_label.dart';
 export 'src/secure_storage/secure_storage.dart';
-export 'src/ssh/grim_ssh_client.dart';
-export 'src/ssh/grim_ssh_provider.dart';
-export 'src/terminal/grim_terminal.dart';
