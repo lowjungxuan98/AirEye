@@ -23,9 +23,9 @@ import { unauthorized } from "./libs/utils/api-error.util";
 const OPENAPI_ROUTE = "/openapi.yaml";
 const DOCS_ROUTE = "/docs";
 export const API_KEY_HEADER = "x-api-key";
-export const AIREYE_API_KEY = "REDACTED";
 
 export type AppDependencies = {
+  apiKey: string;
   importService: ImportService;
   exportService: ExportService;
   sendNotificationService: SendNotificationService;
@@ -36,6 +36,7 @@ export type AppDependencies = {
 };
 
 export function createApp({
+  apiKey,
   importService,
   exportService,
   sendNotificationService,
@@ -71,7 +72,7 @@ export function createApp({
   app.get(DOCS_ROUTE, docsHandler);
   app.get(`${DOCS_ROUTE}/`, docsHandler);
 
-  app.use(requireApiKey);
+  app.use((req, res, next) => requireApiKey(req, res, next, apiKey));
 
   app.get(OPENAPI_ROUTE, (_req, res) => {
     applyOpenApiCors(res);
@@ -108,9 +109,9 @@ export function createApp({
   return app;
 }
 
-function requireApiKey(req: express.Request, _res: express.Response, next: express.NextFunction): void {
+function requireApiKey(req: express.Request, _res: express.Response, next: express.NextFunction, apiKey: string): void {
   const key = req.header(API_KEY_HEADER);
-  if (key !== AIREYE_API_KEY) {
+  if (key !== apiKey) {
     next(unauthorized("Missing or invalid API key"));
     return;
   }

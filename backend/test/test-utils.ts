@@ -1,4 +1,6 @@
-import { AIREYE_API_KEY, API_KEY_HEADER, createApp } from "../src/app";
+import { API_KEY_HEADER, createApp } from "../src/app";
+
+export const AIREYE_API_KEY = "test-api-key";
 import type {
   ImportServiceDependencies,
   AutoAnalyseService,
@@ -21,7 +23,7 @@ export const silentLogger: Logger = {
   info: () => {}
 };
 
-export { AIREYE_API_KEY, API_KEY_HEADER };
+export { API_KEY_HEADER };
 
 export function stableOkHealth(): HealthReport {
   return {
@@ -110,6 +112,7 @@ export function buildTestApp(input: BuildTestAppInput = {}) {
     new AutoAnalyseServiceImpl(createInMemoryAutoAnalyseFlagRepository());
   const runHealthChecks = input.runHealthChecks ?? (async () => stableOkHealth());
   return createApp({
+    apiKey: AIREYE_API_KEY,
     importService,
     exportService,
     sendNotificationService,

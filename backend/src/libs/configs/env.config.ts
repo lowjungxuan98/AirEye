@@ -19,6 +19,7 @@ export type ServerEnv = {
   LLM_API_KEY: string;
   GENAI_BASE_URL: string;
   GENAI_API_KEY: string;
+  AIREYE_API_KEY: string;
   SCALAR_DOCS_URL?: string;
   AIREYE_FCM_TOPIC?: string;
 };
@@ -48,6 +49,7 @@ export function loadServerEnv(): ServerEnv {
     LLM_API_KEY: readRequiredEnv("LITELLM_API_KEY"),
     GENAI_BASE_URL: readRequiredEnv("GENAI_BASE_URL"),
     GENAI_API_KEY: readRequiredEnv("GENAI_API_KEY"),
+    AIREYE_API_KEY: readRequiredEnv("AIREYE_API_KEY"),
     SCALAR_DOCS_URL: readOptionalEnv("SCALAR_DOCS_URL"),
     AIREYE_FCM_TOPIC: readOptionalEnv("AIREYE_FCM_TOPIC")
   };

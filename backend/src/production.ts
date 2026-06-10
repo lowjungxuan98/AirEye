@@ -75,6 +75,7 @@ export function createProductionDependencies(env: ServerEnv): AppDependencies {
   });
 
   return {
+    apiKey: env.AIREYE_API_KEY,
     importService,
     exportService,
     sendNotificationService,
