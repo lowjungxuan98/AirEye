@@ -1,6 +1,6 @@
 [project]
 name = "aireye-genai"
-version = "0.1.0"
+version = "0.2.18"
 description = "AirEye GenAI service: LangGraph orchestration + LangChain + LlamaIndex RAG, traced by Langfuse, routed through LiteLLM."
 requires-python = ">=3.12"
 dependencies = [
