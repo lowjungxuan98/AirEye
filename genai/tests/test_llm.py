@@ -24,7 +24,7 @@ def test_invoke_reasoning_retries_without_temperature(monkeypatch):
         temps.append(temperature)
 
         class _Model:
-            def invoke(self, messages):
+            def invoke(self, messages, config=None):
                 if temperature is not None:
                     raise Exception(
                         "Error code: 400 - litellm.UnsupportedParamsError: gpt-5 models don't "
@@ -48,7 +48,7 @@ def test_invoke_does_not_retry_on_unrelated_errors(monkeypatch):
         calls.append(temperature)
 
         class _Model:
-            def invoke(self, messages):
+            def invoke(self, messages, config=None):
                 raise RuntimeError("connection refused")
 
         return _Model()

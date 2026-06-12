@@ -7,6 +7,10 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import Settings, get_settings
 from app.core.observability.langfuse_tracing import langfuse_ready
+from app.core.observability.langsmith_integration import (
+    check_langsmith_connection,
+    langsmith_ready,
+)
 
 router = APIRouter()
 
@@ -54,6 +58,19 @@ async def _check_langfuse(settings: Settings) -> dict:
         return {"ok": False, "latencyMs": _ms(start), "error": str(error)[:200]}
 
 
+async def _check_langsmith(settings: Settings) -> dict:
+    start = time.monotonic()
+    if not settings.LANGSMITH_ENABLED:
+        return {"ok": True, "enabled": False, "latencyMs": _ms(start)}
+    if not settings.langsmith_configured or not langsmith_ready():
+        return {"ok": False, "enabled": True, "latencyMs": _ms(start), "error": "not configured"}
+    try:
+        await asyncio.to_thread(check_langsmith_connection, settings)
+        return {"ok": True, "enabled": True, "latencyMs": _ms(start)}
+    except Exception as error:  # noqa: BLE001
+        return {"ok": False, "enabled": True, "latencyMs": _ms(start), "error": str(error)[:200]}
+
+
 @router.get("/health")
 async def health() -> JSONResponse:
     settings = get_settings()
@@ -62,8 +79,22 @@ async def health() -> JSONResponse:
             _check_litellm(client, settings),
             _check_qdrant(client, settings),
         )
-    langfuse = await _check_langfuse(settings)
+    langfuse, langsmith = await asyncio.gather(
+        _check_langfuse(settings),
+        _check_langsmith(settings),
+    )
 
-    ok = litellm["ok"] and langfuse["ok"] and (qdrant["ok"] or not settings.RAG_ENABLED)
-    body = {"ok": ok, "litellm": litellm, "qdrant": qdrant, "langfuse": langfuse}
+    ok = (
+        litellm["ok"]
+        and langfuse["ok"]
+        and langsmith["ok"]
+        and (qdrant["ok"] or not settings.RAG_ENABLED)
+    )
+    body = {
+        "ok": ok,
+        "litellm": litellm,
+        "qdrant": qdrant,
+        "langfuse": langfuse,
+        "langsmith": langsmith,
+    }
     return JSONResponse(content=body, status_code=200 if ok else 503)

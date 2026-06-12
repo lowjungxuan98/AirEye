@@ -5,9 +5,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
-from app.api.v1 import health, workflow
+from app.api.v1 import health, langsmith, workflow
 from app.core.config import get_settings
 from app.core.observability.langfuse_tracing import init_langfuse
+from app.core.observability.langsmith_integration import init_langsmith
 from app.services.workflow import WorkflowRunner
 
 logging.basicConfig(level=logging.INFO)
@@ -17,6 +18,7 @@ logging.basicConfig(level=logging.INFO)
 async def lifespan(app: FastAPI):
     settings = get_settings()
     init_langfuse(settings)
+    init_langsmith(settings)
     app.state.workflow_runner = WorkflowRunner(settings)
     yield
 
@@ -36,4 +38,5 @@ async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSON
 
 
 app.include_router(health.router)
+app.include_router(langsmith.router)
 app.include_router(workflow.router)

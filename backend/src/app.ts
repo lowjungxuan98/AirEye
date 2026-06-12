@@ -10,7 +10,7 @@ import type {
 } from "./api/v1/model/services.model";
 import type { HealthReport } from "./api/v1/model/health.model";
 import type { ExportService } from "./api/v1/services/export.service";
-import { mapRequestError, wrapAsync } from "./libs/utils/http.util";
+import { wrapAsync } from "./libs/utils/http.util";
 import { createHealthRouter } from "./api/v1/routes/health.route";
 import { createImportRouter } from "./api/v1/routes/import.route";
 import { createRegenerateRouter } from "./api/v1/routes/regenerate.route";
@@ -18,7 +18,7 @@ import { createExportRouter } from "./api/v1/routes/export.route";
 import { createSendNotificationRouter } from "./api/v1/routes/send-notification.route";
 import { createProviderRouter } from "./api/v1/routes/provider.route";
 import { createAutoAnalyseRouter } from "./api/v1/routes/auto-analyse.route";
-import { unauthorized } from "./libs/utils/api-error.util";
+import { mapRequestError, unauthorized } from "./libs/utils/api-error.util";
 
 const OPENAPI_ROUTE = "/openapi.yaml";
 const DOCS_ROUTE = "/docs";

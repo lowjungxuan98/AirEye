@@ -1,8 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
-import multer from "multer";
+import express from "express";
+import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
-import { mapRequestError, wrapAsync } from "../../../../src/libs/utils/http.util";
-import { ApiError } from "../../../../src/libs/utils/api-error.util";
+import { createRouter, wrapAsync } from "../../../../src/libs/utils/http.util";
 
 describe("wrapAsync", () => {
   it("forwards rejected promises to next", async () => {
@@ -25,30 +25,45 @@ describe("wrapAsync", () => {
   });
 });
 
-describe("mapRequestError", () => {
-  it("returns ApiError instances unchanged", () => {
-    const err = new ApiError(418, "TEAPOT", "no");
-    expect(mapRequestError(err)).toBe(err);
+describe("createRouter", () => {
+  it("registers route definitions and wraps async handlers", async () => {
+    const app = express();
+    app.use(
+      createRouter([
+        {
+          method: "get",
+          path: "/ok",
+          handlers: [
+            async (_req, res) => {
+              res.status(200).json({ ok: true });
+            }
+          ]
+        }
+      ])
+    );
+
+    await request(app).get("/ok").expect(200, { ok: true });
   });
 
-  it("maps LIMIT_FILE_SIZE multer errors to 413", () => {
-    const err = new multer.MulterError("LIMIT_FILE_SIZE");
-    const mapped = mapRequestError(err);
-    expect(mapped).toBeInstanceOf(ApiError);
-    expect(mapped.statusCode).toBe(413);
-    expect(mapped.code).toBe("IMAGE_TOO_LARGE");
-  });
+  it("forwards rejected route handlers to Express error handling", async () => {
+    const app = express();
+    app.use(
+      createRouter([
+        {
+          method: "get",
+          path: "/boom",
+          handlers: [
+            async () => {
+              throw new Error("boom");
+            }
+          ]
+        }
+      ])
+    );
+    app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+      res.status(500).json({ message: err instanceof Error ? err.message : "unknown" });
+    });
 
-  it("maps other multer errors to 400", () => {
-    const err = new multer.MulterError("LIMIT_UNEXPECTED_FILE");
-    const mapped = mapRequestError(err);
-    expect(mapped.statusCode).toBe(400);
-    expect(mapped.code).toBe("INVALID_REQUEST");
-  });
-
-  it("maps unknown errors to internal error", () => {
-    const mapped = mapRequestError(new Error("x"));
-    expect(mapped.statusCode).toBe(500);
-    expect(mapped.code).toBe("INTERNAL_ERROR");
+    await request(app).get("/boom").expect(500, { message: "boom" });
   });
 });

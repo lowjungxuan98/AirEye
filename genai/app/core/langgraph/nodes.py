@@ -6,7 +6,6 @@ from app.services.llm import (
     LlmService,
     message_text,
     reasoning_messages,
-    vision_messages,
 )
 
 STEP_MODEL_IMAGE = "image"
@@ -51,16 +50,20 @@ def parse_steps(raw: str) -> list[dict]:
     return steps
 
 
-def plan_node(state: WorkflowState, *, llm: LlmService, prompts, settings) -> dict:
+def plan_node(state: WorkflowState, config=None, *, llm: LlmService, prompts, settings) -> dict:
     """Fetch the tool-reasoning prompt and ask the vision model for an ordered plan."""
     prompt_text = prompts.get_text(settings.TOOL_REASONING_PROMPT_NAME)
     raw = message_text(
-        llm.invoke_vision(state["provider"], vision_messages(prompt_text, state["image_url"]))
+        llm.invoke_vision_prompt(
+            state["provider"],
+            prompt_text,
+            config=config,
+        )
     )
     return {"plan": parse_steps(raw)}
 
 
-def vision_extract_node(state: WorkflowState, *, llm: LlmService, prompts) -> dict:
+def vision_extract_node(state: WorkflowState, config=None, *, llm: LlmService, prompts, settings) -> dict:
     """Run step 0 (always a vision step) to produce the extracted text."""
     first = state["plan"][0]
     if first["model"] != STEP_MODEL_IMAGE:
@@ -69,7 +72,11 @@ def vision_extract_node(state: WorkflowState, *, llm: LlmService, prompts) -> di
         )
     prompt_text = prompts.get_text(first["prompt"])
     output = message_text(
-        llm.invoke_vision(state["provider"], vision_messages(prompt_text, state["image_url"]))
+        llm.invoke_vision_prompt(
+            state["provider"],
+            prompt_text,
+            config=config,
+        )
     )
     return {"outputs": [output], "extracted_text": output}
 
@@ -82,20 +89,25 @@ def retrieve_node(state: WorkflowState, *, rag, settings) -> dict:
     return {"retrieved": rag.retrieve(state.get("extracted_text", ""))}
 
 
-def normalize_node(state: WorkflowState, *, llm: LlmService, prompts) -> dict:
+def normalize_node(state: WorkflowState, config=None, *, llm: LlmService, prompts, settings) -> dict:
     """Run the remaining steps. Reasoning steps receive the retrieved reference
     formats so the structured output stays consistent across documents."""
     steps = state["plan"]
     outputs = list(state.get("outputs", []))
     retrieved = state.get("retrieved", "")
     provider = state["provider"]
-    image_url = state["image_url"]
 
     for index in range(1, len(steps)):
         step = steps[index]
         prompt_text = prompts.get_text(step["prompt"])
         if step["model"] == STEP_MODEL_IMAGE:
-            output = message_text(llm.invoke_vision(provider, vision_messages(prompt_text, image_url)))
+            output = message_text(
+                llm.invoke_vision_prompt(
+                    provider,
+                    prompt_text,
+                    config=config,
+                )
+            )
         else:
             previous = outputs[index - 1]
             system_prompt = prompt_text

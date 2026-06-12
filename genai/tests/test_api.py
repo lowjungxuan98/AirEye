@@ -16,13 +16,14 @@ class _StubGraph:
 
 
 def test_workflow_runner_maps_graph_result_to_response():
-    runner = WorkflowRunner(Settings(LANGFUSE_TRACING_ENABLED=False))
+    runner = WorkflowRunner(Settings(LANGFUSE_TRACING_ENABLED=False, VISION_IMAGE_INLINE_ENABLED=False))
     runner._graph = _StubGraph()
     response = runner.run(WorkflowRunRequest(provider="openai", imageUrl="https://x/upl_a.jpg"))
     assert isinstance(response, WorkflowRunResponse)
     dumped = response.model_dump(by_alias=True)
     assert dumped["extractedText"] == "E"
     assert dumped["finalText"] == "F"
+    assert dumped["traceId"] is None
 
 
 class _StubRunner:

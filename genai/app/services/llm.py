@@ -1,9 +1,11 @@
 import logging
+from contextlib import nullcontext
 
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
 from app.core.config import Settings
+from app.services.image_input import current_vision_model_input, vision_tracing_context
 
 logger = logging.getLogger(__name__)
 
@@ -51,36 +53,52 @@ class LlmService:
         self._settings = settings
 
     def _chat(self, provider: str, stage: str, temperature: float, max_tokens: int, extra_body=None) -> ChatOpenAI:
+        model_id = build_model_id(provider, stage)
         return ChatOpenAI(
-            model=build_model_id(provider, stage),
+            model=model_id,
             base_url=self._settings.LITELLM_BASE_URL,
             api_key=self._settings.LITELLM_API_KEY,
             temperature=temperature,
             max_tokens=max_tokens,
             extra_body=extra_body,
+            metadata={
+                "aireye_stage": stage,
+                "ls_model_name": model_id,
+                "ls_provider": "litellm",
+            },
         )
 
-    def invoke_vision(self, provider: str, messages: list[BaseMessage]) -> BaseMessage:
+    def invoke_vision(self, provider: str, messages: list[BaseMessage], config: dict | None = None) -> BaseMessage:
         return self._invoke(
             provider, STAGE_IMAGE,
-            self._settings.VISION_TEMPERATURE, self._settings.VISION_MAX_TOKENS, messages,
+            self._settings.VISION_TEMPERATURE, self._settings.VISION_MAX_TOKENS, messages, config=config,
         )
 
-    def invoke_reasoning(self, provider: str, messages: list[BaseMessage]) -> BaseMessage:
+    def invoke_vision_prompt(self, provider: str, prompt: str, config: dict | None = None) -> BaseMessage:
+        vision_input = current_vision_model_input(config, self._settings)
+        return self.invoke_vision(
+            provider,
+            vision_messages(prompt, vision_input.image_url),
+            config=vision_input.config,
+        )
+
+    def invoke_reasoning(self, provider: str, messages: list[BaseMessage], config: dict | None = None) -> BaseMessage:
         return self._invoke(
             provider, STAGE_REASONING,
-            self._settings.REASONING_TEMPERATURE, self._settings.REASONING_MAX_TOKENS, messages,
+            self._settings.REASONING_TEMPERATURE, self._settings.REASONING_MAX_TOKENS, messages, config=config,
         )
 
     def _invoke(self, provider: str, stage: str, temperature: float, max_tokens: int,
-                messages: list[BaseMessage]) -> BaseMessage:
+                messages: list[BaseMessage], config: dict | None = None) -> BaseMessage:
         """Invoke a model, retrying once without `temperature` if LiteLLM rejects it.
 
         Some models reject a custom temperature (e.g. gpt-5 allows only 1). Dropping
         it lets the model use its default so a provider switch doesn't break the run.
         Setting `drop_params: true` on the LiteLLM proxy handles this centrally too."""
+        trace_context = self._trace_context(stage)
         try:
-            return self._chat(provider, stage, temperature, max_tokens).invoke(messages)
+            with trace_context:
+                return self._chat(provider, stage, temperature, max_tokens).invoke(messages, config=config)
         except Exception as error:
             if not _is_unsupported_param_error(error):
                 raise
@@ -88,7 +106,11 @@ class LlmService:
                 "LiteLLM rejected params for %s-%s (%s); retrying without temperature",
                 provider, stage, str(error)[:140],
             )
-            return self._chat(provider, stage, None, max_tokens).invoke(messages)
+            with self._trace_context(stage):
+                return self._chat(provider, stage, None, max_tokens).invoke(messages, config=config)
+
+    def _trace_context(self, stage: str):
+        return vision_tracing_context(self._settings) if stage == STAGE_IMAGE else nullcontext()
 
 
 def vision_messages(prompt: str, image_url: str) -> list[BaseMessage]:

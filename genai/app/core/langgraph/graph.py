@@ -23,9 +23,9 @@ def build_graph(*, llm, prompts, rag, settings):
     graph = StateGraph(WorkflowState)
 
     graph.add_node("plan", partial(plan_node, llm=llm, prompts=prompts, settings=settings))
-    graph.add_node("vision_extract", partial(vision_extract_node, llm=llm, prompts=prompts))
+    graph.add_node("vision_extract", partial(vision_extract_node, llm=llm, prompts=prompts, settings=settings))
     graph.add_node("retrieve", partial(retrieve_node, rag=rag, settings=settings))
-    graph.add_node("normalize", partial(normalize_node, llm=llm, prompts=prompts))
+    graph.add_node("normalize", partial(normalize_node, llm=llm, prompts=prompts, settings=settings))
     graph.add_node("finalize", finalize_node)
 
     graph.add_edge(START, "plan")

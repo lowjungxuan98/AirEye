@@ -1,11 +1,8 @@
 import type { RequestHandler } from "express";
 import type { ProviderService } from "../model/services.model";
-import {
-  API_ERROR_MESSAGES,
-  invalidProvider,
-  invalidRequest
-} from "../../../libs/utils/api-error.util";
+import { invalidProvider } from "../../../libs/utils/api-error.util";
 import { parseProvider } from "../../../libs/litellm/provider-state";
+import { readJsonObjectBody } from "../../../libs/utils/request-body.util";
 
 export function createGetProviderHandler(providerService: ProviderService): RequestHandler {
   return async (_req, res) => {
@@ -15,10 +12,7 @@ export function createGetProviderHandler(providerService: ProviderService): Requ
 
 export function createPutProviderHandler(providerService: ProviderService): RequestHandler {
   return async (req, res) => {
-    const body = req.body as Record<string, unknown> | null;
-    if (body === null || typeof body !== "object" || Array.isArray(body)) {
-      throw invalidRequest(API_ERROR_MESSAGES.expectedJsonObjectBody);
-    }
+    const body = readJsonObjectBody(req.body);
 
     const provider = parseProvider(
       body.current_provide ?? body.current_provider ?? body.currentProvider ?? body.provider
